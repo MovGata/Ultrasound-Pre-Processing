@@ -3,7 +3,7 @@
 #include <iostream>
 #include <fstream>
 
-namespace IO
+namespace io
 {
 
 RWOpsStream::RWOpsStream(SDL_RWops *p) : sbuf_(p), rbuffer_()
@@ -55,4 +55,4 @@ int RWOpsStream::sync()
     return traits_type::eq_int_type(result, traits_type::eof()) ? -1 : 0;
 }
 
-} // namespace IO
+} // namespace io

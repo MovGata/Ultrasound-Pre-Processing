@@ -6,7 +6,7 @@
 
 #include <SDL2/SDL_rwops.h>
 
-namespace IO
+namespace io
 {
 
 class RWOpsStream : public std::streambuf
@@ -29,6 +29,6 @@ public:
     virtual int sync();
 };
 
-} // namespace IO
+} // namespace io
 
 #endif
