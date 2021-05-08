@@ -12,12 +12,13 @@ namespace io
 class Mindray
 {
 private:
-    std::vector<std::byte> data;
-    InfoStore is;
-    InfoStore vmTxtStore;
 public:
     Mindray(/* args */);
     ~Mindray();
+    
+    std::vector<std::byte> data;
+    InfoStore is;
+    InfoStore vmTxtStore;
 
     bool load(const char *vm_txt, const char *vm_bin, const char *cp);
 

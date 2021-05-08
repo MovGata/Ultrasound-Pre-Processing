@@ -18,6 +18,7 @@ private:
         std::vector<int8_t>, std::vector<int16_t>, std::vector<int32_t>,
         std::vector<uint8_t>, std::vector<uint16_t>, std::vector<uint32_t>,
         std::vector<float>, std::vector<double>,
+        std::vector<std::string>,
         std::vector<InfoStore>
     >> info;
 public:
@@ -25,10 +26,13 @@ public:
     ~InfoStore();
 
     template<typename T>
-    T &load(std::string &&str, T &&t);
+    std::vector<T> &load(std::string &&str, std::vector<T> &&t);
 
     template<typename T>
-    T &fetch(std::string &str);
+    std::vector<T> &load(std::string &&str, T &&t);
+
+    template<typename T>
+    std::vector<T> &fetch(std::string &&str);
 
 
 };
