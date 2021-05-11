@@ -9,6 +9,8 @@
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 {
+    std::ios::sync_with_stdio(false);
+
     std::cout << "Hello, world!\n";
 
     ultrasound::Mindray reader;
@@ -16,11 +18,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     // std::cout << "InfoStore Test: " << reader.vmTxtStore.fetch<io::InfoStore>(std::string("CinePartition")).at(0).fetch<io::InfoStore>(std::string("CinePartition0")).at(0).fetch<uint32_t>(std::string("id_cine")).at(5);
     std::cout << "TEST" << std::endl;
-    for (auto &i : reader.vmTxtStore.info)
-    {
-        std::cout << i.first  << std::endl;
-        i.second.visit<i.second>([](auto &&v){std::cout << '\t' << v << std::endl;});
-    }
+    
+    std::cout << reader.vmTxtStore << std::endl;
+    
     std::cout << "ENDTEST" << std::endl;
     
     std::vector<uint16_t> x = reader.vmBinStore.fetch<uint16_t>(std::string("BDscPointRange"));
