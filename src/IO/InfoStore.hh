@@ -15,32 +15,39 @@
 namespace io
 {
 
-    template <concepts::UniqueType... T>
-        requires concepts::MindrayType<T...> && (!(std::is_same<T, Bool>() && ...)) class InfoStore
+    template <typename... T>
+        requires concepts::UniqueType<T...> &&
+        (!(std::same_as<T, Bool> || ...)) &&
+        concepts::MindrayType<T...> class InfoStore
     {
     private:
         template <typename U>
-        using S = std::conditional_t<std::is_same_v<U, Bool>, uint8_t, U>;
+        using S = std::conditional_t<std::is_same_v<U, bool>, Bool, U>;
 
     public:
-        std::unordered_map<std::string, VectorVariant<InfoStore<T...>, T...>> info;
+        std::unordered_map<std::string, VectorVariant<T...>> info;
         InfoStore() = default;
         ~InfoStore() = default;
 
-        template <concepts::SubType<InfoStore<T...>, T...> U>
-        auto load(std::string &&str, std::vector<S<U>> &&t) -> std::vector<S<U>> &;
+        template <typename U>
+            requires concepts::SubType<U, T...> ||
+            std::same_as<U, InfoStore<T...>> auto load(std::string &&str, std::vector<S<U>> &&t) -> std::vector<S<U>> &;
 
-        template <concepts::SubType<InfoStore<T...>, T...> U>
-        auto load(std::string &&str, U &&t) -> U &;
+        template <typename U>
+            requires concepts::SubType<U, T...> ||
+            std::same_as<U, InfoStore<T...>> auto load(std::string &&str, U &&t) -> U &;
 
-        template <concepts::SubType<InfoStore<T...>, T...> U>
-        auto fetch(std::string &&str) -> std::vector<S<U>> &;
+        template <typename U>
+            requires concepts::SubType<U, T...> ||
+            std::same_as<U, InfoStore<T...>> auto fetch(std::string &&str) -> std::vector<S<U>> &;
 
-        template <concepts::SubType<InfoStore<T...>, T...> U>
-        auto fetch(std::string &&str, std::size_t i) -> U &;
+        template <typename U>
+            requires concepts::SubType<U, T...> ||
+            std::same_as<U, InfoStore<T...>> auto fetch(std::string &&str, std::size_t i) -> U &;
 
-        template <typename UnaryFunction, concepts::SubType<InfoStore<T...>, T...> U>
-        requires concepts::CallableType<UnaryFunction, U> auto visit(std::string &&str, UnaryFunction f) -> void;
+        template <typename UnaryFunction>
+            requires(concepts::CallableType<UnaryFunction, T> &&...) &&
+            concepts::CallableType<UnaryFunction, InfoStore<T...>> auto visit(std::string &&str, UnaryFunction f) -> void;
 
         auto print(std::ostream &os, std::size_t depth = 0) const -> void;
 
@@ -51,44 +58,49 @@ namespace io
 
 namespace io
 {
-    template <concepts::UniqueType... T>
-    template <concepts::SubType<InfoStore<T...>, T...> U>
-    auto InfoStore<T...>::load(std::string &&str, std::vector<S<U>> &&t) -> std::vector<S<U>> &
+    template <typename... T>
+        template <typename U>
+        requires concepts::SubType<U, T...> ||
+        std::same_as<U, InfoStore<T...>> auto InfoStore<T...>::load(std::string &&str, std::vector<S<U>> &&t) -> std::vector<S<U>> &
     {
         auto pair = info.try_emplace(std::forward<decltype(str)>(str), std::vector<S<U>>());
         return pair.first->second.template set<U>(std::forward<decltype(t)>(t));
     }
 
-    template <concepts::UniqueType... T>
-    template <concepts::SubType<InfoStore<T...>, T...> U>
-    auto InfoStore<T...>::load(std::string &&str, U &&t) -> U &
+    template <typename... T>
+        template <typename U>
+        requires concepts::SubType<U, T...> ||
+        std::same_as<U, InfoStore<T...>> auto InfoStore<T...>::load(std::string &&str, U &&t) -> U &
     {
-        auto pair = info.try_emplace(std::forward<decltype(str)>(str), std::vector<S<U>>());
+        auto pair = info.try_emplace(std::forward<decltype(str)>(str), U());
         return pair.first->second.template set<U>(std::forward<decltype(t)>(t));
     }
 
-    template <concepts::UniqueType... T>
-    template <concepts::SubType<InfoStore<T...>, T...> U>
-    auto InfoStore<T...>::fetch(std::string &&str) -> std::vector<S<U>> &
+    template <typename... T>
+        template <typename U>
+        requires concepts::SubType<U, T...> ||
+        std::same_as<U, InfoStore<T...>> auto InfoStore<T...>::fetch(std::string &&str) -> std::vector<S<U>> &
     {
         return info.at(std::forward<std::string>(str)).template get<U>();
     }
 
-    template <concepts::UniqueType... T>
-    template <concepts::SubType<InfoStore<T...>, T...> U>
-    auto InfoStore<T...>::fetch(std::string &&str, std::size_t i) -> U &
+    template <typename... T>
+        template <typename U>
+        requires concepts::SubType<U, T...> ||
+        std::same_as<U, InfoStore<T...>> auto InfoStore<T...>::fetch(std::string &&str, std::size_t i) -> U &
     {
         return info.at(std::forward<std::string>(str)).template get<U>(i);
     }
 
-    template <concepts::UniqueType... T>
-    template <typename UnaryFunction, concepts::SubType<InfoStore<T...>, T...> U>
-    requires concepts::CallableType<UnaryFunction, U> auto InfoStore<T...>::visit(std::string &&str, UnaryFunction f) -> void
+    template <typename... T>
+        template <typename UnaryFunction>
+        requires(concepts::CallableType<UnaryFunction, T> &&...) &&
+        concepts::CallableType<UnaryFunction, InfoStore<T...>> auto InfoStore<T...>::visit(std::string &&str, UnaryFunction f) -> void
     {
         f(fetch(std::forward<decltype(str)>(str)));
     }
 
-    template <concepts::UniqueType... T>
+    template <typename... T>
     auto InfoStore<T...>::print(std::ostream &os, std::size_t depth) const -> void
     {
         std::string indent(depth, '\t');
@@ -99,7 +111,7 @@ namespace io
         }
     }
 
-    template <concepts::UniqueType... T>
+    template <typename... T>
     auto operator<<(std::ostream &os, const InfoStore<T...> &is) -> std::ostream &
     {
         is.print(os);

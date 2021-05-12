@@ -16,10 +16,10 @@ namespace concepts
 {
 
     template <typename T>
-    concept UltrasoundType = is_any<T, ultrasound::Mindray>();
+    concept UltrasoundType = SubType<T, ultrasound::Mindray>;
 
     template <typename... T>
-    concept MindrayType = (is_any<T, bool, int8_t, int16_t, int32_t, uint8_t, uint16_t, uint32_t, float, double, std::string> && ...);
+    concept MindrayType = (SubType<T, bool, int8_t, int16_t, int32_t, uint8_t, uint16_t, uint32_t, float, double, std::string> && ...);
 
 } // namespace concepts
 

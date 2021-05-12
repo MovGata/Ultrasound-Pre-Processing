@@ -50,7 +50,7 @@ namespace ultrasound
 
                 if (sv.starts_with("DATA_TREE_BEGIN"))
                 {
-                    isDepth.emplace_back(isDepth.back().get().load<vmTxtInfoStore>(std::string(sv.substr(16)), vmTxtInfoStore()));
+                    isDepth.emplace_back(isDepth.back().get().template load<vmTxtInfoStore>(std::string(sv.substr(16)), vmTxtInfoStore()));
                 }
                 else if (sv.starts_with("DATA_TREE_END"))
                 {
@@ -62,7 +62,7 @@ namespace ultrasound
                     {
                         if (std::any_of(std::next(sv.begin(), p + 1), sv.end(), [](char c) { return std::isalpha(static_cast<unsigned char>(c)); }))
                         {
-                            isDepth.back().get().load<std::string>(std::string(sv.substr(0, p)), std::move(std::string(sv.substr(p + 1))));
+                            isDepth.back().get().template load<std::string>(std::string(sv.substr(0, p)), std::move(std::string(sv.substr(p + 1))));
                         }
                         //// From_chars is not supported by g++ 10.3.0, however I'm yet to encounter floating points in this file.
                         // else if (std::any_of(std::next(sv.begin(), p + 1), sv.end(), [](char c) { return c == '.'; }))
@@ -82,13 +82,13 @@ namespace ultrasound
                         //             vd.push_back(v);
                         //             prev = next + 1;
                         //         } while (next < sv.size());
-                        //         isDepth.back().get().load<double>(std::string(sv.substr(0, p)), std::move(vd));
+                        //         isDepth.back().get().template load<double>(std::string(sv.substr(0, p)), std::move(vd));
                         //     }
                         //     else
                         //     {
                         //         double v = 0;
                         //         std::from_chars(sv.data() + p, sv.data() + sv.size(), v);
-                        //         isDepth.back().get().load<double>(std::string(sv.substr(0, p)), {v});
+                        //         isDepth.back().get().template load<double>(std::string(sv.substr(0, p)), {v});
                         //     }
                         // }
                         else
@@ -108,19 +108,19 @@ namespace ultrasound
                                     vs.push_back(v);
                                     prev = next + 1;
                                 } while (next < sv.size());
-                                isDepth.back().get().load<uint32_t>(std::string(sv.substr(0, p)), std::move(vs));
+                                isDepth.back().get().template load<uint32_t>(std::string(sv.substr(0, p)), std::move(vs));
                             }
                             else
                             {
                                 uint32_t v = 0;
                                 std::from_chars(sv.data() + p, sv.data() + sv.size(), v);
-                                isDepth.back().get().load<uint32_t>(std::string(sv.substr(0, p)), {v});
+                                isDepth.back().get().template load<uint32_t>(std::string(sv.substr(0, p)), {v});
                             }
                         }
                     }
                     else
                     {
-                        isDepth.back().get().load<std::string>(std::string(sv.substr(0, p)), {std::string()});
+                        isDepth.back().get().template load<std::string>(std::string(sv.substr(0, p)), {std::string()});
                     }
                 }
             }
@@ -162,7 +162,7 @@ namespace ultrasound
                         else
                         {
                             std::string_view name = sv.substr(1, sv.find_first_of('[') - 1);
-                            isDepth.emplace_back(isDepth.back().get().load<vmBinInfoStore>(std::string(name), vmBinInfoStore()));
+                            isDepth.emplace_back(isDepth.back().get().template load<vmBinInfoStore>(std::string(name), vmBinInfoStore()));
                         }
                     }
                     else
@@ -178,7 +178,7 @@ namespace ultrasound
                                 while (vmBinIs >> s && !s.starts_with(']'))
                                 {
                                     std::from_chars(s.data(), s.data() + s.length(), v);
-                                    isDepth.back().get().load<int8_t>(std::string(name), std::move(v));
+                                    isDepth.back().get().template load<int8_t>(std::string(name), std::move(v));
                                 }
                             }
                             else if (type.ends_with('6'))
@@ -187,7 +187,7 @@ namespace ultrasound
                                 while (vmBinIs >> s && !s.starts_with(']'))
                                 {
                                     std::from_chars(s.data(), s.data() + s.length(), v);
-                                    isDepth.back().get().load<int16_t>(std::string(name), std::move(v));
+                                    isDepth.back().get().template load<int16_t>(std::string(name), std::move(v));
                                 }
                             }
                             else
@@ -196,7 +196,7 @@ namespace ultrasound
                                 while (vmBinIs >> s && !s.starts_with(']'))
                                 {
                                     std::from_chars(s.data(), s.data() + s.length(), v);
-                                    isDepth.back().get().load<int32_t>(std::string(name), std::move(v));
+                                    isDepth.back().get().template load<int32_t>(std::string(name), std::move(v));
                                 }
                             }
                         }
@@ -208,7 +208,7 @@ namespace ultrasound
                                 while (vmBinIs >> s && !s.starts_with(']'))
                                 {
                                     std::from_chars(s.data(), s.data() + s.length(), v);
-                                    isDepth.back().get().load<uint8_t>(std::string(name), std::move(v));
+                                    isDepth.back().get().template load<uint8_t>(std::string(name), std::move(v));
                                 }
                             }
                             else if (type.ends_with('6'))
@@ -217,7 +217,7 @@ namespace ultrasound
                                 while (vmBinIs >> s && !s.starts_with(']'))
                                 {
                                     std::from_chars(s.data(), s.data() + s.length(), v);
-                                    isDepth.back().get().load<uint16_t>(std::string(name), std::move(v));
+                                    isDepth.back().get().template load<uint16_t>(std::string(name), std::move(v));
                                 }
                             }
                             else
@@ -226,7 +226,7 @@ namespace ultrasound
                                 while (vmBinIs >> s && !s.starts_with(']'))
                                 {
                                     std::from_chars(s.data(), s.data() + s.length(), v);
-                                    isDepth.back().get().load<uint32_t>(std::string(name), std::move(v));
+                                    isDepth.back().get().template load<uint32_t>(std::string(name), std::move(v));
                                 }
                             }
                         }
@@ -237,7 +237,7 @@ namespace ultrasound
                             {
                                 v = std::stof(s);
                                 // std::from_chars(s.data(), s.data() + s.length(), v);
-                                isDepth.back().get().load<float>(std::string(name), std::move(v));
+                                isDepth.back().get().template load<float>(std::string(name), std::move(v));
                             }
                         }
                         else if (type.starts_with('d'))
@@ -247,7 +247,7 @@ namespace ultrasound
                             {
                                 v = std::stod(s);
                                 // std::from_chars(s.data(), s.data() + s.length(), v);
-                                isDepth.back().get().load<double>(std::string(name), std::move(v));
+                                isDepth.back().get().template load<double>(std::string(name), std::move(v));
                             }
                         }
                         else
@@ -256,7 +256,7 @@ namespace ultrasound
                             while (vmBinIs >> s && !s.starts_with(']'))
                             {
                                 v = s.starts_with('t') ? true : false;
-                                isDepth.back().get().load<bool>(std::string(name), std::move(v));
+                                isDepth.back().get().template load<bool>(std::string(name), std::move(v));
                             }
                         }
                     }
