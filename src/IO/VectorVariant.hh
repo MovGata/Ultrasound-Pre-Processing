@@ -152,23 +152,24 @@ namespace io
     auto VectorVariant<T...>::print(std::ostream &os, std::size_t depth) const -> void
     {
         std::visit(
-            [&os, depth](auto &&a) {
-                using type = std::remove_cvref<decltype(a.front())>;
-                if constexpr (concepts::PrintableDepthType<type>)
+            [&os, depth]<typename U>(const std::vector<U> &u) -> void {
+                // using type = std::remove_cvref<decltype(u.front())>;
+                if constexpr (concepts::PrintableDepthType<U>)
                 {
-                    std::cout << "PRINTABLE" << std::endl;
-                    for (auto &e : a)
+                    os << '\n';
+                    for (auto &e : u)
                     {
                         e.print(os, depth);
                     }
                 }
                 else
                 {
-                    os << std::string(depth, '\t');
-                    for (auto &e : a)
+                    os << std::string(depth, ' ');
+                    for (auto &e : u)
                     {
-                        os << e << '\n';
+                        os << e << ',';
                     }
+                    os << '\n';
                 }
             },
             var);

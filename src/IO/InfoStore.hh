@@ -106,7 +106,7 @@ namespace io
         std::string indent(depth, '\t');
         for (auto &e : info)
         {
-            os << indent << e.first << ":\n";
+            os << indent << e.first << ": ";
             e.second.print(os, depth + 1);
         }
     }
