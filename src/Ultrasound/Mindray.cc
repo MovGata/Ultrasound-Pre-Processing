@@ -95,7 +95,7 @@ namespace ultrasound
                         {
                             if (sv.at(p + 1) == '[')
                             {
-                                decltype(p) prev = sv.substr(p).find_first_of('{') + 1;
+                                decltype(p) prev = sv.find_first_of('{') + 1;
                                 decltype(p) next;
 
                                 std::vector<uint32_t> vs;
@@ -113,7 +113,7 @@ namespace ultrasound
                             else
                             {
                                 uint32_t v = 0;
-                                std::from_chars(sv.data() + p, sv.data() + sv.size(), v);
+                                std::from_chars(sv.data() + p + 1, sv.data() + sv.size(), v);
                                 isDepth.back().get().template load<uint32_t>(std::string(sv.substr(0, p)), {v});
                             }
                         }
@@ -146,7 +146,7 @@ namespace ultrasound
 
             while (std::getline(vmBinIs, s))
             {
-                std::string_view sv(s);
+                std::string_view sv(s.data() + s.find_first_not_of('\t'));
 
                 if (sv.starts_with('"'))
                 {
@@ -157,11 +157,12 @@ namespace ultrasound
                         if (sv.at(colon + 1) == ':')
                         {
                             // We don't want to make a new store here, but one gets closed later anyway due to the closing brace, so we make a dummy copy.
-                            isDepth.emplace_back(isDepth.back());
+                            std::string_view name = sv.substr(colon + 2, sv.substr(colon + 2).find_first_of('['));
+                            isDepth.emplace_back(isDepth.back().get().template load<vmBinInfoStore>(std::string(name), vmBinInfoStore()));
                         }
                         else
                         {
-                            std::string_view name = sv.substr(1, sv.find_first_of('[') - 1);
+                            std::string_view name = sv.substr(1, sv.find_first_of(']'));
                             isDepth.emplace_back(isDepth.back().get().template load<vmBinInfoStore>(std::string(name), vmBinInfoStore()));
                         }
                     }
@@ -174,90 +175,117 @@ namespace ultrasound
                         {
                             if (type.ends_with('8'))
                             {
+                                std::string n;
+                                std::vector<int8_t> vs;
                                 int8_t v = 0;
-                                while (vmBinIs >> s && !s.starts_with(']'))
+                                while (vmBinIs >> n >> std::ws && !n.starts_with(']'))
                                 {
-                                    std::from_chars(s.data(), s.data() + s.length(), v);
-                                    isDepth.back().get().template load<int8_t>(std::string(name), std::move(v));
+                                    std::from_chars(n.data(), n.data() + n.length(), v);
+                                    vs.push_back(v);
                                 }
+                                isDepth.back().get().template load<int8_t>(std::string(name), std::move(vs));
                             }
                             else if (type.ends_with('6'))
                             {
+                                std::string n;
+                                std::vector<int16_t> vs;
                                 int16_t v = 0;
-                                while (vmBinIs >> s && !s.starts_with(']'))
+                                while (vmBinIs >> n >> std::ws && !n.starts_with(']'))
                                 {
-                                    std::from_chars(s.data(), s.data() + s.length(), v);
-                                    isDepth.back().get().template load<int16_t>(std::string(name), std::move(v));
+                                    std::from_chars(n.data(), n.data() + n.length(), v);
+                                    vs.push_back(v);
                                 }
+                                isDepth.back().get().template load<int16_t>(std::string(name), std::move(vs));
                             }
                             else
                             {
+                                std::string n;
+                                std::vector<int32_t> vs;
                                 int32_t v = 0;
-                                while (vmBinIs >> s && !s.starts_with(']'))
+                                while (vmBinIs >> n >> std::ws && !n.starts_with(']'))
                                 {
-                                    std::from_chars(s.data(), s.data() + s.length(), v);
-                                    isDepth.back().get().template load<int32_t>(std::string(name), std::move(v));
+                                    std::from_chars(n.data(), n.data() + n.length(), v);
+                                    vs.push_back(v);
                                 }
+                                isDepth.back().get().template load<int32_t>(std::string(name), std::move(vs));
                             }
                         }
                         else if (type.starts_with('u'))
                         {
                             if (type.ends_with('8'))
                             {
+                                std::string n;
+                                std::vector<uint8_t> vs;
                                 uint8_t v = 0;
-                                while (vmBinIs >> s && !s.starts_with(']'))
+                                while (vmBinIs >> n >> std::ws && !n.starts_with(']'))
                                 {
-                                    std::from_chars(s.data(), s.data() + s.length(), v);
-                                    isDepth.back().get().template load<uint8_t>(std::string(name), std::move(v));
+                                    std::from_chars(n.data(), n.data() + n.length(), v);
+                                    vs.push_back(v);
                                 }
+                                isDepth.back().get().template load<uint8_t>(std::string(name), std::move(vs));
                             }
                             else if (type.ends_with('6'))
                             {
+                                std::string n;
+                                std::vector<uint16_t> vs;
                                 uint16_t v = 0;
-                                while (vmBinIs >> s && !s.starts_with(']'))
+                                while (vmBinIs >> n >> std::ws && !n.starts_with(']'))
                                 {
-                                    std::from_chars(s.data(), s.data() + s.length(), v);
-                                    isDepth.back().get().template load<uint16_t>(std::string(name), std::move(v));
+                                    std::from_chars(n.data(), n.data() + n.length(), v);
+                                    vs.push_back(v);
                                 }
+                                isDepth.back().get().template load<uint16_t>(std::string(name), std::move(vs));
                             }
                             else
                             {
+                                std::string n;
+                                std::vector<uint32_t> vs;
                                 uint32_t v = 0;
-                                while (vmBinIs >> s && !s.starts_with(']'))
+                                while (vmBinIs >> n >> std::ws && !n.starts_with(']'))
                                 {
-                                    std::from_chars(s.data(), s.data() + s.length(), v);
-                                    isDepth.back().get().template load<uint32_t>(std::string(name), std::move(v));
+                                    std::from_chars(n.data(), n.data() + n.length(), v);
+                                    vs.push_back(v);
                                 }
+                                isDepth.back().get().template load<uint32_t>(std::string(name), std::move(vs));
                             }
                         }
                         else if (type.starts_with('f'))
                         {
+                            std::string n;
+                            std::vector<float> vs;
                             float v = 0;
-                            while (vmBinIs >> s && !s.starts_with(']'))
+                            while (vmBinIs >> n >> std::ws && !n.starts_with(']'))
                             {
-                                v = std::stof(s);
-                                // std::from_chars(s.data(), s.data() + s.length(), v);
-                                isDepth.back().get().template load<float>(std::string(name), std::move(v));
+                                // std::from_chars(n.data(), n.data() + n.length(), v);
+                                v = std::stof(n);
+                                vs.push_back(v);
                             }
+                            isDepth.back().get().template load<float>(std::string(name), std::move(vs));
                         }
                         else if (type.starts_with('d'))
                         {
+                            std::string n;
+                            std::vector<double> vs;
                             double v = 0;
-                            while (vmBinIs >> s && !s.starts_with(']'))
+                            while (vmBinIs >> n >> std::ws && !n.starts_with(']'))
                             {
-                                v = std::stod(s);
-                                // std::from_chars(s.data(), s.data() + s.length(), v);
-                                isDepth.back().get().template load<double>(std::string(name), std::move(v));
+                                // std::from_chars(n.data(), n.data() + n.length(), v);
+                                v = std::stod(n);
+                                vs.push_back(v);
                             }
+                            isDepth.back().get().template load<double>(std::string(name), std::move(vs));
                         }
                         else
                         {
+                            std::string n;
+                            std::vector<io::Bool> vs;
                             bool v = false;
-                            while (vmBinIs >> s && !s.starts_with(']'))
+                            while (vmBinIs >> n >> std::ws >> std::ws && !n.starts_with(']'))
                             {
-                                v = s.starts_with('t') ? true : false;
-                                isDepth.back().get().template load<bool>(std::string(name), std::move(v));
+                                v = n.starts_with('t') ? true : false;
+                                vs.push_back({v});
                             }
+                            isDepth.back().get().template load<bool>(std::string(name), std::move(vs));
                         }
                     }
                 }

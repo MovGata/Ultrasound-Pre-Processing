@@ -54,6 +54,7 @@ namespace io
 
         template <typename U>
             requires(concepts::SubType<U, T...> && !std::same_as<U, bool>) ||
+            std::same_as<U, Bool> ||
             std::same_as<U, InfoStore<T...>> VectorVariant(std::vector<U> &&u);
 
         template <typename U>
@@ -96,6 +97,7 @@ namespace io
     template <typename... T>
         template <typename U>
         requires(concepts::SubType<U, T...> && !std::same_as<U, bool>) ||
+        std::same_as<U, Bool> ||
         std::same_as<U, InfoStore<T...>> VectorVariant<T...>::VectorVariant(std::vector<U> &&u) : var(std::forward<std::vector<S<U>>>(u))
     {
     }
@@ -167,7 +169,8 @@ namespace io
                     os << std::string(depth, ' ');
                     for (auto &e : u)
                     {
-                        os << e << ',';
+                        os << std::boolalpha;
+                        os.operator<<(e) << ',';
                     }
                     os << '\n';
                 }

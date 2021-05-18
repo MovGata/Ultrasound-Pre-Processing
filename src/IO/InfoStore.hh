@@ -51,7 +51,8 @@ namespace io
 
         auto print(std::ostream &os, std::size_t depth = 0) const -> void;
 
-        friend auto operator<<<T...>(std::ostream &os, const InfoStore<T...> &is) -> std::ostream &;
+        template <typename... U>
+        friend auto operator<<(std::ostream &os, const InfoStore<U...> &is) -> std::ostream &;
     };
 
 } // namespace io
