@@ -19,6 +19,10 @@ public:
 
     unsigned int width;
     unsigned int height;
+
+    void clean();
+    void update();
+
 };
 
 } // namespace gui

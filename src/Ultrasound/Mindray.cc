@@ -24,9 +24,6 @@ namespace ultrasound
 
     bool Mindray::load(const char *vmTxt, const char *vmBin, const char *cp)
     {
-
-        std::unique_ptr<SDL_RWops, decltype(&SDL_RWclose)> cpOps(nullptr, SDL_RWclose);
-        io::RWOpsStream cpRWStream;
         std::string s;
 
         {
@@ -296,14 +293,65 @@ namespace ultrasound
             }
         }
 
-        cpOps.reset(SDL_RWFromFile(cp, "r"));
-        if (cpOps == nullptr)
         {
-            std::cout << "SDL2 failed to open Mindray cine partition file '" << cp << "', error: " << SDL_GetError();
-            return false;
-        }
-        cpRWStream = io::RWOpsStream(cpOps.get());
+            std::unique_ptr<SDL_RWops, decltype(&SDL_RWclose)> cpOps(nullptr, SDL_RWclose);
+            io::RWOpsStream cpRWStream = io::RWOpsStream(cpOps.get());
+            std::istream cpIs(&cpRWStream);
 
+            std::vector<int16_t> lineRange = vmBinStore.fetch<int16_t>("BDscLineRange");
+            std::vector<uint16_t> pointRange = vmBinStore.fetch<uint16_t>("BDscPointRange");
+            std::vector<int32_t> frameCount = vmBinStore.fetch<int32_t>("FrameCountPerVolume");
+
+            int32_t length = lineRange.at(1) > lineRange.at(0) ? lineRange.at(1) - lineRange.at(0) : lineRange.at(0) - lineRange.at(1);
+            int32_t depth = pointRange.at(1) > pointRange.at(0) ? pointRange.at(1) - pointRange.at(0) : pointRange.at(0) - pointRange.at(1);
+            int32_t width = frameCount.at(0);
+
+            std::vector<uint8_t> headers;
+            std::vector<uint8_t> data;
+            std::vector<uint8_t> other;
+
+            uint32_t vmOffset = vmTxtStore.fetch<vmTxtInfoStore>("CinePartition", 0).fetch<vmTxtInfoStore>("CinePartition0", 0).fetch<vmTxtInfoStore>("FeParam", 0).fetch<vmTxtInfoStore>("Version0", 0).fetch<vmTxtInfoStore>("param_content", 0).fetch<uint32_t>("OFFSET", 0);
+
+            std::size_t headerSize = 128;
+            std::size_t otherSize = vmOffset > 16 ? 280 : 0;
+            std::size_t dataSize = length * depth;
+            std::size_t frameSize = dataSize + headerSize + otherSize;
+
+            cpOps.reset(SDL_RWFromFile(cp, "r"));
+            if (cpOps == nullptr)
+            {
+                std::cout << "SDL2 failed to open Mindray cine partition file '" << cp << "', error: " << SDL_GetError();
+                return false;
+            }
+            cpRWStream = io::RWOpsStream(cpOps.get());
+            
+            std::vector<char> buf;
+            buf.reserve(frameSize);
+
+            while (cpIs.read(buf.data(), frameSize))
+            {
+                headers.reserve(headers.size() + headerSize);
+                other.reserve(other.size() + otherSize);
+                data.reserve(data.size() + dataSize);
+
+                std::memcpy(headers.data() + headers.size(), buf.data(), headerSize);
+                std::memcpy(other.data() + other.size(), buf.data() + headerSize, otherSize);
+                std::memcpy(data.data() + data.size(), buf.data() + headerSize + otherSize, dataSize);
+            }
+            
+            cpStore.load<uint8_t>("Headers", std::move(headers));
+            cpStore.load<uint8_t>("Other", std::move(other));
+            cpStore.load<uint8_t>("Data", std::move(data));
+
+            cpStore.load<std::size_t>("HeaderSize", std::move(headerSize));
+            cpStore.load<std::size_t>("OtherSize", std::move(otherSize));
+            cpStore.load<std::size_t>("DataSize", std::move(dataSize));
+
+            cpStore.load<int32_t>("Length", std::move(length));
+            cpStore.load<int32_t>("Depth", std::move(depth));
+            cpStore.load<int32_t>("Width", std::move(width));
+
+        }
         return true;
     }
 

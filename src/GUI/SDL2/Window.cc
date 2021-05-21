@@ -17,11 +17,22 @@ namespace gui
         }
 
         surface.reset(SDL_GetWindowSurface(window.get()));
+
+        clean();
     }
     
     Window::~Window()
     {
     }
     
+    void Window::clean()
+    {
+        SDL_FillRect(surface.get(), NULL, SDL_MapRGB(surface->format, 0xEF, 0xFF, 0xB3));
+    }
+
+    void Window::update()
+    {
+        SDL_UpdateWindowSurface(window.get());
+    }
     
 } // namespace gui
