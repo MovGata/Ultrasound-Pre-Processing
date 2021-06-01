@@ -334,9 +334,9 @@ namespace ultrasound
                 other.reserve(other.size() + otherSize);
                 data.reserve(data.size() + dataSize);
 
-                std::memcpy(headers.data() + headers.size(), buf.data(), headerSize);
-                std::memcpy(other.data() + other.size(), buf.data() + headerSize, otherSize);
-                std::memcpy(data.data() + data.size(), buf.data() + headerSize + otherSize, dataSize);
+                std::copy(buf.data(), buf.data() + headerSize, std::back_inserter(headers));
+                std::copy(buf.data() + headerSize, buf.data() + headerSize + otherSize, std::back_inserter(other));
+                std::copy(buf.data() + headerSize + otherSize, buf.data() + headerSize + otherSize + dataSize, std::back_inserter(data));
             }
             
             cpStore.load<uint8_t>("Headers", std::move(headers));

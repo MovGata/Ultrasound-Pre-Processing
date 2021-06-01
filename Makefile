@@ -1,7 +1,7 @@
 # Include paths
-IPATHS = -isystem C:/msys64/mingw64/include/SDL2 -isystem C:/VulkanSDK/1.2.154.1/Include -isystem C:/VulkanSDK/VulkanMemoryAllocator/src
+IPATHS = -isystem C:/msys64/mingw64/include/SDL2 -isystem C:/SDK
 # Library paths
-LPATHS = -LC:/msys64/mingw64/lib #-LC:/VulkanSDK/1.2.154.1/Lib
+LPATHS = -LC:/msys64/mingw64/lib
 
 # Directories
 DEPDIR = .d
@@ -12,14 +12,14 @@ $(@shell mkdir $(DEPDIR))
 $(@shell mkdir $(OBJDIR))
 
 # -Wl,-subsystem,windows gets rid of the console window
-DEFS = -DWIN32_LEAN_AND_MEAN -DWINVER=0x0A00 -DVK_USE_PLATFORM_WIN32_KHR -DVULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1 -DCPP_SDL2_VK_WINDOW -DCPP_SDL2_USE_SDL_IMAGE -DVMA_STATIC_VULKAN_FUNCTIONS=0 -DVMA_DYNAMIC_VULKAN_FUNCTIONS=0
+DEFS = -DWIN32_LEAN_AND_MEAN -DWINVER=0x0A00 -DCPP_SDL2_VK_WINDOW -DCPP_SDL2_USE_SDL_IMAGE -D_USE_MATH_DEFINES -DCL_TARGET_OPENCL_VERSION=120 -DCL_HPP_TARGET_OPENCL_VERSION=120 -DCL_HPP_MINIMUM_OPENCL_VERSION=120 -DGL_GLEXT_PROTOTYPES -DCL_HPP_ENABLE_EXCEPTIONS
 
 # Windows FLAGS
 WIN = -mconsole -mwindows
 # G++ Flags
 GPP = -std=c++2a -O0 -g -fconcepts -Werror -Wextra -Wall -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align -Wwrite-strings -Wcast-qual -Wswitch-enum -Wconversion -Wno-unknown-pragmas #-Wfatal-errors #-DDEBUG_Matrix #-DDEBUG_VECTOR3
 # Linker flags
-LINK = -g -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_TTF -L -lvulkan-1
+LINK = -g -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_TTF -lglew32 -lopengl32 -lOpenCL
 # Dependency flags
 DEP = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
 
