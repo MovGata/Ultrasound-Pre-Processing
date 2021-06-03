@@ -24,13 +24,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     gui::Instance init;
 
-    auto length = reader.cpStore.fetch<int32_t>("Length", 0);
     auto depth = reader.cpStore.fetch<int32_t>("Depth", 0);
+    auto length = reader.cpStore.fetch<int32_t>("Length", 0);
     auto width = reader.cpStore.fetch<int32_t>("Width", 0);
 
     std::vector<uint8_t> &data = reader.cpStore.fetch<uint8_t>("Data");
     
-    Volume volume(width, length, depth, data);
+    Volume volume(depth, length, width, data);
 
     // const int numIterations = 50;
 
@@ -39,7 +39,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     device.createDisplay(mainWindow.width, mainWindow.height, mainWindow.glPixelBuffer);
     volume.sendToCl(device.context);
-    device.prepareVolume(width, depth, length, volume.buffer);
+    device.prepareVolume(depth, length, width, volume.buffer);
 
     auto timeA = SDL_GetTicks();
     while(!mainWindow.quit)

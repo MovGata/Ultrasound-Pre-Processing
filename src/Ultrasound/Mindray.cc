@@ -57,7 +57,8 @@ namespace ultrasound
                 {
                     if (auto p = sv.find_first_of('='))
                     {
-                        if (std::any_of(std::next(sv.begin(), p + 1), sv.end(), [](char c) { return std::isalpha(static_cast<unsigned char>(c)); }))
+                        if (std::any_of(std::next(sv.begin(), p + 1), sv.end(), [](char c)
+                                        { return std::isalpha(static_cast<unsigned char>(c)); }))
                         {
                             isDepth.back().get().template load<std::string>(std::string(sv.substr(0, p)), std::move(std::string(sv.substr(p + 1))));
                         }
@@ -302,8 +303,8 @@ namespace ultrasound
             std::vector<uint16_t> pointRange = vmBinStore.fetch<uint16_t>("BDscPointRange");
             std::vector<int32_t> frameCount = vmBinStore.fetch<int32_t>("FrameCountPerVolume");
 
-            int32_t length = lineRange.at(1) > lineRange.at(0) ? lineRange.at(1) - lineRange.at(0) : lineRange.at(0) - lineRange.at(1);
-            int32_t depth = pointRange.at(1) > pointRange.at(0) ? pointRange.at(1) - pointRange.at(0) : pointRange.at(0) - pointRange.at(1);
+            int32_t length = (lineRange.at(1) > lineRange.at(0) ? lineRange.at(1) - lineRange.at(0) : lineRange.at(0) - lineRange.at(1)) + 1;
+            int32_t depth = (pointRange.at(1) > pointRange.at(0) ? pointRange.at(1) - pointRange.at(0) : pointRange.at(0) - pointRange.at(1)) + 1;
             int32_t width = frameCount.at(0);
 
             std::vector<uint8_t> headers;
@@ -324,7 +325,7 @@ namespace ultrasound
                 return false;
             }
             cpRWStream = io::RWOpsStream(cpOps.get());
-            
+
             std::vector<char> buf;
             buf.reserve(frameSize);
 
@@ -338,7 +339,7 @@ namespace ultrasound
                 std::copy(buf.data() + headerSize, buf.data() + headerSize + otherSize, std::back_inserter(other));
                 std::copy(buf.data() + headerSize + otherSize, buf.data() + headerSize + otherSize + dataSize, std::back_inserter(data));
             }
-            
+
             cpStore.load<uint8_t>("Headers", std::move(headers));
             cpStore.load<uint8_t>("Other", std::move(other));
             cpStore.load<uint8_t>("Data", std::move(data));
@@ -350,7 +351,6 @@ namespace ultrasound
             cpStore.load<int32_t>("Length", std::move(length));
             cpStore.load<int32_t>("Depth", std::move(depth));
             cpStore.load<int32_t>("Width", std::move(width));
-
         }
         return true;
     }

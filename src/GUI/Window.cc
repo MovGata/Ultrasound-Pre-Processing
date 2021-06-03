@@ -79,7 +79,9 @@ namespace gui
         glMatrixMode(GL_MODELVIEW);
         glPushMatrix();
         glLoadIdentity();
-        glRotatef(-rotation, 1.0, 0.0, 0.0);
+        glRotatef(-rotation, 0.5f, 0.2f, 0.0);
+        glTranslatef(0.0f, 0.0f, 5.0f);
+        glScalef(0.2f, 0.2f, 0.2f);
         glGetFloatv(GL_MODELVIEW_MATRIX, modelView);
         glPopMatrix();
 

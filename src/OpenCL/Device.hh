@@ -29,7 +29,7 @@ public:
 
     void render(float *inv, cl_GLuint glPixelBuffer = 0);
     void createDisplay(unsigned int w, unsigned int h, cl_GLuint glPixelBuffer = 0);
-    void prepareVolume(unsigned int w, unsigned int d, unsigned int h, const cl::Buffer &v);
+    void prepareVolume(unsigned int d, unsigned int l, unsigned int w, const cl::Buffer &v);
 
     void selectDevice();
 

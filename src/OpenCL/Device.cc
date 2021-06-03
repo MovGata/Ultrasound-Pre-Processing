@@ -20,12 +20,12 @@ Device::Device()
     try
     {
         cQueue = cl::CommandQueue(context, device);
-        Source src("filters/test.cl");
+        Source src("filters/raytracing.cl");
         program = cl::Program(context, src);
 
         std::vector<cl::Device> devices{device};
-        program.build(devices);
-        renderK = cl::Kernel(program, "test");
+        program.build(devices);//, "-g -cl-opt-disable -s \"D:\\Documents\\Programming\\Uni\\Thesis\\filters\\raytracing.cl\"");
+        renderK = cl::Kernel(program, "render");
     }
     catch (const cl::BuildError &e)
     {
@@ -62,6 +62,9 @@ Device::~Device()
 
 void Device::render(float *inv, cl_GLuint glPixelBuffer)
 {
+
+    // std::cout << "Max work size: " << device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>() << std::endl;
+
     cl::NDRange global(512, 512);
     cl::NDRange local(16, 16);
 
@@ -93,10 +96,16 @@ void Device::render(float *inv, cl_GLuint glPixelBuffer)
 
         if (err != CL_SUCCESS)
         {
-            std::cerr << err << std::endl;
+            std::cerr << err << '\n';
             std::terminate();
         }
-        cQueue.finish();
+        
+        err = cQueue.finish();
+        if (err != CL_SUCCESS)
+        {
+            std::cerr << "clFinish Error: " << err << '\n';
+            std::terminate();
+        }
     }
     catch (const cl::Error &e)
     {
@@ -122,13 +131,19 @@ void Device::createDisplay(unsigned int w, unsigned int h, cl_GLuint glPixelBuff
     }
 }
 
-void Device::prepareVolume(unsigned int w, unsigned int d, unsigned int h, const cl::Buffer &v)
+void Device::prepareVolume(unsigned int d, unsigned int l, unsigned int w, const cl::Buffer &v)
 {
+    if (v.getInfo<CL_MEM_SIZE>() != l*d*w*4)
+    {
+        std::cerr << "invalid volume size." << '\n';
+        std::terminate();
+    }
     try
     {
-        renderK.setArg(3, w);
-        renderK.setArg(4, h);
-        renderK.setArg(5, d);
+        std::cout << "Mem Size: " << v.getInfo<CL_MEM_SIZE>() << std::endl;
+        renderK.setArg(3, d);
+        renderK.setArg(4, l);
+        renderK.setArg(5, w);
         renderK.setArg(6, v);
     }
     catch (const cl::Error &e)
