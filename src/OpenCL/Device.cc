@@ -1,6 +1,8 @@
 #include "Device.hh"
 
+#include <filesystem>
 #include <iostream>
+#include <string>
 
 #include <gl/glew.h>
 #include <gl/gl.h>
@@ -17,43 +19,55 @@ Device::Device()
 
     selectDevice();
 
-    try
-    {
-        cQueue = cl::CommandQueue(context, device);
-        Source src("filters/raytracing.cl");
-        program = cl::Program(context, src);
+    cQueue = cl::CommandQueue(context, device);
 
-        std::vector<cl::Device> devices{device};
-        program.build(devices);//, "-g -cl-opt-disable -s \"D:\\Documents\\Programming\\Uni\\Thesis\\filters\\raytracing.cl\"");
-        renderK = cl::Kernel(program, "render");
-    }
-    catch (const cl::BuildError &e)
+    std::vector<cl::Device> devices{device};
+    std::string folder = "./filters/";
+    for (const auto &file : std::filesystem::directory_iterator(folder))
     {
-        for (auto &p : e.getBuildLog())
-        {
-            std::cout << p.second << std::endl;
-        }
-        std::terminate();
-    }
-    catch (const cl::Error &e)
-    {
-        std::cerr << "we, " << e.what() << " : " << e.err() << '\n';
-    }
-    catch (const std::exception &e)
-    {
-        std::cerr << "we, " << e.what() << '\n';
+        std::string name = file.path().string();
+        std::cout << "Found: " << name << std::endl;
+        Source src(file.path().string());
+
+        auto f = name.find_last_of('/');
+        programs.emplace(name.substr(f + 1, name.find_last_of('.') - f - 1), std::move(Program(context, src)));
+        //, "-g -cl-opt-disable -s \"D:\\Documents\\Programming\\Uni\\Thesis\\filters\\raytracing.cl\"");
     }
 
-    try
-    {
-        invMVTransposed = cl::Buffer(context, CL_MEM_READ_ONLY, 12 * sizeof(float));
-        renderK.setArg(7, invMVTransposed);
-    }
-    catch (const cl::Error &e)
-    {
-        std::cerr << "invMatrix, " << e.what() << " : " << e.err() << '\n';
-        std::terminate();
-    }
+    // try
+    // {
+
+    // programs.at("raytracing").at("render") = cl::Kernel(program, "render");
+    // programs.at("raytracing").at("render").getInfo<CL_KERNEL_FUNCTION_NAME>();
+    // }
+    // catch (const cl::BuildError &e)
+    // {
+    //     for (auto &p : e.getBuildLog())
+    //     {
+    //         std::cout << p.second << std::endl;
+    //     }
+    //     std::terminate();
+    // }
+    // catch (const cl::Error &e)
+    // {
+    //     std::cerr << "we, " << e.what() << " : " << e.err() << '\n';
+    // }
+    // catch (const std::exception &e)
+    // {
+    //     std::cerr << "we, " << e.what() << '\n';
+    // }
+
+    // try
+    // {
+
+    invMVTransposed = cl::Buffer(context, CL_MEM_READ_ONLY, 12 * sizeof(float));
+    programs.at("raytracing").at("render").setArg(8, invMVTransposed);
+    // }
+    // catch (const cl::Error &e)
+    // {
+    //     std::cerr << "invMatrix, " << e.what() << " : " << e.err() << '\n';
+    //     std::terminate();
+    // }
 }
 
 Device::~Device()
@@ -79,14 +93,14 @@ void Device::render(float *inv, cl_GLuint glPixelBuffer)
             memories.push_back(outBuffer);
             err |= cQueue.enqueueAcquireGLObjects(&memories);
             err |= cQueue.enqueueWriteBuffer(invMVTransposed, CL_FALSE, 0, 12 * sizeof(float), inv);
-            err |= cQueue.enqueueNDRangeKernel(renderK, cl::NullRange, global, local);
+            err |= cQueue.enqueueNDRangeKernel(programs.at("raytracing").at("render"), cl::NullRange, global, local);
             err |= cQueue.enqueueReleaseGLObjects(&memories);
         }
         else
         {
             // Copy via host.
             err |= cQueue.enqueueWriteBuffer(invMVTransposed, CL_FALSE, 0, 12 * sizeof(float), inv);
-            err |= cQueue.enqueueNDRangeKernel(renderK, cl::NullRange, global, local);
+            err |= cQueue.enqueueNDRangeKernel(programs.at("raytracing").at("render"), cl::NullRange, global, local);
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER, glPixelBuffer);
             GLubyte *p = static_cast<GLubyte *>(glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY));
             auto bSize = outBuffer.getInfo<CL_MEM_SIZE>();
@@ -99,7 +113,7 @@ void Device::render(float *inv, cl_GLuint glPixelBuffer)
             std::cerr << err << '\n';
             std::terminate();
         }
-        
+
         err = cQueue.finish();
         if (err != CL_SUCCESS)
         {
@@ -120,9 +134,9 @@ void Device::createDisplay(unsigned int w, unsigned int h, cl_GLuint glPixelBuff
     try
     {
         outBuffer = (type == CL_DEVICE_TYPE_GPU ? cl::BufferGL(context, CL_MEM_WRITE_ONLY, glPixelBuffer) : cl::Buffer(context, CL_MEM_WRITE_ONLY, w * h * sizeof(cl_uint)));
-        renderK.setArg(0, w);
-        renderK.setArg(1, h);
-        renderK.setArg(2, outBuffer);
+        programs.at("raytracing").at("render").setArg(0, w);
+        programs.at("raytracing").at("render").setArg(1, h);
+        programs.at("raytracing").at("render").setArg(2, outBuffer);
     }
     catch (const cl::Error &e)
     {
@@ -131,9 +145,9 @@ void Device::createDisplay(unsigned int w, unsigned int h, cl_GLuint glPixelBuff
     }
 }
 
-void Device::prepareVolume(unsigned int d, unsigned int l, unsigned int w, const cl::Buffer &v)
+void Device::prepareVolume(unsigned int d, unsigned int l, unsigned int w, float angle, const cl::Buffer &v)
 {
-    if (v.getInfo<CL_MEM_SIZE>() != l*d*w*4)
+    if (v.getInfo<CL_MEM_SIZE>() != l * d * w * 4)
     {
         std::cerr << "invalid volume size." << '\n';
         std::terminate();
@@ -141,10 +155,11 @@ void Device::prepareVolume(unsigned int d, unsigned int l, unsigned int w, const
     try
     {
         std::cout << "Mem Size: " << v.getInfo<CL_MEM_SIZE>() << std::endl;
-        renderK.setArg(3, d);
-        renderK.setArg(4, l);
-        renderK.setArg(5, w);
-        renderK.setArg(6, v);
+        programs.at("raytracing").at("render").setArg(3, d);
+        programs.at("raytracing").at("render").setArg(4, l);
+        programs.at("raytracing").at("render").setArg(5, w);
+        programs.at("raytracing").at("render").setArg(6, angle);
+        programs.at("raytracing").at("render").setArg(7, v);
     }
     catch (const cl::Error &e)
     {

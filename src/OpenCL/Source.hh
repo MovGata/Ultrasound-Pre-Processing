@@ -8,12 +8,13 @@
 class Source
 {
 private:
-    std::vector<std::string> str;
     cl::Program::Sources src;
 
 public:
-    Source(const char *url);
-    Source(std::initializer_list<char *> urls);
+    std::string name;
+
+    Source(const std::string &url);
+    // Source(std::initializer_list<char *> urls);
     ~Source();
 
     operator cl::Program::Sources();

@@ -302,10 +302,12 @@ namespace ultrasound
             std::vector<int16_t> lineRange = vmBinStore.fetch<int16_t>("BDscLineRange");
             std::vector<uint16_t> pointRange = vmBinStore.fetch<uint16_t>("BDscPointRange");
             std::vector<int32_t> frameCount = vmBinStore.fetch<int32_t>("FrameCountPerVolume");
+            std::vector<float> angleRange = vmBinStore.fetch<float>("BDispLineRange");
 
-            int32_t length = (lineRange.at(1) > lineRange.at(0) ? lineRange.at(1) - lineRange.at(0) : lineRange.at(0) - lineRange.at(1)) + 1;
-            int32_t depth = (pointRange.at(1) > pointRange.at(0) ? pointRange.at(1) - pointRange.at(0) : pointRange.at(0) - pointRange.at(1)) + 1;
+            int32_t length = std::abs(lineRange.at(0) - lineRange.at(1)) + 1;
+            int32_t depth = std::abs(pointRange.at(0) - pointRange.at(1)) + 1;
             int32_t width = frameCount.at(0);
+            float angleDelta = std::abs(angleRange.at(0) - angleRange.at(1)) / static_cast<float>(length);
 
             std::vector<uint8_t> headers;
             std::vector<uint8_t> data;
@@ -351,6 +353,7 @@ namespace ultrasound
             cpStore.load<int32_t>("Length", std::move(length));
             cpStore.load<int32_t>("Depth", std::move(depth));
             cpStore.load<int32_t>("Width", std::move(width));
+            cpStore.load<float>("AngleDelta", std::move(angleDelta));
         }
         return true;
     }

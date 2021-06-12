@@ -23,7 +23,7 @@ int rayHitBBox(float4 rayOrg, float4 rayDir, float4 bbMin, float4 bbMax, float *
 
 kernel void render(
     uint w_out, uint l_out, global uint *output,
-    uint depth, uint length, uint width, global uchar4 *data,
+    uint depth, uint length, uint width, float angle, global uchar4 *data,
     constant float *invMVTransposed)
 {
     uint x = get_global_id(0);
@@ -31,6 +31,12 @@ kernel void render(
 
     float u = (x / (float)w_out) * 2.0f - 1.0f;
     float v = (y / (float)l_out) * 2.0f - 1.0f;
+
+    // float maxEdge = convert_float(max(max(depth, length), max(depth, width));)
+
+    // float fDepth = convert_float(depth);
+    // float fLength = convert_float(length);
+    // float fWidth = convert_float(width);
 
     float4 bbMin = (float4)(-1.0f, -1.0f, -1.0f, 1.0f);
     float4 bbMax = (float4)(1.0f, 1.0f, 1.0f, 1.0f);

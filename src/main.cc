@@ -9,6 +9,7 @@
 
 #include "OpenCL/Device.hh"
 
+
 #include "IO/InfoStore.hh"
 #include "Ultrasound/Mindray.hh"
 
@@ -27,6 +28,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     auto depth = reader.cpStore.fetch<int32_t>("Depth", 0);
     auto length = reader.cpStore.fetch<int32_t>("Length", 0);
     auto width = reader.cpStore.fetch<int32_t>("Width", 0);
+    auto angleD = reader.cpStore.fetch<float>("AngleDelta", 0);
 
     std::vector<uint8_t> &data = reader.cpStore.fetch<uint8_t>("Data");
     
@@ -39,13 +41,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     device.createDisplay(mainWindow.width, mainWindow.height, mainWindow.glPixelBuffer);
     volume.sendToCl(device.context);
-    device.prepareVolume(depth, length, width, volume.buffer);
+    device.prepareVolume(depth, length, width, angleD, volume.buffer);
 
     auto timeA = SDL_GetTicks();
     while(!mainWindow.quit)
     {
         mainWindow.update();
-        device.render(mainWindow.invMVTransposed.data(), mainWindow.glPixelBuffer);
+        volume.update();
+        device.render(volume.invMVTransposed.data(), mainWindow.glPixelBuffer);
         mainWindow.render();
 
         auto duration = long(timeA) + long(1000.0/60.0) - long(SDL_GetTicks());
