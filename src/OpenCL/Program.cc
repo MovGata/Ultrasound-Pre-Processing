@@ -28,7 +28,6 @@ Program::Program(cl::Context context, Source src) : program(context, src), name(
             fout << str.second << '\n';
         }
     }
-    
 }
 
 Program::~Program()

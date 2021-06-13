@@ -36,20 +36,50 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     // const int numIterations = 50;
 
-    gui::Window mainWindow(512, 512);
+    gui::Window mainWindow(1024, 768);
+    gui::Window &subWindow = mainWindow.subWindow(0, 0, 512, 512);
+    
+    subWindow.setActive();
+    auto pair = subWindow.getSize();
+    
     Device device;
-
-    device.createDisplay(mainWindow.width, mainWindow.height, mainWindow.glPixelBuffer);
+    device.createDisplay(pair.first, pair.second, subWindow.glPixelBuffer);
     volume.sendToCl(device.context);
     device.prepareVolume(depth, length, width, angleD, volume.buffer);
 
     auto timeA = SDL_GetTicks();
-    while(!mainWindow.quit)
+    bool quit = false;
+    while(!quit)
     {
-        mainWindow.update();
+        SDL_Event e;
+        while (SDL_PollEvent(&e))
+        {
+            if (e.type == SDL_QUIT)
+            {
+                quit = true;
+                break;
+            }
+            else if (e.type == SDL_WINDOWEVENT)
+            {
+                if (e.window.event == SDL_WINDOWEVENT_CLOSE)
+                {
+                    quit = true;
+                    break;
+                }
+                else
+                {
+                    if (e.window.windowID == mainWindow.getID())
+                    {
+                        mainWindow.process(e);
+                    }
+                }
+            }
+        }
+        subWindow.setActive();
+        subWindow.update();
         volume.update();
-        device.render(volume.invMVTransposed.data(), mainWindow.glPixelBuffer);
-        mainWindow.render();
+        device.render(volume.invMVTransposed.data(), subWindow.glPixelBuffer);
+        subWindow.render();
 
         auto duration = long(timeA) + long(1000.0/60.0) - long(SDL_GetTicks());
         if (duration-2 > 0)
