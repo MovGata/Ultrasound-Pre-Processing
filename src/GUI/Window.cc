@@ -104,13 +104,20 @@ namespace gui
         }
 
         clean();
-        glRasterPos2i(0, 0);
-
+        
         auto pair = getSize();
 
+        glRasterPos2i(0, 0);
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, glPixelBuffer);
         glDrawPixels(pair.first, pair.second, GL_RGBA, GL_UNSIGNED_BYTE, 0);
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+        
+        glRasterPos2i(pair.first/2, pair.second/2);
+        for (const auto &rec : rectangles)
+        {
+            rec.render();
+        }
+        
         SDL_GL_SwapWindow(window.get());
     }
 
@@ -138,7 +145,12 @@ namespace gui
         glLoadIdentity();
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
-        glOrtho(0.0, 1.0, 0.0, 1.0, 0.0, 1.0);
+        glOrtho(0.0, pair.first, 0.0, pair.second, 0.0, 1.0);
+    }
+
+    void Window::addRectangle(unsigned int x, unsigned int y, unsigned int w, unsigned int h)
+    {
+        rectangles.emplace_back(x, y, w, h);
     }
 
     void Window::setActive()

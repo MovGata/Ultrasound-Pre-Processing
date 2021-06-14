@@ -4,10 +4,13 @@
 #include <memory>
 #include <utility>
 #include <functional>
+#include <vector>
 
 #include <SDL2/SDL.h>
 #include <CL/cl2.hpp>
 #include <gl/gl.h>
+
+#include "Rectangle.hh"
 
 namespace gui
 {
@@ -27,6 +30,8 @@ namespace gui
 
         bool minimised = false;
 
+        std::vector<Rectangle> rectangles;
+
     public:
         GLuint glPixelBuffer;
 
@@ -36,6 +41,8 @@ namespace gui
 
         Window(const Window &) = delete;
         Window(Window &&) = default;
+
+        void addRectangle(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
 
         auto subWindow(unsigned int x, unsigned int y, unsigned int w, unsigned int h) -> Window &;
         void clean();

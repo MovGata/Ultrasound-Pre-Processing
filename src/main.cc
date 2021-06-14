@@ -47,6 +47,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     volume.sendToCl(device.context);
     device.prepareVolume(depth, length, width, angleD, volume.buffer);
 
+    mainWindow.addRectangle(0, 0, 512, 512);
+
     auto timeA = SDL_GetTicks();
     bool quit = false;
     while(!quit)
@@ -75,6 +77,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
                 }
             }
         }
+        mainWindow.setActive();
+        mainWindow.update();
+        mainWindow.render();
+
         subWindow.setActive();
         subWindow.update();
         volume.update();
