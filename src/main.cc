@@ -9,12 +9,10 @@
 
 #include "OpenCL/Device.hh"
 
-
 #include "IO/InfoStore.hh"
 #include "Ultrasound/Mindray.hh"
 
 #include "Data/Volume.hh"
-
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 {
@@ -31,27 +29,30 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     auto angleD = reader.cpStore.fetch<float>("AngleDelta", 0);
 
     std::vector<uint8_t> &data = reader.cpStore.fetch<uint8_t>("Data");
-    
+
     Volume volume(depth, length, width, data);
 
     // const int numIterations = 50;
 
     gui::Window mainWindow(1024, 768);
-    gui::Window &subWindow = mainWindow.subWindow(0, 0, 512, 512);
-    
-    subWindow.setActive();
-    auto pair = subWindow.getSize();
-    
+    // gui::Window &subWindow = mainWindow.subWindow(0, 0, 0.5f, 0.5f);
+
+    // subWindow.setActive();
+    // auto pair = subWindow.getSize();
+    mainWindow.addRectangle(-1.0f, -1.0f, 1.0f, 1.0f);
+    mainWindow.addRectangle(0.0f, 0.0f, 0.25f, 0.5f);
+    mainWindow.addRectangle(0.25f, 0.0f, 0.25f, 0.5f);
+    gui::Rectangle &rec = mainWindow.addRectangle(-1.0f, 0.0f, 0.5f, 0.5f);
+    rec.allocTexture(512, 512);
+
     Device device;
-    device.createDisplay(pair.first, pair.second, subWindow.glPixelBuffer);
+    device.createDisplay(512, 512, rec.pixelBuffer);
     volume.sendToCl(device.context);
     device.prepareVolume(depth, length, width, angleD, volume.buffer);
 
-    mainWindow.addRectangle(0, 0, 512, 512);
-
     auto timeA = SDL_GetTicks();
     bool quit = false;
-    while(!quit)
+    while (!quit)
     {
         SDL_Event e;
         while (SDL_PollEvent(&e))
@@ -78,23 +79,23 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
             }
         }
         mainWindow.setActive();
+
+        // subWindow.setActive();
+        // subWindow.update();
+        volume.update();
+        device.render(volume.invMVTransposed.data(), rec.pixelBuffer);
+        // subWindow.render();
         mainWindow.update();
         mainWindow.render();
 
-        subWindow.setActive();
-        subWindow.update();
-        volume.update();
-        device.render(volume.invMVTransposed.data(), subWindow.glPixelBuffer);
-        subWindow.render();
-
-        auto duration = long(timeA) + long(1000.0/60.0) - long(SDL_GetTicks());
-        if (duration-2 > 0)
+        auto duration = long(timeA) + long(1000.0 / 60.0) - long(SDL_GetTicks());
+        if (duration - 2 > 0)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(duration-2)); // Sleep with 2ms left over.
+            std::this_thread::sleep_for(std::chrono::milliseconds(duration - 2)); // Sleep with 2ms left over.
         }
-        while(SDL_GetTicks() < timeA + 1000/60); // Busy wait last 2 ms.
+        while (SDL_GetTicks() < timeA + 1000 / 60)
+            ; // Busy wait last 2 ms.
         timeA = SDL_GetTicks();
-        
     }
 
     return EXIT_SUCCESS;

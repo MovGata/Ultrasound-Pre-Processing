@@ -81,10 +81,19 @@ namespace gui
         return SDL_GetWindowID(window.get());
     }
 
-    auto Window::subWindow(unsigned int x, unsigned int y, unsigned int w, unsigned int h) -> Window &
+    auto Window::subWindow(float x, float y, float w, float h) -> Window &
     {
+        x = std::clamp(x, -1.0f, 1.0f);
+        y = std::clamp(y, -1.0f, 1.0f);
+        w = std::clamp(w, 0.0f, 1.0f);
+        h = std::clamp(h, 0.0f, 1.0f);
+
         auto pair = getPosition();
-        return subWindows.emplace_back(pair.first + x, pair.second + y, w, h, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS);
+        auto size = getSize();
+        return subWindows.emplace_back(
+            static_cast<float>(pair.first + size.first) * (x + 1.0f) / 2.0f, static_cast<float>(pair.second + size.second) * (y + 1.0f) / 2.0f,
+            static_cast<float>(size.first) * w, static_cast<float>(size.second) * h,
+            SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS);
     }
 
     void Window::clean()
@@ -104,20 +113,21 @@ namespace gui
         }
 
         clean();
-        
-        auto pair = getSize();
 
-        glRasterPos2i(0, 0);
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, glPixelBuffer);
-        glDrawPixels(pair.first, pair.second, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-        
-        glRasterPos2i(pair.first/2, pair.second/2);
+        // auto pair = getSize();
+
+        // glRasterPos2i(0, 0);
+        // glBindBuffer(GL_PIXEL_UNPACK_BUFFER, glPixelBuffer);
+        // glDrawPixels(pair.first, pair.second, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+
+        // glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+        // glRasterPos2i(0, 0);
         for (const auto &rec : rectangles)
         {
             rec.render();
         }
-        
+
         SDL_GL_SwapWindow(window.get());
     }
 
@@ -135,22 +145,23 @@ namespace gui
 
         auto pair = getSize();
 
-        glGenBuffers(1, &glPixelBuffer);
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, glPixelBuffer);
-        glBufferData(GL_PIXEL_UNPACK_BUFFER, pair.first * pair.second * sizeof(GLubyte) * 4, 0, GL_STREAM_DRAW);
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+        // glGenBuffers(1, &glPixelBuffer);
+        // glBindBuffer(GL_PIXEL_UNPACK_BUFFER, glPixelBuffer);
+        // glBufferData(GL_PIXEL_UNPACK_BUFFER, pair.first * pair.second * sizeof(GLubyte) * 4, 0, GL_STREAM_DRAW);
+        // glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
         glViewport(0, 0, pair.first, pair.second);
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
-        glOrtho(0.0, pair.first, 0.0, pair.second, 0.0, 1.0);
+        // glOrtho(-1.0, 1.0, -1.0, 1.0, 0.0, 1.0);
     }
 
-    void Window::addRectangle(unsigned int x, unsigned int y, unsigned int w, unsigned int h)
+    Rectangle &Window::addRectangle(float x, float y, float w, float h)
     {
-        rectangles.emplace_back(x, y, w, h);
+        // auto pair = getPosition();
+        return rectangles.emplace_back(std::clamp(x, -1.0f, 1.0f), std::clamp(y, -1.0f, 1.0f), std::clamp(w, 0.0f, 1.0f), std::clamp(h, 0.0f, 1.0f));
     }
 
     void Window::setActive()

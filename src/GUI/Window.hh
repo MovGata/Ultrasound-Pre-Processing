@@ -8,7 +8,8 @@
 
 #include <SDL2/SDL.h>
 #include <CL/cl2.hpp>
-#include <gl/gl.h>
+#include <GL/glew.h>
+#include <GL/gl.h>
 
 #include "Rectangle.hh"
 
@@ -42,9 +43,9 @@ namespace gui
         Window(const Window &) = delete;
         Window(Window &&) = default;
 
-        void addRectangle(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
+        Rectangle &addRectangle(float x, float y, float w, float h);
 
-        auto subWindow(unsigned int x, unsigned int y, unsigned int w, unsigned int h) -> Window &;
+        auto subWindow(float x, float y, float w, float h) -> Window &;
         void clean();
         void update();
         void render();
