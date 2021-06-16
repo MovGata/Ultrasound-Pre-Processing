@@ -316,7 +316,7 @@ namespace ultrasound
             uint32_t vmOffset = vmTxtStore.fetch<vmTxtInfoStore>("CinePartition", 0).fetch<vmTxtInfoStore>("CinePartition0", 0).fetch<vmTxtInfoStore>("FeParam", 0).fetch<vmTxtInfoStore>("Version0", 0).fetch<vmTxtInfoStore>("param_content", 0).fetch<uint32_t>("OFFSET", 0);
 
             std::size_t headerSize = 128;
-            std::size_t otherSize = vmOffset > 16 ? 280 : 0;
+            std::size_t otherSize = vmOffset > 16 ? 304 : 0;
             std::size_t dataSize = length * depth;
             std::size_t frameSize = dataSize + headerSize + otherSize;
 

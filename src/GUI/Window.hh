@@ -28,6 +28,10 @@ namespace gui
         std::unordered_map<Uint32, std::function<void(const SDL_Event &)>> events;
 
         void processWindowEvent(const SDL_Event &);
+        void mouseScroll(const SDL_Event &e);
+        void mouseClick(const SDL_Event &e);
+        void mouseMotion(const SDL_Event &e);
+
 
         bool minimised = false;
 
@@ -36,8 +40,8 @@ namespace gui
     public:
         GLuint glPixelBuffer;
 
-        Window(unsigned int w = 640, unsigned int h = 480, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
-        Window(unsigned int x, unsigned int y, unsigned int w, unsigned int h, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+        Window(unsigned int w = 640, unsigned int h = 480, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+        Window(unsigned int x, unsigned int y, unsigned int w, unsigned int h, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
         ~Window();
 
         Window(const Window &) = delete;

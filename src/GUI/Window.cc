@@ -21,6 +21,10 @@ namespace gui
         }
 
         addCallback(SDL_WINDOWEVENT, std::bind(Window::processWindowEvent, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEWHEEL, std::bind(Window::mouseScroll, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEBUTTONUP, std::bind(Window::mouseClick, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEBUTTONDOWN, std::bind(Window::mouseClick, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEMOTION, std::bind(Window::mouseClick, this, std::placeholders::_1));
 
         // surface.reset(SDL_GetWindowSurface(window.get()));
 
@@ -196,6 +200,11 @@ namespace gui
             minimised = false;
             break;
         case SDL_WINDOWEVENT_SIZE_CHANGED:
+            redraw();
+            for (auto &w : subWindows)
+            {
+                w.redraw();
+            }
             break;
         case SDL_WINDOWEVENT_MOVED:
             for (auto &w : subWindows)
@@ -209,6 +218,50 @@ namespace gui
         default:
             break;
         }
+    }
+
+    void Window::mouseScroll(const SDL_Event &e)
+    {
+        auto size = getSize();
+
+        int mx = 0, my = 0;
+        SDL_GetMouseState(&mx, &my);
+
+        for (auto &r : rectangles)
+        {
+            if (static_cast<int>((r.x + 1.0f) / 2.0f * static_cast<float>(size.first)) < mx &&
+                static_cast<int>((r.x + r.w + 1.0f) / 2.0f * static_cast<float>(size.first)) > mx &&
+                static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.first)) < my &&
+                static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.first)) > my)
+            {
+                r.process(e);
+            }
+        }
+    }
+
+    void Window::mouseClick(const SDL_Event &e)
+    {
+        auto size = getSize();
+
+        for (auto &r : rectangles)
+        {       
+            if (static_cast<int>((r.x + 1.0f) / 2.0f * static_cast<float>(size.first)) < e.button.x &&
+                static_cast<int>((r.x + r.w + 1.0f) / 2.0f * static_cast<float>(size.first)) > e.button.x &&
+                size.second - static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.first)) > e.button.y &&
+                size.second - static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.first)) < e.button.y)
+            {
+                r.process(e);
+            }
+        }
+    }
+
+    void Window::mouseMotion(const SDL_Event &e)
+    {
+        for (auto &r : rectangles)
+        {
+            r.process(e);
+        }
+        
     }
 
 } // namespace gui

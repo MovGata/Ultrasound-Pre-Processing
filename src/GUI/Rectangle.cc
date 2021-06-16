@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <iostream>
 
+#include <SDL2/SDL.h>
+
 namespace gui
 {
 
@@ -15,10 +17,21 @@ namespace gui
                                                                    w(std::clamp(2.0f * wp, 0.0f, 1.0f - x)),
                                                                    h(std::clamp(2.0f * hp, 0.0f, 1.0f - y))
     {
+        addCallback(SDL_MOUSEWHEEL, std::bind(Rectangle::zoom, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEBUTTONDOWN, [this]([[maybe_unused]] const SDL_Event &e)
+                    { mouseDown = true; });
+        addCallback(SDL_MOUSEBUTTONUP, [this]([[maybe_unused]] const SDL_Event &e)
+                    { mouseDown = false; });
+        addCallback(SDL_MOUSEMOTION, std::bind(Rectangle::mouseMotion, this, std::placeholders::_1));
     }
 
     Rectangle::~Rectangle()
     {
+    }
+
+    Volume &Rectangle::allocVolume(unsigned int depth, unsigned int length, int unsigned width, const std::vector<uint8_t> &data)
+    {
+        return volume.emplace(depth, length, width, data);
     }
 
     void Rectangle::allocTexture(unsigned int wp, unsigned int hp)
@@ -92,6 +105,37 @@ namespace gui
                 glVertex2f(x, y + h);
             }
             glEnd();
+        }
+    }
+
+    void Rectangle::addCallback(Uint32 e, std::function<void(const SDL_Event &)> fun)
+    {
+        events.insert_or_assign(e, fun);
+    }
+
+    void Rectangle::process(const SDL_Event &e)
+    {
+        auto itr = events.find(e.type);
+        if (itr != events.end())
+        {
+            itr->second(e);
+        }
+    }
+
+    void Rectangle::zoom(const SDL_Event &e)
+    {
+        if (volume.has_value())
+        {
+            volume->zoom(static_cast<float>(e.wheel.y));
+        }
+    }
+
+    void Rectangle::mouseMotion(const SDL_Event &e)
+    {
+        if (mouseDown)
+        {
+            // std::cout << "Rotate: (" << e.motion.xrel << ", " << e.motion.yrel << '\n';
+            volume->rotate(static_cast<float>(e.motion.xrel), static_cast<float>(e.motion.yrel));
         }
     }
 

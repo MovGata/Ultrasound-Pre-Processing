@@ -2,6 +2,7 @@
 #define DATA_VOLUME_HH
 
 #include <array>
+#include <utility>
 #include <vector>
 
 #include <CL/cl2.hpp>
@@ -10,7 +11,8 @@ class Volume
 {
 private:
     std::vector<cl_uchar4> raw;
-    float rotation = 0.0f;
+    std::pair<float, float> rotation;
+    float scale = 1.0f;
     unsigned int depth;
     unsigned int length;
     unsigned int width;
@@ -24,6 +26,9 @@ public:
 
     void sendToCl(const cl::Context &context);
     void update();
+
+    void zoom(float z);
+    void rotate(float x, float y);
 
 };
 

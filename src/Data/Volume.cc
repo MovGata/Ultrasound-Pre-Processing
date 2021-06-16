@@ -42,7 +42,10 @@ void Volume::update()
     glPushMatrix();
     glLoadIdentity();
     glScalef(maxEdge / static_cast<float>(depth) * 0.1f, maxEdge / static_cast<float>(length) * 0.1f, maxEdge / static_cast<float>(width) * 0.1f);
+    glScalef(scale, scale, scale);
     glRotatef(90.0f, 0.0f, 1.0f, 0.0f);
+    glRotatef(rotation.second, -1.0f, 0.0f, 0.0f);
+    glRotatef(rotation.first, 0.0f, -1.0f, 0.0f);
     glTranslatef(0.0f, 0.0f, 25.0f);
     glGetFloatv(GL_MODELVIEW_MATRIX, modelView);
     glPopMatrix();
@@ -59,4 +62,16 @@ void Volume::update()
     invMVTransposed[9] = modelView[6];
     invMVTransposed[10] = modelView[10];
     invMVTransposed[11] = modelView[14];
+}
+
+
+void Volume::zoom(float z)
+{
+    scale += z;
+}
+
+void Volume::rotate(float x, float y)
+{
+    rotation.first += x;
+    rotation.second += y;
 }

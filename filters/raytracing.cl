@@ -89,6 +89,7 @@ kernel void render(
     }
 
     // Write to output buffer
+    acc *= (float4)(1.0f-u*v, 1.0f-(v+u)/2.0f, 1.0f-(-u*v), 1.0f);
     uchar4 ut = convert_uchar4_sat(acc * 255.0f);
-    output[(y * w_out) + x] = ((uint)(ut.w) << 24) | ((uint)(ut.z) << 16) | ((uint)(ut.y) << 8) | (uint)(ut.x);
+    output[(y * w_out) + x] = ((uint)(ut.w) << 24) | ((uint)(ut.z) << 16) | (((uint)(ut.y)) << 8) | (uint)(ut.x);
 }

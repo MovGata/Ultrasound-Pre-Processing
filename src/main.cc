@@ -19,7 +19,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     std::ios::sync_with_stdio(false);
 
     ultrasound::Mindray reader;
-    reader.load("tests/data/2/VirtualMachine.txt", "tests/data/2/VirtualMachine.bin", "tests/data/2/BC_CinePartition0.bin");
+    reader.load("tests/data/3/VirtualMachine.txt", "tests/data/3/VirtualMachine.bin", "tests/data/3/BC_CinePartition0.bin");
 
     gui::Instance init;
 
@@ -28,13 +28,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     auto width = reader.cpStore.fetch<int32_t>("Width", 0);
     auto angleD = reader.cpStore.fetch<float>("AngleDelta", 0);
 
+    std::cout << depth << ' ' << length << ' ' << width << std::endl;
+
     std::vector<uint8_t> &data = reader.cpStore.fetch<uint8_t>("Data");
 
-    Volume volume(depth, length, width, data);
 
     // const int numIterations = 50;
-
     gui::Window mainWindow(1024, 768);
+
+    Device device;
     // gui::Window &subWindow = mainWindow.subWindow(0, 0, 0.5f, 0.5f);
 
     // subWindow.setActive();
@@ -42,10 +44,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     mainWindow.addRectangle(-1.0f, -1.0f, 1.0f, 1.0f);
     mainWindow.addRectangle(0.0f, 0.0f, 0.25f, 0.5f);
     mainWindow.addRectangle(0.25f, 0.0f, 0.25f, 0.5f);
+
+    
     gui::Rectangle &rec = mainWindow.addRectangle(-1.0f, 0.0f, 0.5f, 0.5f);
     rec.allocTexture(512, 512);
-
-    Device device;
+    Volume &volume = rec.allocVolume(depth, length, width, data);
     device.createDisplay(512, 512, rec.pixelBuffer);
     volume.sendToCl(device.context);
     device.prepareVolume(depth, length, width, angleD, volume.buffer);
@@ -76,6 +79,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
                         mainWindow.process(e);
                     }
                 }
+            }
+            else
+            {
+                mainWindow.process(e);
             }
         }
         mainWindow.setActive();
