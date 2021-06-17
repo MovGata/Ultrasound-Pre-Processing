@@ -24,7 +24,7 @@ namespace gui
         addCallback(SDL_MOUSEWHEEL, std::bind(Window::mouseScroll, this, std::placeholders::_1));
         addCallback(SDL_MOUSEBUTTONUP, std::bind(Window::mouseClick, this, std::placeholders::_1));
         addCallback(SDL_MOUSEBUTTONDOWN, std::bind(Window::mouseClick, this, std::placeholders::_1));
-        addCallback(SDL_MOUSEMOTION, std::bind(Window::mouseClick, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEMOTION, std::bind(Window::mouseMotion, this, std::placeholders::_1));
 
         // surface.reset(SDL_GetWindowSurface(window.get()));
 
@@ -231,8 +231,8 @@ namespace gui
         {
             if (static_cast<int>((r.x + 1.0f) / 2.0f * static_cast<float>(size.first)) < mx &&
                 static_cast<int>((r.x + r.w + 1.0f) / 2.0f * static_cast<float>(size.first)) > mx &&
-                static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.first)) < my &&
-                static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.first)) > my)
+                size.second - static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.second)) > my &&
+                size.second - static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.second)) < my)
             {
                 r.process(e);
             }
@@ -244,11 +244,15 @@ namespace gui
         auto size = getSize();
 
         for (auto &r : rectangles)
-        {       
-            if (static_cast<int>((r.x + 1.0f) / 2.0f * static_cast<float>(size.first)) < e.button.x &&
+        {   
+            if (e.button.type == SDL_MOUSEBUTTONUP)
+            {
+                r.process(e);
+            }
+            else if (static_cast<int>((r.x + 1.0f) / 2.0f * static_cast<float>(size.first)) < e.button.x &&
                 static_cast<int>((r.x + r.w + 1.0f) / 2.0f * static_cast<float>(size.first)) > e.button.x &&
-                size.second - static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.first)) > e.button.y &&
-                size.second - static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.first)) < e.button.y)
+                size.second - static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.second)) > e.button.y &&
+                size.second - static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.second)) < e.button.y)
             {
                 r.process(e);
             }
@@ -261,7 +265,6 @@ namespace gui
         {
             r.process(e);
         }
-        
     }
 
 } // namespace gui
