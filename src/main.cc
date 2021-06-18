@@ -38,17 +38,22 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     Device device;
     // gui::Window &subWindow = mainWindow.subWindow(0, 0, 0.5f, 0.5f);
-
+    TTF_Font &font = init.loadFont("./res/fonts/cour.ttf");
     // subWindow.setActive();
     // auto pair = subWindow.getSize();
-    mainWindow.addRectangle(-1.0f, -1.0f, 1.0f, 1.0f);
+    // mainWindow.addRectangle(-1.0f, -1.0f, 1.0f, 1.0f);
     mainWindow.addRectangle(0.0f, 0.0f, 0.25f, 0.5f);
-    mainWindow.addRectangle(0.25f, 0.0f, 0.25f, 0.5f);
+    gui::Rectangle &testText = mainWindow.addRectangle(0.5f, 0.0f, 0.25f, 0.5f);
+    testText.setBG({0xFF, 0xFF, 0xFF, 0xFF});
+    testText.allocTexture(256, 512);
+    testText.addText(font, "Add text test.");
 
     
     gui::Rectangle &rec = mainWindow.addRectangle(-1.0f, 0.0f, 0.5f, 0.5f);
     rec.allocTexture(512, 512);
+    rec.setBG({0xFF, 0xFF, 0xFF, 0xFF});
     Volume &volume = rec.allocVolume(depth, length, width, data);
+
     device.createDisplay(512, 512, rec.pixelBuffer);
     volume.sendToCl(device.context);
     device.prepareVolume(depth, length, width, angleD, volume.buffer);
