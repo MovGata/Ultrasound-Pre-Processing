@@ -32,7 +32,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     std::vector<uint8_t> &data = reader.cpStore.fetch<uint8_t>("Data");
 
-
     // const int numIterations = 50;
     gui::Window mainWindow(1024, 768);
 
@@ -41,20 +40,22 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     TTF_Font &font = init.loadFont("./res/fonts/cour.ttf");
     // subWindow.setActive();
     // auto pair = subWindow.getSize();
-    // mainWindow.addRectangle(-1.0f, -1.0f, 1.0f, 1.0f);
-    mainWindow.addRectangle(0.0f, 0.0f, 0.25f, 0.5f);
-    gui::Rectangle &testText = mainWindow.addRectangle(0.5f, 0.0f, 0.25f, 0.5f);
-    testText.setBG({0xFF, 0xFF, 0xFF, 0xFF});
-    testText.allocTexture(256, 512);
-    testText.addText(font, "Add text test.");
+    gui::Rectangle &dropRec = mainWindow.addRectangle(-1.0f, -1.0f, 1.0f, 0.5f);
+    dropRec.setBG({0x4F, 0x7F, 0x4F, 0xFF});
 
-    
+    mainWindow.addRectangle(0.0f, 0.0f, 0.25f, 0.5f);
+    gui::Rectangle &testText = mainWindow.addRectangle(0.5f, 0.8f, 0.25f, 0.1f);
+    testText.setBG({0xFF, 0xFF, 0xFF, 0xFF});
+    testText.allocTexture(256, 38);
+    testText.addText(font, "Add text test.");
+    testText.draggable = true;
+
     gui::Rectangle &rec = mainWindow.addRectangle(-1.0f, 0.0f, 0.5f, 0.5f);
-    rec.allocTexture(512, 512);
+    rec.allocTexture(1024, 1024);
     rec.setBG({0xFF, 0xFF, 0xFF, 0xFF});
     Volume &volume = rec.allocVolume(depth, length, width, data);
 
-    device.createDisplay(512, 512, rec.pixelBuffer);
+    device.createDisplay(1024, 1024, rec.pixelBuffer);
     volume.sendToCl(device.context);
     device.prepareVolume(depth, length, width, angleD, volume.buffer);
 
@@ -89,6 +90,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
             {
                 mainWindow.process(e);
             }
+
+            if (e.type >= SDL_USEREVENT)
+            {
+                if (e.type == gui::Rectangle::dropEvent)
+                {
+                    delete static_cast<float *>(e.user.data1); // Must do this as a consequence of SDL2 event lifetime.
+                    delete static_cast<float *>(e.user.data2); // It is safest to delete in the main loop, as an event may go through multiple handlers.
+                }
+            }
         }
         mainWindow.setActive();
 
@@ -100,12 +110,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
         mainWindow.update();
         mainWindow.render();
 
-        auto duration = long(timeA) + long(1000.0 / 60.0) - long(SDL_GetTicks());
+        auto duration = long(timeA) + long(1000.0 / 30.0) - long(SDL_GetTicks());
         if (duration - 2 > 0)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(duration - 2)); // Sleep with 2ms left over.
         }
-        while (SDL_GetTicks() < timeA + 1000 / 60)
+        while (SDL_GetTicks() < timeA + 1000 / 30)
             ; // Busy wait last 2 ms.
         timeA = SDL_GetTicks();
     }

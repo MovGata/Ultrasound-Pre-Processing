@@ -79,8 +79,8 @@ void Device::render(float *inv, cl_GLuint glPixelBuffer)
 
     // std::cout << "Max work size: " << device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>() << std::endl;
 
-    cl::NDRange global(512, 512);
-    cl::NDRange local(16, 16);
+    cl::NDRange global(1024, 1024);
+    cl::NDRange local(32, 32);
 
     try
     {

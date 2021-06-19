@@ -27,10 +27,13 @@ namespace gui
         SDL_Colour colour = {0x4F, 0x4F, 0x4F, 0xFF};
 
     public:
+        static const Uint32 dropEvent;
+
         GLuint texture = 0;
         GLuint pixelBuffer = 0;
         GLsizei ww = 0, hh = 0;
-        float x, y, w, h;
+        float x, y, w, h, offX = 0, offY = 0;
+        bool draggable = false;
 
         Rectangle(float x, float y, float w, float h);
         ~Rectangle();
@@ -49,6 +52,9 @@ namespace gui
 
         void zoom(const SDL_Event &e);
         void mouseMotion(const SDL_Event &e);
+        void mouseLeftUp(const SDL_Event &e);
+        void mouseLeftDown(const SDL_Event &e);
+        void userDrop(const SDL_Event &e);
     };
 
 } // namespace gui

@@ -1,4 +1,6 @@
+#include <cmath>
 #include <iostream>
+#include <numbers>
 
 #include <gl/glew.h>
 #include <gl/gl.h>
@@ -25,6 +27,7 @@ namespace gui
         addCallback(SDL_MOUSEBUTTONUP, std::bind(Window::mouseClick, this, std::placeholders::_1));
         addCallback(SDL_MOUSEBUTTONDOWN, std::bind(Window::mouseClick, this, std::placeholders::_1));
         addCallback(SDL_MOUSEMOTION, std::bind(Window::mouseMotion, this, std::placeholders::_1));
+        addCallback(Rectangle::dropEvent, std::bind(Window::userDrop, this, std::placeholders::_1));
 
         // surface.reset(SDL_GetWindowSurface(window.get()));
 
@@ -159,7 +162,26 @@ namespace gui
         glLoadIdentity();
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
-        // glOrtho(-1.0, 1.0, -1.0, 1.0, 0.0, 1.0);
+        // glMatrixMode(GL_PROJECTION);
+
+        // double rad = std::numbers::pi/180.0;
+        // double perspective[16] = {
+        //     1.0/(aspect*std::tan(60.0*rad)), 0, 0, 0,
+        //     0, 1.0/(std::tan(60.0*rad)), 0, 0,
+        //     0, 0, -()
+        // };
+
+        // glLoadMatrixd()
+        if (pair.first > pair.second)
+        {
+            double aspect = static_cast<double>(pair.first) / static_cast<double>(pair.second);
+            glOrtho(-1.0 * aspect, 1.0 * aspect, -1.0, 1.0, 0.0, 1.0);
+        }
+        else
+        {
+            double aspect = static_cast<double>(pair.second) / static_cast<double>(pair.first);
+            glOrtho(-1.0, 1.0, -1.0 * aspect, 1.0 * aspect, 0.0, 1.0);
+        }
     }
 
     Rectangle &Window::addRectangle(float x, float y, float w, float h)
@@ -244,15 +266,15 @@ namespace gui
         auto size = getSize();
 
         for (auto &r : rectangles)
-        {   
+        {
             if (e.button.type == SDL_MOUSEBUTTONUP)
             {
                 r.process(e);
             }
             else if (static_cast<int>((r.x + 1.0f) / 2.0f * static_cast<float>(size.first)) < e.button.x &&
-                static_cast<int>((r.x + r.w + 1.0f) / 2.0f * static_cast<float>(size.first)) > e.button.x &&
-                size.second - static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.second)) > e.button.y &&
-                size.second - static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.second)) < e.button.y)
+                     static_cast<int>((r.x + r.w + 1.0f) / 2.0f * static_cast<float>(size.first)) > e.button.x &&
+                     size.second - static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.second)) > e.button.y &&
+                     size.second - static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.second)) < e.button.y)
             {
                 r.process(e);
             }
@@ -264,6 +286,25 @@ namespace gui
         for (auto &r : rectangles)
         {
             r.process(e);
+        }
+    }
+
+    void Window::userDrop(const SDL_Event &e)
+    {
+        // auto size = getSize();
+
+        // int mx = 0, my = 0;
+        // SDL_GetMouseState(&mx, &my);
+
+        for (auto &r : rectangles)
+        {
+            if (r.x < *static_cast<float *>(e.user.data1) &&
+                r.x + 2.0f * r.w > *static_cast<float *>(e.user.data1) &&
+                r.y < *static_cast<float *>(e.user.data2) &&
+                r.y + 2.0f * r.h > *static_cast<float *>(e.user.data2))
+            {
+                r.process(e);
+            }
         }
     }
 

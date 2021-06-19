@@ -31,6 +31,7 @@ namespace gui
         void mouseScroll(const SDL_Event &e);
         void mouseClick(const SDL_Event &e);
         void mouseMotion(const SDL_Event &e);
+        void userDrop(const SDL_Event &e);
 
 
         bool minimised = false;

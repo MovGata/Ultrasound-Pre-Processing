@@ -5,6 +5,7 @@
 #include <GL/glext.h>
 
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 
 #include <SDL2/SDL.h>
@@ -12,6 +13,7 @@
 
 namespace gui
 {
+    const Uint32 Rectangle::dropEvent = SDL_RegisterEvents(1);
 
     Rectangle::Rectangle(float xp, float yp, float wp, float hp) : text(nullptr, SDL_FreeSurface),
                                                                    x(std::clamp(xp, -1.0f, 1.0f)),
@@ -20,11 +22,10 @@ namespace gui
                                                                    h(std::clamp(2.0f * hp, 0.0f, 1.0f - y))
     {
         addCallback(SDL_MOUSEWHEEL, std::bind(Rectangle::zoom, this, std::placeholders::_1));
-        addCallback(SDL_MOUSEBUTTONDOWN, [this]([[maybe_unused]] const SDL_Event &e)
-                    { mouseDown = true; });
-        addCallback(SDL_MOUSEBUTTONUP, [this]([[maybe_unused]] const SDL_Event &e)
-                    { mouseDown = false; });
+        addCallback(SDL_MOUSEBUTTONDOWN, std::bind(Rectangle::mouseLeftDown, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEBUTTONUP, std::bind(Rectangle::mouseLeftUp, this, std::placeholders::_1));
         addCallback(SDL_MOUSEMOTION, std::bind(Rectangle::mouseMotion, this, std::placeholders::_1));
+        addCallback(dropEvent, std::bind(Rectangle::userDrop, this, std::placeholders::_1));
     }
 
     Rectangle::~Rectangle()
@@ -82,16 +83,16 @@ namespace gui
                 glColor4ub(colour.r, colour.g, colour.b, colour.a);
 
                 glTexCoord2f(0.0f, 1.0f);
-                glVertex2f(x, y);
+                glVertex2f(x + offX, y + offY);
 
                 glTexCoord2f(1.0f, 1.0f);
-                glVertex2f(x + w, y);
+                glVertex2f(x + offX + w, y + offY);
 
                 glTexCoord2f(1.0f, 0.0f);
-                glVertex2f(x + w, y + h);
+                glVertex2f(x + offX + w, y + offY + h);
 
                 glTexCoord2f(0.0f, 0.0f);
-                glVertex2f(x, y + h);
+                glVertex2f(x + offX, y + offY + h);
             }
             glEnd();
 
@@ -103,10 +104,10 @@ namespace gui
             glBegin(GL_QUADS);
             {
                 glColor4ub(colour.r, colour.g, colour.b, colour.a);
-                glVertex2f(x, y);
-                glVertex2f(x + w, y);
-                glVertex2f(x + w, y + h);
-                glVertex2f(x, y + h);
+                glVertex2f(x + offX, y + offY);
+                glVertex2f(x + offX + w, y + offY);
+                glVertex2f(x + offX + w, y + offY + h);
+                glVertex2f(x + offX, y + offY + h);
             }
             glEnd();
         }
@@ -127,9 +128,9 @@ namespace gui
         SDL_FreeSurface(s);
         for (int i = 0; i < text->w * text->h; ++i)
         {
-            uint8_t t = static_cast<uint8_t *>(text->pixels)[i*4];
-            static_cast<uint8_t *>(text->pixels)[i*4] = static_cast<uint8_t *>(text->pixels)[i*4+3];
-            static_cast<uint8_t *>(text->pixels)[i*4+3] = t;
+            uint8_t t = static_cast<uint8_t *>(text->pixels)[i * 4];
+            static_cast<uint8_t *>(text->pixels)[i * 4] = static_cast<uint8_t *>(text->pixels)[i * 4 + 3];
+            static_cast<uint8_t *>(text->pixels)[i * 4 + 3] = t;
         }
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pixelBuffer);
         if (text->w * text->h < ww * hh)
@@ -144,6 +145,11 @@ namespace gui
             glBufferSubData(GL_PIXEL_UNPACK_BUFFER, 0, (ww * hh) * sizeof(GLubyte) * 4, text->pixels);
         }
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+        
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     void Rectangle::setBG(SDL_Colour c)
@@ -178,8 +184,49 @@ namespace gui
         if (mouseDown)
         {
             // std::cout << "Rotate: (" << e.motion.xrel << ", " << e.motion.yrel << '\n';
-            volume->rotate(static_cast<float>(e.motion.xrel), static_cast<float>(e.motion.yrel));
+            if (volume.has_value())
+            {
+                volume->rotate(static_cast<float>(e.motion.xrel), static_cast<float>(e.motion.yrel));
+            }
+            else if (draggable)
+            {
+                int width, height;
+                SDL_GetWindowSize(SDL_GetWindowFromID(e.motion.windowID), &width, &height);
+                width = height = std::min(width, height);
+                offX += static_cast<float>(2 * e.motion.xrel) / static_cast<float>(width);
+                offY += static_cast<float>(2 * e.motion.yrel) / static_cast<float>(-height);
+                // std::cout << offX << ',' << offY << std::endl;
+            }
         }
+    }
+
+    void Rectangle::mouseLeftUp([[maybe_unused]] const SDL_Event &e)
+    {
+        mouseDown = false;
+
+        if (draggable && (std::fpclassify(offX) != FP_ZERO || std::fpclassify(offY) != FP_ZERO))
+        {
+            SDL_Event ev;
+            ev.type = dropEvent;
+            ev.user.code = 0;
+            ev.user.data1 = new float(x + offX);
+            ev.user.data2 = new float(y + offY);
+            std::cout << x << ' ' << y << " " << offX << " " << offY << std::endl; 
+            SDL_PushEvent(&ev);
+        }
+
+        offX = 0;
+        offY = 0;
+    }
+
+    void Rectangle::mouseLeftDown([[maybe_unused]] const SDL_Event &e)
+    {
+        mouseDown = true;
+    }
+
+    void Rectangle::userDrop([[maybe_unused]] const SDL_Event &e)
+    {
+        std::cout << "Dropped: " << x << y << ' ' << *static_cast<float *>(e.user.data1) << ' ' << *static_cast<float *>(e.user.data2) << std::endl;
     }
 
 } // namespace gui
