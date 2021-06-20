@@ -267,17 +267,31 @@ namespace gui
 
         for (auto &r : rectangles)
         {
+
+            if (static_cast<int>((r.x + 1.0f) / 2.0f * static_cast<float>(size.first)) < e.button.x &&
+                static_cast<int>((r.x + r.w + 1.0f) / 2.0f * static_cast<float>(size.first)) > e.button.x &&
+                size.second - static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.second)) > e.button.y &&
+                size.second - static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.second)) < e.button.y)
+            {
+                if (e.button.type == SDL_MOUSEBUTTONUP && dragObject.has_value())
+                {
+                    r.process(dragObject.value());
+                }
+                else
+                {
+                    r.process(e);
+                }
+            }
+
             if (e.button.type == SDL_MOUSEBUTTONUP)
             {
                 r.process(e);
             }
-            else if (static_cast<int>((r.x + 1.0f) / 2.0f * static_cast<float>(size.first)) < e.button.x &&
-                     static_cast<int>((r.x + r.w + 1.0f) / 2.0f * static_cast<float>(size.first)) > e.button.x &&
-                     size.second - static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.second)) > e.button.y &&
-                     size.second - static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.second)) < e.button.y)
-            {
-                r.process(e);
-            }
+        }
+        
+        if (e.button.type == SDL_MOUSEBUTTONUP)
+        {
+            dragObject.reset();
         }
     }
 
@@ -296,16 +310,18 @@ namespace gui
         // int mx = 0, my = 0;
         // SDL_GetMouseState(&mx, &my);
 
-        for (auto &r : rectangles)
-        {
-            if (r.x < *static_cast<float *>(e.user.data1) &&
-                r.x + 2.0f * r.w > *static_cast<float *>(e.user.data1) &&
-                r.y < *static_cast<float *>(e.user.data2) &&
-                r.y + 2.0f * r.h > *static_cast<float *>(e.user.data2))
-            {
-                r.process(e);
-            }
-        }
+        // for (auto &r : rectangles)
+        // {
+        //     if (r.x < *static_cast<float *>(e.user.data1) &&
+        //         r.x + 2.0f * r.w > *static_cast<float *>(e.user.data1) &&
+        //         r.y < *static_cast<float *>(e.user.data2) &&
+        //         r.y + 2.0f * r.h > *static_cast<float *>(e.user.data2))
+        //     {
+        //         r.process(e);
+        //     }
+        // }
+
+        dragObject.emplace(e);
     }
 
 } // namespace gui

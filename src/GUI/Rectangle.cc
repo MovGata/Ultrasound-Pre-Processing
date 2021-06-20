@@ -15,7 +15,7 @@ namespace gui
 {
     const Uint32 Rectangle::dropEvent = SDL_RegisterEvents(1);
 
-    Rectangle::Rectangle(float xp, float yp, float wp, float hp) : text(nullptr, SDL_FreeSurface),
+    Rectangle::Rectangle(float xp, float yp, float wp, float hp) : //text(nullptr, SDL_FreeSurface),
                                                                    x(std::clamp(xp, -1.0f, 1.0f)),
                                                                    y(std::clamp(yp, -1.0f, 1.0f)),
                                                                    w(std::clamp(2.0f * wp, 0.0f, 1.0f - x)),
@@ -124,32 +124,35 @@ namespace gui
         {
             std::cout << "Failed to create text" << std::endl;
         }
-        text = std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)>(SDL_ConvertSurfaceFormat(s, SDL_PixelFormatEnum::SDL_PIXELFORMAT_RGBA8888, 0), SDL_FreeSurface);
+        SDL_Surface *textT = SDL_ConvertSurfaceFormat(s, SDL_PixelFormatEnum::SDL_PIXELFORMAT_RGBA8888, 0);
         SDL_FreeSurface(s);
-        for (int i = 0; i < text->w * text->h; ++i)
+        for (int i = 0; i < textT->w * textT->h; ++i)
         {
-            uint8_t t = static_cast<uint8_t *>(text->pixels)[i * 4];
-            static_cast<uint8_t *>(text->pixels)[i * 4] = static_cast<uint8_t *>(text->pixels)[i * 4 + 3];
-            static_cast<uint8_t *>(text->pixels)[i * 4 + 3] = t;
+            uint8_t t = static_cast<uint8_t *>(textT->pixels)[i * 4];
+            static_cast<uint8_t *>(textT->pixels)[i * 4] = static_cast<uint8_t *>(textT->pixels)[i * 4 + 3];
+            static_cast<uint8_t *>(textT->pixels)[i * 4 + 3] = t;
         }
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pixelBuffer);
-        if (text->w * text->h < ww * hh)
+        if (textT->w * textT->h < ww * hh)
         {
-            glBufferSubData(GL_PIXEL_UNPACK_BUFFER, 0, (text->w * text->h) * sizeof(GLubyte) * 4, text->pixels);
+            glBufferSubData(GL_PIXEL_UNPACK_BUFFER, 0, (textT->w * textT->h) * sizeof(GLubyte) * 4, textT->pixels);
 
-            ww = text->w;
-            hh = text->h;
+            ww = textT->w;
+            hh = textT->h;
         }
         else
         {
-            glBufferSubData(GL_PIXEL_UNPACK_BUFFER, 0, (ww * hh) * sizeof(GLubyte) * 4, text->pixels);
+            glBufferSubData(GL_PIXEL_UNPACK_BUFFER, 0, (ww * hh) * sizeof(GLubyte) * 4, textT->pixels);
         }
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+        SDL_FreeSurface(textT);
         
         glBindTexture(GL_TEXTURE_2D, texture);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glBindTexture(GL_TEXTURE_2D, 0);
+        text = str;
     }
 
     void Rectangle::setBG(SDL_Colour c)
@@ -204,17 +207,6 @@ namespace gui
     {
         mouseDown = false;
 
-        if (draggable && (std::fpclassify(offX) != FP_ZERO || std::fpclassify(offY) != FP_ZERO))
-        {
-            SDL_Event ev;
-            ev.type = dropEvent;
-            ev.user.code = 0;
-            ev.user.data1 = new float(x + offX);
-            ev.user.data2 = new float(y + offY);
-            std::cout << x << ' ' << y << " " << offX << " " << offY << std::endl; 
-            SDL_PushEvent(&ev);
-        }
-
         offX = 0;
         offY = 0;
     }
@@ -222,11 +214,22 @@ namespace gui
     void Rectangle::mouseLeftDown([[maybe_unused]] const SDL_Event &e)
     {
         mouseDown = true;
+
+        if (draggable)
+        {
+            SDL_Event ev;
+            ev.type = dropEvent;
+            ev.user.code = 0;
+            ev.user.data1 = this;
+            // std::cout << x << ' ' << y << " " << offX << " " << offY << std::endl; 
+            SDL_PushEvent(&ev);
+        }
     }
 
     void Rectangle::userDrop([[maybe_unused]] const SDL_Event &e)
     {
-        std::cout << "Dropped: " << x << y << ' ' << *static_cast<float *>(e.user.data1) << ' ' << *static_cast<float *>(e.user.data2) << std::endl;
+        // std::cout << "Dropped: " << x << y << ' ' << *static_cast<float *>(e.user.data1) << ' ' << *static_cast<float *>(e.user.data2) << std::endl;
+        std::cout << x << ", " << y << " Dropped: " << static_cast<Rectangle *>(e.user.data1)->text << std::endl;
     }
 
 } // namespace gui

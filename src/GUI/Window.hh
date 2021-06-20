@@ -22,10 +22,10 @@ namespace gui
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window;
         // std::unique_ptr<SDL_Surface> surface;
         SDL_GLContext glContext;
-
         std::vector<Window> subWindows;
-
         std::unordered_map<Uint32, std::function<void(const SDL_Event &)>> events;
+
+        std::optional<SDL_Event> dragObject;
 
         void processWindowEvent(const SDL_Event &);
         void mouseScroll(const SDL_Event &e);

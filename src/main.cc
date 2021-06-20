@@ -91,14 +91,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
                 mainWindow.process(e);
             }
 
-            if (e.type >= SDL_USEREVENT)
-            {
-                if (e.type == gui::Rectangle::dropEvent)
-                {
-                    delete static_cast<float *>(e.user.data1); // Must do this as a consequence of SDL2 event lifetime.
-                    delete static_cast<float *>(e.user.data2); // It is safest to delete in the main loop, as an event may go through multiple handlers.
-                }
-            }
+            // if (e.type >= SDL_USEREVENT)
+            // {
+            //     if (e.type == gui::Rectangle::dropEvent)
+            //     {
+            //         delete static_cast<float *>(e.user.data1); // Must do this as a consequence of SDL2 event lifetime.
+            //         delete static_cast<float *>(e.user.data2); // It is safest to delete in the main loop, as an event may go through multiple handlers.
+            //     }
+            // }
         }
         mainWindow.setActive();
 

@@ -21,8 +21,9 @@ namespace gui
     {
     private:
         std::optional<Volume> volume;
+        std::string text;
         std::unordered_map<Uint32, std::function<void(const SDL_Event &)>> events;
-        std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> text;
+        // std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> text;
         bool mouseDown = false;
         SDL_Colour colour = {0x4F, 0x4F, 0x4F, 0xFF};
 
