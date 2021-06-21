@@ -1,5 +1,7 @@
 #include "Volume.hh"
 
+#include <numbers>
+
 #include <gl/glew.h>
 #include <gl/gl.h>
 #include <gl/glext.h>
@@ -21,6 +23,9 @@ Volume::Volume(unsigned int d, unsigned int l, unsigned int w, const std::vector
             }
         }
     }
+
+    addCallback(SDL_MOUSEWHEEL, std::bind(zoomEvent, this, std::placeholders::_1));
+    addCallback(SDL_MOUSEMOTION, std::bind(rotateEvent, this, std::placeholders::_1));
 }
 
 Volume::~Volume()
@@ -43,9 +48,14 @@ void Volume::update()
     glLoadIdentity();
     glScalef(maxEdge / static_cast<float>(depth) * 0.1f, maxEdge / static_cast<float>(length) * 0.1f, maxEdge / static_cast<float>(width) * 0.1f);
     glScalef(scale, scale, scale);
-    glRotatef(90.0f, 0.0f, 1.0f, 0.0f);
-    glRotatef(rotation.second, -1.0f, 0.0f, 0.0f);
-    glRotatef(rotation.first, 0.0f, -1.0f, 0.0f);
+    glRotatef(90.0f, 0.0f, 0.0f, -1.0f);
+    glRotatef(static_cast<float>(rotation.first), 0.0f, -1.0f, 0.0f);
+    glRotatef(static_cast<float>(rotation.second),
+              static_cast<float>(-std::sin(std::numbers::pi * static_cast<double>(rotation.first) / 180.0)),
+              0.0f,
+              static_cast<float>(std::cos(std::numbers::pi * static_cast<double>(rotation.first) / 180.0)));
+    // glRotatef(static_cast<float>(rotation.second), -1.0f, 0.0f, 0.0f);
+    // glRotatef(static_cast<float>(rotation.first), 0.0f, -static_cast<float>(std::sin(std::numbers::pi * static_cast<float>(rotation.second) / 180.0)), static_cast<float>(std::cos(static_cast<float>(std::numbers::pi) * static_cast<float>(rotation.second) / 180.0)));
     glTranslatef(0.0f, 0.0f, 25.0f);
     glGetFloatv(GL_MODELVIEW_MATRIX, modelView);
     glPopMatrix();
@@ -64,14 +74,13 @@ void Volume::update()
     invMVTransposed[11] = modelView[14];
 }
 
-
-void Volume::zoom(float z)
+void Volume::zoomEvent(const SDL_Event &e)
 {
-    scale += z;
+    scale += static_cast<float>(e.wheel.y);
 }
 
-void Volume::rotate(float x, float y)
+void Volume::rotateEvent(const SDL_Event &e)
 {
-    rotation.first += x;
-    rotation.second += y;
+    rotation.first = (rotation.first + e.motion.xrel) % 360;
+    rotation.second = (rotation.second - e.motion.yrel) % 360;
 }

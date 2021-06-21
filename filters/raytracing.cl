@@ -23,7 +23,7 @@ int rayHitBBox(float4 rayOrg, float4 rayDir, float4 bbMin, float4 bbMax, float *
 
 kernel void render(
     uint w_out, uint l_out, global uint *output,
-    uint depth, uint length, uint width, float angle, global uchar4 *data,
+    uint depth, uint length, uint width, global uchar4 *data,
     constant float *invMVTransposed)
 {
     uint x = get_global_id(0);

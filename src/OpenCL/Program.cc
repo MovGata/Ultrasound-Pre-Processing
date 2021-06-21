@@ -22,7 +22,7 @@ Program::Program(cl::Context context, Source src) : program(context, src), name(
     {
         std::cerr << e.err() << ": " << e.what() << '\n';
         std::fstream fout;
-        fout.open(std::string("./build/logs/") + name + std::string(".txt"), std::fstream::out | std::fstream::trunc);
+        fout.open(std::string("./build/logs/") + name + std::string(".txt"), std::fstream::out);
         for (auto &str : e.getBuildLog())
         {
             fout << str.second << '\n';

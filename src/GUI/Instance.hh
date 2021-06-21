@@ -17,7 +17,7 @@ namespace gui
         Instance(/* args */);
         ~Instance();
 
-        TTF_Font &loadFont(const std::string &url);
+        TTF_Font *loadFont(const std::string &url);
     };
 
 } // namespace gui

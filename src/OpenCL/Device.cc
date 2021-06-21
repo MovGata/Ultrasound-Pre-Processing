@@ -61,7 +61,7 @@ Device::Device()
     // {
 
     invMVTransposed = cl::Buffer(context, CL_MEM_READ_ONLY, 12 * sizeof(float));
-    programs.at("raytracing").at("render").setArg(8, invMVTransposed);
+    programs.at("raytracing").at("render").setArg(7, invMVTransposed);
     // }
     // catch (const cl::Error &e)
     // {
@@ -145,7 +145,7 @@ void Device::createDisplay(unsigned int w, unsigned int h, cl_GLuint glPixelBuff
     }
 }
 
-void Device::prepareVolume(unsigned int d, unsigned int l, unsigned int w, float angle, const cl::Buffer &v)
+void Device::prepareVolume(unsigned int d, unsigned int l, unsigned int w, const cl::Buffer &v)
 {
     if (v.getInfo<CL_MEM_SIZE>() != l * d * w * 4)
     {
@@ -158,8 +158,8 @@ void Device::prepareVolume(unsigned int d, unsigned int l, unsigned int w, float
         programs.at("raytracing").at("render").setArg(3, d);
         programs.at("raytracing").at("render").setArg(4, l);
         programs.at("raytracing").at("render").setArg(5, w);
-        programs.at("raytracing").at("render").setArg(6, angle);
-        programs.at("raytracing").at("render").setArg(7, v);
+        // programs.at("raytracing").at("render").setArg(6, angle);
+        programs.at("raytracing").at("render").setArg(6, v);
     }
     catch (const cl::Error &e)
     {

@@ -13,10 +13,12 @@
 
 #include "Rectangle.hh"
 
+#include "../Events/EventManager.hh"
+
 namespace gui
 {
 
-    class Window
+    class Window : public events::EventManager
     {
     private:
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window;
@@ -27,12 +29,12 @@ namespace gui
 
         std::optional<SDL_Event> dragObject;
 
-        void processWindowEvent(const SDL_Event &);
-        void mouseScroll(const SDL_Event &e);
-        void mouseClick(const SDL_Event &e);
-        void mouseMotion(const SDL_Event &e);
+        void windowEvent(const SDL_Event &);
+        void scrollEvent(const SDL_Event &e);
+        void dragStartEvent(const SDL_Event &e);
+        void dragStopEvent(const SDL_Event &e);
+        void dragEvent(const SDL_Event &e);
         void userDrop(const SDL_Event &e);
-
 
         bool minimised = false;
 
@@ -59,9 +61,6 @@ namespace gui
         auto getPosition() -> std::pair<int, int>;
         auto getSize() -> std::pair<int, int>;
         auto getID() -> Uint32;
-
-        void addCallback(Uint32 e, std::function<void(const SDL_Event &)> fun);
-        void process(const SDL_Event &e);
     };
 
 } // namespace gui

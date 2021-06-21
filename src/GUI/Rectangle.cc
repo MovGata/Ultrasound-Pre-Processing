@@ -13,7 +13,8 @@
 
 namespace gui
 {
-    const Uint32 Rectangle::dropEvent = SDL_RegisterEvents(1);
+    const Uint32 Rectangle::dropEventData = SDL_RegisterEvents(2);
+    const Uint32 Rectangle::volumeEventData = Rectangle::dropEventData + 1;
 
     Rectangle::Rectangle(float xp, float yp, float wp, float hp) : //text(nullptr, SDL_FreeSurface),
                                                                    x(std::clamp(xp, -1.0f, 1.0f)),
@@ -21,11 +22,6 @@ namespace gui
                                                                    w(std::clamp(2.0f * wp, 0.0f, 1.0f - x)),
                                                                    h(std::clamp(2.0f * hp, 0.0f, 1.0f - y))
     {
-        addCallback(SDL_MOUSEWHEEL, std::bind(Rectangle::zoom, this, std::placeholders::_1));
-        addCallback(SDL_MOUSEBUTTONDOWN, std::bind(Rectangle::mouseLeftDown, this, std::placeholders::_1));
-        addCallback(SDL_MOUSEBUTTONUP, std::bind(Rectangle::mouseLeftUp, this, std::placeholders::_1));
-        addCallback(SDL_MOUSEMOTION, std::bind(Rectangle::mouseMotion, this, std::placeholders::_1));
-        addCallback(dropEvent, std::bind(Rectangle::userDrop, this, std::placeholders::_1));
     }
 
     Rectangle::~Rectangle()
@@ -34,6 +30,8 @@ namespace gui
 
     Volume &Rectangle::allocVolume(unsigned int depth, unsigned int length, int unsigned width, const std::vector<uint8_t> &data)
     {
+        addCallback(SDL_MOUSEWHEEL, std::bind(volumeBypass, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEBUTTONDOWN, std::bind(volumeStartEvent, this, std::placeholders::_1));
         return volume.emplace(depth, length, width, data);
     }
 
@@ -111,18 +109,24 @@ namespace gui
             }
             glEnd();
         }
+
+        // for (const auto &r : subRectangles)
+        // {
+        //     r.render();
+        // }
     }
 
-    void Rectangle::addText(TTF_Font &font, const std::string &str)
+    void Rectangle::addText(TTF_Font *f, const std::string &str)
     {
         if (texture == 0)
         {
             return;
         }
-        SDL_Surface *s = TTF_RenderText_Blended(&font, str.c_str(), SDL_Colour{0xFF, 0xFF, 0xFF, 0xFF});
+        font = f;
+        SDL_Surface *s = TTF_RenderText_Blended(font, str.c_str(), SDL_Colour{0xFF, 0xFF, 0xFF, 0xFF});
         if (!s)
         {
-            std::cout << "Failed to create text" << std::endl;
+            std::cerr << "Failed to create text: " << TTF_GetError() << '\n';
         }
         SDL_Surface *textT = SDL_ConvertSurfaceFormat(s, SDL_PixelFormatEnum::SDL_PIXELFORMAT_RGBA8888, 0);
         SDL_FreeSurface(s);
@@ -147,12 +151,14 @@ namespace gui
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
         SDL_FreeSurface(textT);
-        
+
         glBindTexture(GL_TEXTURE_2D, texture);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glBindTexture(GL_TEXTURE_2D, 0);
         text = str;
+
+        addCallback(SDL_MOUSEBUTTONDOWN, std::bind(dragStartEvent, this, std::placeholders::_1));
     }
 
     void Rectangle::setBG(SDL_Colour c)
@@ -160,76 +166,86 @@ namespace gui
         colour = c;
     }
 
-    void Rectangle::addCallback(Uint32 e, std::function<void(const SDL_Event &)> fun)
+    // DRAG AND DROP EVENTS
+
+    void Rectangle::dragEvent(const SDL_Event &e)
     {
-        events.insert_or_assign(e, fun);
+        int width, height;
+        SDL_GetWindowSize(SDL_GetWindowFromID(e.motion.windowID), &width, &height);
+        width = height = std::min(width, height);
+        offX += static_cast<float>(2 * e.motion.xrel) / static_cast<float>(width);
+        offY += static_cast<float>(2 * e.motion.yrel) / static_cast<float>(-height);
     }
 
-    void Rectangle::process(const SDL_Event &e)
+    void Rectangle::dragStopEvent([[maybe_unused]] const SDL_Event &e)
     {
-        auto itr = events.find(e.type);
-        if (itr != events.end())
-        {
-            itr->second(e);
-        }
-    }
-
-    void Rectangle::zoom(const SDL_Event &e)
-    {
-        if (volume.has_value())
-        {
-            volume->zoom(static_cast<float>(e.wheel.y));
-        }
-    }
-
-    void Rectangle::mouseMotion(const SDL_Event &e)
-    {
-        if (mouseDown)
-        {
-            // std::cout << "Rotate: (" << e.motion.xrel << ", " << e.motion.yrel << '\n';
-            if (volume.has_value())
-            {
-                volume->rotate(static_cast<float>(e.motion.xrel), static_cast<float>(e.motion.yrel));
-            }
-            else if (draggable)
-            {
-                int width, height;
-                SDL_GetWindowSize(SDL_GetWindowFromID(e.motion.windowID), &width, &height);
-                width = height = std::min(width, height);
-                offX += static_cast<float>(2 * e.motion.xrel) / static_cast<float>(width);
-                offY += static_cast<float>(2 * e.motion.yrel) / static_cast<float>(-height);
-                // std::cout << offX << ',' << offY << std::endl;
-            }
-        }
-    }
-
-    void Rectangle::mouseLeftUp([[maybe_unused]] const SDL_Event &e)
-    {
-        mouseDown = false;
-
         offX = 0;
         offY = 0;
+
+        clearCallback(SDL_MOUSEBUTTONUP);
+        clearCallback(SDL_MOUSEMOTION);
     }
 
-    void Rectangle::mouseLeftDown([[maybe_unused]] const SDL_Event &e)
+    void Rectangle::dragStartEvent([[maybe_unused]] const SDL_Event &e)
     {
-        mouseDown = true;
+        SDL_Event ev;
+        ev.type = dropEventData;
+        ev.user.windowID = e.button.windowID;
+        ev.user.code = 0;
+        ev.user.data1 = this;
+        SDL_PushEvent(&ev);
 
-        if (draggable)
-        {
-            SDL_Event ev;
-            ev.type = dropEvent;
-            ev.user.code = 0;
-            ev.user.data1 = this;
-            // std::cout << x << ' ' << y << " " << offX << " " << offY << std::endl; 
-            SDL_PushEvent(&ev);
-        }
+        addCallback(SDL_MOUSEBUTTONUP, std::bind(Rectangle::dragStopEvent, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEMOTION, std::bind(Rectangle::dragEvent, this, std::placeholders::_1));
     }
 
-    void Rectangle::userDrop([[maybe_unused]] const SDL_Event &e)
+    void Rectangle::dropEvent([[maybe_unused]] const SDL_Event &e)
     {
         // std::cout << "Dropped: " << x << y << ' ' << *static_cast<float *>(e.user.data1) << ' ' << *static_cast<float *>(e.user.data2) << std::endl;
-        std::cout << x << ", " << y << " Dropped: " << static_cast<Rectangle *>(e.user.data1)->text << std::endl;
+        Rectangle *rp = static_cast<Rectangle *>(e.user.data1);
+        // int mx, my;
+        // SDL_GetMouseState(&mx, &my);
+        // int width, height, wd, hd;
+        // SDL_GetWindowSize(SDL_GetWindowFromID(e.motion.windowID), &width, &height);
+        // wd = hd = std::min(width, height);
+        // my = height - my;
+        // Rectangle &r = subRectangles.emplace_back(2.0f * static_cast<float>(mx - ((width - wd) / 2)) / static_cast<float>(wd) - 1.0f,
+        //                                           2.0f * static_cast<float>(my - ((height - hd) / 2)) / static_cast<float>(hd) - 1.0f, rp->w / 2.0f, rp->h / 2.0f);
+        Rectangle &r = subRectangles.emplace_back(rp->x + rp->offX, rp->y + rp->offY, rp->w, rp->h);
+        r.setBG({0xFF, 0xFF, 0xFF, 0xFF});
+        // r.allocTexture(rp->ww, rp->hh);
+        // r.text = rp->text;
+        // r.addText(rp->font, r.text);
+        r.texture = rp->texture;
+        r.pixelBuffer = rp->pixelBuffer;
+        r.ww = rp->ww;
+        r.hh = rp->hh;
+        std::cout << subRectangles.size() << std::endl;
+    }
+
+    // VOLUME EVENTS
+
+    void Rectangle::volumeBypass(const SDL_Event &e)
+    {
+        volume->process(e);
+    }
+
+    void Rectangle::volumeStartEvent([[maybe_unused]] const SDL_Event &e)
+    {
+        SDL_Event ev;
+        ev.type = volumeEventData;
+        ev.user.code = 0;
+        ev.user.data1 = this;
+        SDL_PushEvent(&ev);
+
+        addCallback(SDL_MOUSEBUTTONUP, std::bind(Rectangle::volumeStopEvent, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEMOTION, std::bind(Rectangle::volumeBypass, this, std::placeholders::_1));
+    }
+
+    void Rectangle::volumeStopEvent([[maybe_unused]] const SDL_Event &e)
+    {
+        clearCallback(SDL_MOUSEBUTTONUP);
+        clearCallback(SDL_MOUSEMOTION);
     }
 
 } // namespace gui

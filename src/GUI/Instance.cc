@@ -35,10 +35,10 @@ namespace gui
         SDL_Quit();
     }
 
-    TTF_Font &Instance::loadFont(const std::string &url)
+    TTF_Font *Instance::loadFont(const std::string &url)
     {
         fonts.emplace_back(TTF_OpenFont(url.c_str(), 16), TTF_CloseFont);
-        return *fonts.back();
+        return fonts.back().get();
 
     }
 

@@ -26,7 +26,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     auto depth = reader.cpStore.fetch<int32_t>("Depth", 0);
     auto length = reader.cpStore.fetch<int32_t>("Length", 0);
     auto width = reader.cpStore.fetch<int32_t>("Width", 0);
-    auto angleD = reader.cpStore.fetch<float>("AngleDelta", 0);
+    // auto angleD = reader.cpStore.fetch<float>("AngleDelta", 0);
 
     std::cout << depth << ' ' << length << ' ' << width << std::endl;
 
@@ -37,18 +37,19 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     Device device;
     // gui::Window &subWindow = mainWindow.subWindow(0, 0, 0.5f, 0.5f);
-    TTF_Font &font = init.loadFont("./res/fonts/cour.ttf");
+    TTF_Font *font = init.loadFont("./res/fonts/cour.ttf");
     // subWindow.setActive();
     // auto pair = subWindow.getSize();
     gui::Rectangle &dropRec = mainWindow.addRectangle(-1.0f, -1.0f, 1.0f, 0.5f);
-    dropRec.setBG({0x4F, 0x7F, 0x4F, 0xFF});
+    dropRec.setBG({0x4F, 0x7F, 0x4F, 0x4F});
+    dropRec.addCallback(gui::Rectangle::dropEventData, std::bind(gui::Rectangle::dropEvent, &dropRec, std::placeholders::_1));
 
     mainWindow.addRectangle(0.0f, 0.0f, 0.25f, 0.5f);
     gui::Rectangle &testText = mainWindow.addRectangle(0.5f, 0.8f, 0.25f, 0.1f);
     testText.setBG({0xFF, 0xFF, 0xFF, 0xFF});
     testText.allocTexture(256, 38);
     testText.addText(font, "Add text test.");
-    testText.draggable = true;
+    
 
     gui::Rectangle &rec = mainWindow.addRectangle(-1.0f, 0.0f, 0.5f, 0.5f);
     rec.allocTexture(1024, 1024);
@@ -57,7 +58,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     device.createDisplay(1024, 1024, rec.pixelBuffer);
     volume.sendToCl(device.context);
-    device.prepareVolume(depth, length, width, angleD, volume.buffer);
+    device.prepareVolume(depth, length, width, volume.buffer);
 
     auto timeA = SDL_GetTicks();
     bool quit = false;

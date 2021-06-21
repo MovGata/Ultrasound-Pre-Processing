@@ -22,14 +22,13 @@ namespace gui
             return;
         }
 
-        addCallback(SDL_WINDOWEVENT, std::bind(Window::processWindowEvent, this, std::placeholders::_1));
-        addCallback(SDL_MOUSEWHEEL, std::bind(Window::mouseScroll, this, std::placeholders::_1));
-        addCallback(SDL_MOUSEBUTTONUP, std::bind(Window::mouseClick, this, std::placeholders::_1));
-        addCallback(SDL_MOUSEBUTTONDOWN, std::bind(Window::mouseClick, this, std::placeholders::_1));
-        addCallback(SDL_MOUSEMOTION, std::bind(Window::mouseMotion, this, std::placeholders::_1));
-        addCallback(Rectangle::dropEvent, std::bind(Window::userDrop, this, std::placeholders::_1));
-
-        // surface.reset(SDL_GetWindowSurface(window.get()));
+        addCallback(SDL_WINDOWEVENT, std::bind(Window::windowEvent, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEWHEEL, std::bind(Window::scrollEvent, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEBUTTONUP, std::bind(Window::dragStopEvent, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEBUTTONDOWN, std::bind(Window::dragStartEvent, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEMOTION, std::bind(Window::dragEvent, this, std::placeholders::_1));
+        addCallback(Rectangle::dropEventData, std::bind(Window::userDrop, this, std::placeholders::_1));
+        addCallback(Rectangle::volumeEventData, std::bind(Window::userDrop, this, std::placeholders::_1));
 
         glContext = SDL_GL_CreateContext(window.get());
         if (glContext == nullptr)
@@ -121,15 +120,6 @@ namespace gui
 
         clean();
 
-        // auto pair = getSize();
-
-        // glRasterPos2i(0, 0);
-        // glBindBuffer(GL_PIXEL_UNPACK_BUFFER, glPixelBuffer);
-        // glDrawPixels(pair.first, pair.second, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-
-        // glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-
-        // glRasterPos2i(0, 0);
         for (const auto &rec : rectangles)
         {
             rec.render();
@@ -152,26 +142,12 @@ namespace gui
 
         auto pair = getSize();
 
-        // glGenBuffers(1, &glPixelBuffer);
-        // glBindBuffer(GL_PIXEL_UNPACK_BUFFER, glPixelBuffer);
-        // glBufferData(GL_PIXEL_UNPACK_BUFFER, pair.first * pair.second * sizeof(GLubyte) * 4, 0, GL_STREAM_DRAW);
-        // glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-
         glViewport(0, 0, pair.first, pair.second);
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
-        // glMatrixMode(GL_PROJECTION);
 
-        // double rad = std::numbers::pi/180.0;
-        // double perspective[16] = {
-        //     1.0/(aspect*std::tan(60.0*rad)), 0, 0, 0,
-        //     0, 1.0/(std::tan(60.0*rad)), 0, 0,
-        //     0, 0, -()
-        // };
-
-        // glLoadMatrixd()
         if (pair.first > pair.second)
         {
             double aspect = static_cast<double>(pair.first) / static_cast<double>(pair.second);
@@ -186,7 +162,6 @@ namespace gui
 
     Rectangle &Window::addRectangle(float x, float y, float w, float h)
     {
-        // auto pair = getPosition();
         return rectangles.emplace_back(std::clamp(x, -1.0f, 1.0f), std::clamp(y, -1.0f, 1.0f), std::clamp(w, 0.0f, 1.0f), std::clamp(h, 0.0f, 1.0f));
     }
 
@@ -195,21 +170,7 @@ namespace gui
         SDL_GL_MakeCurrent(window.get(), glContext);
     }
 
-    void Window::addCallback(Uint32 e, std::function<void(const SDL_Event &)> fun)
-    {
-        events.insert_or_assign(e, fun);
-    }
-
-    void Window::process(const SDL_Event &e)
-    {
-        auto itr = events.find(e.type);
-        if (itr != events.end())
-        {
-            itr->second(e);
-        }
-    }
-
-    void Window::processWindowEvent(const SDL_Event &e)
+    void Window::windowEvent(const SDL_Event &e)
     {
         switch (e.window.event)
         {
@@ -242,7 +203,7 @@ namespace gui
         }
     }
 
-    void Window::mouseScroll(const SDL_Event &e)
+    void Window::scrollEvent(const SDL_Event &e)
     {
         auto size = getSize();
 
@@ -257,45 +218,57 @@ namespace gui
                 size.second - static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.second)) < my)
             {
                 r.process(e);
+                break;
             }
         }
     }
 
-    void Window::mouseClick(const SDL_Event &e)
+    void Window::dragStartEvent(const SDL_Event &e)
     {
         auto size = getSize();
 
         for (auto &r : rectangles)
         {
-
             if (static_cast<int>((r.x + 1.0f) / 2.0f * static_cast<float>(size.first)) < e.button.x &&
                 static_cast<int>((r.x + r.w + 1.0f) / 2.0f * static_cast<float>(size.first)) > e.button.x &&
                 size.second - static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.second)) > e.button.y &&
                 size.second - static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.second)) < e.button.y)
             {
-                if (e.button.type == SDL_MOUSEBUTTONUP && dragObject.has_value())
-                {
-                    r.process(dragObject.value());
-                }
-                else
-                {
-                    r.process(e);
-                }
-            }
-
-            if (e.button.type == SDL_MOUSEBUTTONUP)
-            {
                 r.process(e);
+                break;
             }
-        }
-        
-        if (e.button.type == SDL_MOUSEBUTTONUP)
-        {
-            dragObject.reset();
         }
     }
 
-    void Window::mouseMotion(const SDL_Event &e)
+    void Window::dragStopEvent(const SDL_Event &e)
+    {
+        auto size = getSize();
+
+        if (dragObject.has_value())
+        {
+            if (dragObject->user.type == gui::Rectangle::dropEventData)
+            {
+                for (auto &r : rectangles)
+                {
+
+                    if (static_cast<int>((r.x + 1.0f) / 2.0f * static_cast<float>(size.first)) < e.button.x &&
+                        static_cast<int>((r.x + r.w + 1.0f) / 2.0f * static_cast<float>(size.first)) > e.button.x &&
+                        size.second - static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.second)) > e.button.y &&
+                        size.second - static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.second)) < e.button.y)
+                    {
+                        r.process(dragObject.value());
+                        break;
+                    }
+                }
+            }
+
+            static_cast<Rectangle *>(dragObject->user.data1)->process(e);
+            dragObject.reset();
+        }
+
+    }
+
+    void Window::dragEvent(const SDL_Event &e)
     {
         for (auto &r : rectangles)
         {
@@ -305,22 +278,6 @@ namespace gui
 
     void Window::userDrop(const SDL_Event &e)
     {
-        // auto size = getSize();
-
-        // int mx = 0, my = 0;
-        // SDL_GetMouseState(&mx, &my);
-
-        // for (auto &r : rectangles)
-        // {
-        //     if (r.x < *static_cast<float *>(e.user.data1) &&
-        //         r.x + 2.0f * r.w > *static_cast<float *>(e.user.data1) &&
-        //         r.y < *static_cast<float *>(e.user.data2) &&
-        //         r.y + 2.0f * r.h > *static_cast<float *>(e.user.data2))
-        //     {
-        //         r.process(e);
-        //     }
-        // }
-
         dragObject.emplace(e);
     }
 
