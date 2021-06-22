@@ -62,8 +62,13 @@ namespace gui
             std::cout << "err: " << err << std::endl;
     }
 
-    void Rectangle::render() const
+    void Rectangle::render(float xp, float yp, float wp, float hp) const
     {
+        float xlerp = std::lerp(xp, xp + 2.0f * wp, (x + 1.0f) / 2.0f);
+        float ylerp = std::lerp(yp, yp + 2.0f * hp, (y + 1.0f) / 2.0f);
+        float wlerp = xlerp + std::lerp(xp, xp + 2.0f * wp, w / 2.0f) + 1.0f;
+        float hlerp = ylerp + std::lerp(yp, yp + 2.0f * hp, h / 2.0f) + 1.0f;
+
         if (texture)
         {
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pixelBuffer);
@@ -75,22 +80,24 @@ namespace gui
             // {
             //     std::cout << "err: " << err << std::endl;
             // }
+            // float wlerp = std::lerp((xp + 1.0f) * 2.0f, xp + wp, w / 2.0f);
+            // float hlerp = std::lerp(yp, xp + wp, h);
 
             glBegin(GL_QUADS);
             {
                 glColor4ub(colour.r, colour.g, colour.b, colour.a);
 
                 glTexCoord2f(0.0f, 1.0f);
-                glVertex2f(x + offX, y + offY);
+                glVertex2f(xlerp + offX, ylerp + offY);
 
                 glTexCoord2f(1.0f, 1.0f);
-                glVertex2f(x + offX + w, y + offY);
+                glVertex2f(wlerp + offX, ylerp + offY);
 
                 glTexCoord2f(1.0f, 0.0f);
-                glVertex2f(x + offX + w, y + offY + h);
+                glVertex2f(wlerp + offX, hlerp + offY);
 
                 glTexCoord2f(0.0f, 0.0f);
-                glVertex2f(x + offX, y + offY + h);
+                glVertex2f(xlerp + offX, hlerp + offY);
             }
             glEnd();
 
@@ -102,10 +109,10 @@ namespace gui
             glBegin(GL_QUADS);
             {
                 glColor4ub(colour.r, colour.g, colour.b, colour.a);
-                glVertex2f(x + offX, y + offY);
-                glVertex2f(x + offX + w, y + offY);
-                glVertex2f(x + offX + w, y + offY + h);
-                glVertex2f(x + offX, y + offY + h);
+                glVertex2f(xlerp + offX, ylerp + offY);
+                glVertex2f(wlerp + offX, ylerp + offY);
+                glVertex2f(wlerp + offX, hlerp + offY);
+                glVertex2f(xlerp + offX, hlerp + offY);
             }
             glEnd();
         }

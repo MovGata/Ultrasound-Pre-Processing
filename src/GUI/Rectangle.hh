@@ -56,7 +56,7 @@ namespace gui
         void allocTexture(unsigned int w, unsigned int h);
         void addText(TTF_Font *f, const std::string &str);
         void setBG(SDL_Colour c);
-        void render() const;
+        void render(float x, float y, float w, float h) const;
 
         void volumeStartEvent(const SDL_Event &e);
         void dragStartEvent(const SDL_Event &e);

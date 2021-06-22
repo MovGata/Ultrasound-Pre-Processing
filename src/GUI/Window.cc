@@ -122,7 +122,7 @@ namespace gui
 
         for (const auto &rec : rectangles)
         {
-            rec.render();
+            rec.render(-1.0f, -1.0f, 1.0f, 1.0f);
         }
 
         SDL_GL_SwapWindow(window.get());
