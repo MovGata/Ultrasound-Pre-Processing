@@ -38,10 +38,10 @@ namespace gui
 
         bool minimised = false;
 
-        std::vector<Rectangle> rectangles;
 
     public:
         GLuint glPixelBuffer;
+        std::vector<Rectangle> rectangles;
 
         Window(unsigned int w = 640, unsigned int h = 480, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
         Window(unsigned int x, unsigned int y, unsigned int w, unsigned int h, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);

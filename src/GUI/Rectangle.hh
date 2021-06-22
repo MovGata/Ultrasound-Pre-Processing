@@ -29,7 +29,7 @@ namespace gui
 
         TTF_Font *font;
 
-        std::vector<Rectangle> subRectangles;        
+        std::vector<Rectangle> subRectangles;
 
         void dragEvent(const SDL_Event &e);
         void dragStopEvent(const SDL_Event &e);
@@ -46,6 +46,7 @@ namespace gui
         GLsizei ww = 0, hh = 0;
         float x, y, w, h, offX = 0, offY = 0;
 
+        Rectangle() = default;
         Rectangle(float x, float y, float w, float h);
         ~Rectangle();
 

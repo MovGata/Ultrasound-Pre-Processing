@@ -117,10 +117,10 @@ namespace gui
             glEnd();
         }
 
-        // for (const auto &r : subRectangles)
-        // {
-        //     r.render();
-        // }
+        for (const auto &r : subRectangles)
+        {
+            r.render(x, y, w, h);
+        }
     }
 
     void Rectangle::addText(TTF_Font *f, const std::string &str)
@@ -227,7 +227,6 @@ namespace gui
         r.pixelBuffer = rp->pixelBuffer;
         r.ww = rp->ww;
         r.hh = rp->hh;
-        std::cout << subRectangles.size() << std::endl;
     }
 
     // VOLUME EVENTS

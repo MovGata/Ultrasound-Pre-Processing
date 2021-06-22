@@ -40,23 +40,30 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     TTF_Font *font = init.loadFont("./res/fonts/cour.ttf");
     // subWindow.setActive();
     // auto pair = subWindow.getSize();
-    gui::Rectangle &dropRec = mainWindow.addRectangle(-1.0f, -1.0f, 1.0f, 0.5f);
-    dropRec.setBG({0x4F, 0x7F, 0x4F, 0x4F});
-    dropRec.addCallback(gui::Rectangle::dropEventData, std::bind(gui::Rectangle::dropEvent, &dropRec, std::placeholders::_1));
+    {
+        gui::Rectangle &dropRec = mainWindow.addRectangle(-1.0f, -1.0f, 1.0f, 0.5f);
+        dropRec.setBG({0x4F, 0x7F, 0x4F, 0x4F});
+    }
 
     mainWindow.addRectangle(0.0f, 0.0f, 0.25f, 0.5f);
-    gui::Rectangle &testText = mainWindow.addRectangle(0.5f, 0.8f, 0.25f, 0.1f);
-    testText.setBG({0xFF, 0xFF, 0xFF, 0xFF});
-    testText.allocTexture(256, 38);
-    testText.addText(font, "Add text test.");
-    
 
-    gui::Rectangle &rec = mainWindow.addRectangle(-1.0f, 0.0f, 0.5f, 0.5f);
-    rec.allocTexture(1024, 1024);
-    rec.setBG({0xFF, 0xFF, 0xFF, 0xFF});
-    Volume &volume = rec.allocVolume(depth, length, width, data);
+    {
+        gui::Rectangle &testText = mainWindow.addRectangle(0.5f, 0.8f, 0.25f, 0.1f);
+        testText.setBG({0xFF, 0xFF, 0xFF, 0xFF});
+        testText.allocTexture(256, 38);
+        testText.addText(font, "Add text test.");
+    }
 
-    device.createDisplay(1024, 1024, rec.pixelBuffer);
+    {
+        gui::Rectangle &rec = mainWindow.addRectangle(-1.0f, 0.0f, 0.5f, 0.5f);
+        rec.allocTexture(1024, 1024);
+        rec.setBG({0xFF, 0xFF, 0xFF, 0xFF});
+    }
+
+    mainWindow.rectangles.at(0).addCallback(gui::Rectangle::dropEventData, std::bind(gui::Rectangle::dropEvent, &mainWindow.rectangles.at(0), std::placeholders::_1));
+    Volume &volume = mainWindow.rectangles.at(3).allocVolume(depth, length, width, data);
+
+    device.createDisplay(1024, 1024, mainWindow.rectangles.at(3).pixelBuffer);
     volume.sendToCl(device.context);
     device.prepareVolume(depth, length, width, volume.buffer);
 
@@ -106,7 +113,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
         // subWindow.setActive();
         // subWindow.update();
         volume.update();
-        device.render(volume.invMVTransposed.data(), rec.pixelBuffer);
+        device.render(volume.invMVTransposed.data(), mainWindow.rectangles.at(3).pixelBuffer);
         // subWindow.render();
         mainWindow.update();
         mainWindow.render();
