@@ -50,7 +50,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     {
         gui::Rectangle &testText = mainWindow.addRectangle(0.5f, 0.8f, 0.25f, 0.1f);
         testText.setBG({0xFF, 0xFF, 0xFF, 0xFF});
-        testText.allocTexture(256, 38);
+        // testText.allocTexture(256, 38);
         testText.addText(font, "Add text test.");
     }
 

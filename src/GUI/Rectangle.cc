@@ -119,16 +119,12 @@ namespace gui
 
         for (const auto &r : subRectangles)
         {
-            r.render(x, y, w, h);
+            r.render(xlerp, ylerp, (wlerp + 1.0f) / 2.0f, (hlerp + 1.0f) / 2.0f);
         }
     }
 
     void Rectangle::addText(TTF_Font *f, const std::string &str)
     {
-        if (texture == 0)
-        {
-            return;
-        }
         font = f;
         SDL_Surface *s = TTF_RenderText_Blended(font, str.c_str(), SDL_Colour{0xFF, 0xFF, 0xFF, 0xFF});
         if (!s)
@@ -137,6 +133,10 @@ namespace gui
         }
         SDL_Surface *textT = SDL_ConvertSurfaceFormat(s, SDL_PixelFormatEnum::SDL_PIXELFORMAT_RGBA8888, 0);
         SDL_FreeSurface(s);
+        if (texture == 0)
+        {
+            allocTexture(textT->w, textT->h);
+        }
         for (int i = 0; i < textT->w * textT->h; ++i)
         {
             uint8_t t = static_cast<uint8_t *>(textT->pixels)[i * 4];

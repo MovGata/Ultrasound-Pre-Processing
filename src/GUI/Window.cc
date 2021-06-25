@@ -206,9 +206,21 @@ namespace gui
     void Window::scrollEvent(const SDL_Event &e)
     {
         auto size = getSize();
+        auto diff = std::abs(size.first - size.second);
 
         int mx = 0, my = 0;
         SDL_GetMouseState(&mx, &my);
+
+        if (size.first > size.second)
+        {
+            mx -= diff / 2;
+            size.first -= diff;
+        }
+        else
+        {
+            my -= diff / 2;
+            size.second -= diff;
+        }
 
         for (auto &r : rectangles)
         {
@@ -227,12 +239,27 @@ namespace gui
     {
         auto size = getSize();
 
+        auto diff = std::abs(size.first - size.second);
+
+        int mx = e.button.x, my = e.button.y;
+
+        if (size.first > size.second)
+        {
+            mx -= diff / 2;
+            size.first -= diff;
+        }
+        else
+        {
+            my -= diff / 2;
+            size.second -= diff;
+        }
+
         for (auto &r : rectangles)
         {
-            if (static_cast<int>((r.x + 1.0f) / 2.0f * static_cast<float>(size.first)) < e.button.x &&
-                static_cast<int>((r.x + r.w + 1.0f) / 2.0f * static_cast<float>(size.first)) > e.button.x &&
-                size.second - static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.second)) > e.button.y &&
-                size.second - static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.second)) < e.button.y)
+            if (static_cast<int>((r.x + 1.0f) / 2.0f * static_cast<float>(size.first)) < mx &&
+                static_cast<int>((r.x + r.w + 1.0f) / 2.0f * static_cast<float>(size.first)) > mx &&
+                size.second - static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.second)) > my &&
+                size.second - static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.second)) < my)
             {
                 r.process(e);
                 break;
@@ -243,6 +270,20 @@ namespace gui
     void Window::dragStopEvent(const SDL_Event &e)
     {
         auto size = getSize();
+        auto diff = std::abs(size.first - size.second);
+
+        int mx = e.button.x, my = e.button.y;
+
+        if (size.first > size.second)
+        {
+            mx -= diff / 2;
+            size.first -= diff;
+        }
+        else
+        {
+            my -= diff / 2;
+            size.second -= diff;
+        }
 
         if (dragObject.has_value())
         {
@@ -251,10 +292,10 @@ namespace gui
                 for (auto &r : rectangles)
                 {
 
-                    if (static_cast<int>((r.x + 1.0f) / 2.0f * static_cast<float>(size.first)) < e.button.x &&
-                        static_cast<int>((r.x + r.w + 1.0f) / 2.0f * static_cast<float>(size.first)) > e.button.x &&
-                        size.second - static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.second)) > e.button.y &&
-                        size.second - static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.second)) < e.button.y)
+                    if (static_cast<int>((r.x + 1.0f) / 2.0f * static_cast<float>(size.first)) < mx &&
+                        static_cast<int>((r.x + r.w + 1.0f) / 2.0f * static_cast<float>(size.first)) > mx &&
+                        size.second - static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.second)) > my &&
+                        size.second - static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.second)) < my)
                     {
                         r.process(dragObject.value());
                         break;
@@ -265,7 +306,6 @@ namespace gui
             static_cast<Rectangle *>(dragObject->user.data1)->process(e);
             dragObject.reset();
         }
-
     }
 
     void Window::dragEvent(const SDL_Event &e)
