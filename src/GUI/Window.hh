@@ -10,6 +10,8 @@
 #include <CL/cl2.hpp>
 #include <GL/glew.h>
 #include <GL/gl.h>
+#include <glm/glm.hpp>
+
 
 #include "Rectangle.hh"
 
@@ -28,6 +30,9 @@ namespace gui
         std::unordered_map<Uint32, std::function<void(const SDL_Event &)>> events;
 
         std::optional<SDL_Event> dragObject;
+        GLuint vShader = 0, fShader = 0, program = 0;
+
+        void initGL();
 
         void windowEvent(const SDL_Event &);
         void scrollEvent(const SDL_Event &e);
@@ -38,9 +43,12 @@ namespace gui
 
         bool minimised = false;
 
+        GLint projectionUni;
+        GLint modelviewUni;
+
+        glm::mat4 projection;
 
     public:
-        GLuint glPixelBuffer;
         std::vector<Rectangle> rectangles;
 
         Window(unsigned int w = 640, unsigned int h = 480, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);

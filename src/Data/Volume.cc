@@ -5,6 +5,9 @@
 #include <gl/glew.h>
 #include <gl/gl.h>
 #include <gl/glext.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 Volume::Volume(unsigned int d, unsigned int l, unsigned int w, const std::vector<uint8_t> &data) : depth(d), length(l), width(w)
 {
@@ -42,23 +45,23 @@ void Volume::update()
     float maxEdge = static_cast<float>(std::max(std::max(depth, length), std::max(depth, width)));
 
     // rotation = rotation + 1.0f;
-    GLfloat modelView[16];
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadIdentity();
-    glScalef(maxEdge / static_cast<float>(depth) * 0.1f, maxEdge / static_cast<float>(length) * 0.1f, maxEdge / static_cast<float>(width) * 0.1f);
-    glScalef(scale, scale, scale);
-    glRotatef(90.0f, 0.0f, 0.0f, -1.0f);
-    glRotatef(static_cast<float>(rotation.first), 0.0f, -1.0f, 0.0f);
-    glRotatef(static_cast<float>(rotation.second),
-              static_cast<float>(-std::sin(std::numbers::pi * static_cast<double>(rotation.first) / 180.0)),
-              0.0f,
-              static_cast<float>(std::cos(std::numbers::pi * static_cast<double>(rotation.first) / 180.0)));
+    glm::mat4 id(1.0f);
+
+    id = glm::translate(id, {0.0f, 0.0f, 25.0f});
+    id = glm::rotate(id, glm::radians(static_cast<float>(rotation.second)), {static_cast<float>(-std::sin(std::numbers::pi * static_cast<double>(rotation.first) / 180.0)), 0.0f, static_cast<float>(std::cos(std::numbers::pi * static_cast<double>(rotation.first) / 180.0))});
+    id = glm::rotate(id, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, -1.0f));
+    id = glm::scale(id, {scale, scale, scale});
+    id = glm::scale(id, {maxEdge / static_cast<float>(depth) * 0.1f, maxEdge / static_cast<float>(length) * 0.1f, maxEdge / static_cast<float>(width) * 0.1f});
+
+    // glScalef(maxEdge / static_cast<float>(depth) * 0.1f, maxEdge / static_cast<float>(length) * 0.1f, maxEdge / static_cast<float>(width) * 0.1f);
+    // glScalef(scale, scale, scale);
+    // glRotatef(90.0f, 0.0f, 0.0f, -1.0f);
+    // glRotatef(static_cast<float>(rotation.first), 0.0f, -1.0f, 0.0f);
+
     // glRotatef(static_cast<float>(rotation.second), -1.0f, 0.0f, 0.0f);
     // glRotatef(static_cast<float>(rotation.first), 0.0f, -static_cast<float>(std::sin(std::numbers::pi * static_cast<float>(rotation.second) / 180.0)), static_cast<float>(std::cos(static_cast<float>(std::numbers::pi) * static_cast<float>(rotation.second) / 180.0)));
-    glTranslatef(0.0f, 0.0f, 25.0f);
-    glGetFloatv(GL_MODELVIEW_MATRIX, modelView);
-    glPopMatrix();
+    // glTranslatef(0.0f, 0.0f, 25.0f);
+    GLfloat *modelView = glm::value_ptr(id);
 
     invMVTransposed[0] = modelView[0];
     invMVTransposed[1] = modelView[4];
@@ -76,7 +79,7 @@ void Volume::update()
 
 void Volume::zoomEvent(const SDL_Event &e)
 {
-    scale += static_cast<float>(e.wheel.y);
+    scale += 0.1f * static_cast<float>(e.wheel.y);
 }
 
 void Volume::rotateEvent(const SDL_Event &e)

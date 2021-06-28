@@ -10,7 +10,7 @@
 namespace gui
 {
 
-    Instance::Instance(/* args */)
+    Instance::Instance(/* args */) : font(nullptr, TTF_CloseFont)
     {
 
         if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -26,8 +26,9 @@ namespace gui
         }
 
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     }
 
     Instance::~Instance()
@@ -37,8 +38,8 @@ namespace gui
 
     TTF_Font *Instance::loadFont(const std::string &url)
     {
-        fonts.emplace_back(TTF_OpenFont(url.c_str(), 16), TTF_CloseFont);
-        return fonts.back().get();
+        font.reset(TTF_OpenFont(url.c_str(), 16));
+        return font.get();
 
     }
 

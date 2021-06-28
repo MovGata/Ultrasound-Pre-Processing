@@ -1,10 +1,13 @@
 #include <cmath>
+#include <fstream>
 #include <iostream>
 #include <numbers>
 
 #include <gl/glew.h>
 #include <gl/gl.h>
 #include <gl/glext.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "Window.hh"
 
@@ -12,7 +15,7 @@ namespace gui
 {
 
     Window::Window(unsigned int w, unsigned int h, Uint32 flags) : Window(SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w, h, flags) {}
-    Window::Window(unsigned int x, unsigned int y, unsigned int w, unsigned int h, Uint32 flags) : window(nullptr, SDL_DestroyWindow)
+    Window::Window(unsigned int x, unsigned int y, unsigned int w, unsigned int h, Uint32 flags) : window(nullptr, SDL_DestroyWindow), projection(1.0f)
     {
 
         window.reset(SDL_CreateWindow("Ultrasound Pre-Processor", x, y, w, h, flags));
@@ -46,7 +49,7 @@ namespace gui
             return;
         }
 
-        if (!GLEW_VERSION_2_1)
+        if (!GLEW_VERSION_3_3)
         {
             std::cout << "OpenGL 2.1 minimum" << std::endl;
             window.release();
@@ -59,6 +62,12 @@ namespace gui
             std::cout << "VSync unavailable: " << SDL_GetError() << std::endl;
         }
 
+        initGL();
+
+        glDisable(GL_CULL_FACE);
+
+
+        // glEnable(GL_TEXTURE_2D);
         glDisable(GL_DEPTH_TEST);
         clean();
         redraw();
@@ -66,6 +75,99 @@ namespace gui
 
     Window::~Window()
     {
+        glUseProgram(0);
+        glDetachShader(program, fShader);
+        glDetachShader(program, vShader);
+        glDeleteShader(fShader);
+        glDeleteShader(vShader);
+        glDeleteProgram(program);
+        SDL_GL_DeleteContext(glContext);
+    }
+
+    void Window::initGL()
+    {
+        const char *vSource[] =
+            {
+#include "../../shaders/vertex.glsl"
+            };
+        const char *fSource[] =
+            {
+#include "../../shaders/fragment.glsl"
+            };
+
+        program = glCreateProgram();
+        vShader = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vShader, 1, vSource, NULL);
+        glCompileShader(vShader);
+        GLint res = GL_FALSE;
+        glGetShaderiv(vShader, GL_COMPILE_STATUS, &res);
+        if (res != GL_TRUE)
+        {
+            std::cerr << "Unable to compile vertex shader " << vShader << ".\n";
+            int len = 0;
+            glGetShaderiv(vShader, GL_INFO_LOG_LENGTH, &len);
+            std::string log;
+            log.resize(len);
+            glGetShaderInfoLog(vShader, len, &len, log.data());
+            if (len)
+            {
+                std::fstream fout;
+                fout.open(std::string("./build/logs/") + "vertex.glsl" + std::string(".txt"), std::fstream::out);
+                fout << log;
+            }
+            return;
+        }
+
+        glAttachShader(program, vShader);
+
+        fShader = glCreateShader(GL_FRAGMENT_SHADER);
+
+        glShaderSource(fShader, 1, fSource, NULL);
+        glCompileShader(fShader);
+        res = GL_FALSE;
+        glGetShaderiv(fShader, GL_COMPILE_STATUS, &res);
+        if (res != GL_TRUE)
+        {
+            std::cerr << "Unable to compile fragment shader " << fShader << ".\n";
+            int len = 0;
+            glGetShaderiv(fShader, GL_INFO_LOG_LENGTH, &len);
+            std::string log;
+            log.resize(len);
+            glGetShaderInfoLog(fShader, len, &len, log.data());
+            if (len)
+            {
+                std::fstream fout;
+                fout.open(std::string("./build/logs/") + "fragment.glsl" + std::string(".txt"), std::fstream::out);
+                fout << log;
+            }
+            return;
+        }
+
+        glAttachShader(program, fShader);
+
+        glBindAttribLocation(program, 0, "position");
+        glBindAttribLocation(program, 1, "texcoord");
+
+        glLinkProgram(program);
+        res = GL_FALSE;
+        glGetProgramiv(program, GL_LINK_STATUS, &res);
+        if (res != GL_TRUE)
+        {
+            std::cerr << "Unable to compile program " << fShader << ".\n";
+            int len = 0;
+            glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len);
+            std::string log;
+            log.resize(len);
+            glGetProgramInfoLog(program, len, &len, log.data());
+            if (len)
+            {
+                std::cerr << log << '\n';
+            }
+            return;
+        }
+
+        glUseProgram(program);
+
     }
 
     auto Window::getPosition() -> std::pair<int, int>
@@ -122,7 +224,7 @@ namespace gui
 
         for (const auto &rec : rectangles)
         {
-            rec.render(-1.0f, -1.0f, 1.0f, 1.0f);
+            rec.render();
         }
 
         SDL_GL_SwapWindow(window.get());
@@ -135,34 +237,33 @@ namespace gui
             return;
         }
 
-        if (glPixelBuffer)
-        {
-            glDeleteBuffers(1, &glPixelBuffer);
-        }
-
         auto pair = getSize();
 
         glViewport(0, 0, pair.first, pair.second);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
 
         if (pair.first > pair.second)
         {
-            double aspect = static_cast<double>(pair.first) / static_cast<double>(pair.second);
-            glOrtho(-1.0 * aspect, 1.0 * aspect, -1.0, 1.0, 0.0, 1.0);
+            float aspect = static_cast<float>(pair.first) / static_cast<float>(pair.second);
+            projection = glm::ortho(-1.0f * aspect, 1.0f * aspect, -1.0f, 1.0f, 0.0f, 1.0f);
         }
         else
         {
-            double aspect = static_cast<double>(pair.second) / static_cast<double>(pair.first);
-            glOrtho(-1.0, 1.0, -1.0 * aspect, 1.0 * aspect, 0.0, 1.0);
+            float aspect = static_cast<float>(pair.second) / static_cast<float>(pair.first);
+            projection = glm::ortho(-1.0f, 1.0f, -1.0f * aspect, 1.0f * aspect, 0.0f, 1.0f);
         }
+        
+        projectionUni = glGetUniformLocation(program, "projection");
+        modelviewUni = glGetUniformLocation(program, "modelview");
+        glUniformMatrix4fv(projectionUni, 1, GL_FALSE, reinterpret_cast<const GLfloat *>(&projection[0]));
+
     }
 
     Rectangle &Window::addRectangle(float x, float y, float w, float h)
     {
-        return rectangles.emplace_back(std::clamp(x, -1.0f, 1.0f), std::clamp(y, -1.0f, 1.0f), std::clamp(w, 0.0f, 1.0f), std::clamp(h, 0.0f, 1.0f));
+        auto &r = rectangles.emplace_back(std::clamp(x, -1.0f, 1.0f), std::clamp(y, -1.0f, 1.0f), std::clamp(w, 0.0f, 1.0f), std::clamp(h, 0.0f, 1.0f));
+        r.update(glm::mat4(1.0f));
+        r.modelviewUni = modelviewUni;
+        return r;
     }
 
     void Window::setActive()

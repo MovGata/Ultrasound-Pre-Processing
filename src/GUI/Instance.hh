@@ -2,7 +2,6 @@
 #define GUI_SDL2_INSTANCE_HH
 
 #include <memory>
-#include <vector>
 
 #include <SDL2/SDL_ttf.h>
 
@@ -12,7 +11,7 @@ namespace gui
     class Instance
     {
     private:
-        std::vector<std::unique_ptr<TTF_Font, decltype(&TTF_CloseFont)>> fonts;
+        std::unique_ptr<TTF_Font, decltype(&TTF_CloseFont)> font;
     public:
         Instance(/* args */);
         ~Instance();
