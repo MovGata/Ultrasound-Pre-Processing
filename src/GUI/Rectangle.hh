@@ -24,15 +24,11 @@ namespace gui
     private:
         std::optional<Volume> volume;
         std::string text;
-        std::unordered_map<Uint32, std::function<void(const SDL_Event &)>> events;
-        // std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> text;
+        
         SDL_Colour colour = {0x4F, 0x4F, 0x4F, 0xFF};
 
         TTF_Font *font = nullptr;
 
-        std::vector<Rectangle> subRectangles;
-
-        glm::mat4 modelview;
 
         float angle;
 
@@ -42,9 +38,13 @@ namespace gui
         void volumeBypass(const SDL_Event &e);
         void volumeStopEvent(const SDL_Event &e);
 
+    protected:
+        glm::mat4 modelview;
+
     public:
         static const Uint32 dropEventData;
         static const Uint32 volumeEventData;
+        std::vector<Rectangle> subRectangles;
 
         GLint modelviewUni = -1;
 
@@ -69,6 +69,10 @@ namespace gui
         void render() const;
 
         void update(const glm::mat4 &mv);
+
+        bool contains(float x, float y);
+
+        Rectangle &addRectangle(float x, float y, float w, float h);
 
         void volumeStartEvent(const SDL_Event &e);
         void dragStartEvent(const SDL_Event &e);

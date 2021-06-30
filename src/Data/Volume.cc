@@ -47,20 +47,12 @@ void Volume::update()
     // rotation = rotation + 1.0f;
     glm::mat4 id(1.0f);
 
-    id = glm::translate(id, {0.0f, 0.0f, 25.0f});
-    id = glm::rotate(id, glm::radians(static_cast<float>(rotation.second)), {static_cast<float>(-std::sin(std::numbers::pi * static_cast<double>(rotation.first) / 180.0)), 0.0f, static_cast<float>(std::cos(std::numbers::pi * static_cast<double>(rotation.first) / 180.0))});
-    id = glm::rotate(id, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, -1.0f));
-    id = glm::scale(id, {scale, scale, scale});
     id = glm::scale(id, {maxEdge / static_cast<float>(depth) * 0.1f, maxEdge / static_cast<float>(length) * 0.1f, maxEdge / static_cast<float>(width) * 0.1f});
+    id = glm::scale(id, {scale, scale, scale});
+    id = glm::rotate(id, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, -1.0f));
+    id = glm::rotate(id, glm::radians(static_cast<float>(rotation.second)), {static_cast<float>(-std::sin(std::numbers::pi * static_cast<double>(rotation.first) / 180.0)), 0.0f, static_cast<float>(std::cos(std::numbers::pi * static_cast<double>(rotation.first) / 180.0))});
+    id = glm::translate(id, {0.0f, 0.0f, 25.0f});
 
-    // glScalef(maxEdge / static_cast<float>(depth) * 0.1f, maxEdge / static_cast<float>(length) * 0.1f, maxEdge / static_cast<float>(width) * 0.1f);
-    // glScalef(scale, scale, scale);
-    // glRotatef(90.0f, 0.0f, 0.0f, -1.0f);
-    // glRotatef(static_cast<float>(rotation.first), 0.0f, -1.0f, 0.0f);
-
-    // glRotatef(static_cast<float>(rotation.second), -1.0f, 0.0f, 0.0f);
-    // glRotatef(static_cast<float>(rotation.first), 0.0f, -static_cast<float>(std::sin(std::numbers::pi * static_cast<float>(rotation.second) / 180.0)), static_cast<float>(std::cos(static_cast<float>(std::numbers::pi) * static_cast<float>(rotation.second) / 180.0)));
-    // glTranslatef(0.0f, 0.0f, 25.0f);
     GLfloat *modelView = glm::value_ptr(id);
 
     invMVTransposed[0] = modelView[0];

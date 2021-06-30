@@ -64,10 +64,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
         rec.allocTexture(1024, 1024);
     }
 
-    // mainWindow.rectangles.at(0).addCallback(gui::Rectangle::dropEventData, std::bind(gui::Rectangle::dropEvent, &mainWindow.rectangles.at(0), std::placeholders::_1));
-    Volume &volume = mainWindow.rectangles.at(3).allocVolume(depth, length, width, data);
+    mainWindow.subRectangles.at(0).addCallback(gui::Rectangle::dropEventData, std::bind(gui::Rectangle::dropEvent, &mainWindow.subRectangles.at(0), std::placeholders::_1));
+    Volume &volume = mainWindow.subRectangles.at(3).allocVolume(depth, length, width, data);
 
-    device.createDisplay(1024, 1024, mainWindow.rectangles.at(3).pixelBuffer);
+    device.createDisplay(1024, 1024, mainWindow.subRectangles.at(3).pixelBuffer);
     volume.sendToCl(device.context);
     device.prepareVolume(depth, length, width, volume.buffer);
 
@@ -107,7 +107,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
         mainWindow.setActive();
 
         volume.update();
-        device.render(volume.invMVTransposed.data(), mainWindow.rectangles.at(3).pixelBuffer);
+        device.render(volume.invMVTransposed.data(), mainWindow.subRectangles.at(3).pixelBuffer);
         mainWindow.update();
         mainWindow.render();
 

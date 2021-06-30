@@ -20,14 +20,12 @@
 namespace gui
 {
 
-    class Window : public events::EventManager
+    class Window : public Rectangle
     {
     private:
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window;
         // std::unique_ptr<SDL_Surface> surface;
         SDL_GLContext glContext;
-        std::vector<Window> subWindows;
-        std::unordered_map<Uint32, std::function<void(const SDL_Event &)>> events;
 
         std::optional<SDL_Event> dragObject;
         GLuint vShader = 0, fShader = 0, program = 0;
@@ -44,12 +42,10 @@ namespace gui
         bool minimised = false;
 
         GLint projectionUni;
-        GLint modelviewUni;
 
         glm::mat4 projection;
 
     public:
-        std::vector<Rectangle> rectangles;
 
         Window(unsigned int w = 640, unsigned int h = 480, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
         Window(unsigned int x, unsigned int y, unsigned int w, unsigned int h, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
@@ -58,9 +54,6 @@ namespace gui
         Window(const Window &) = delete;
         Window(Window &&) = default;
 
-        Rectangle &addRectangle(float x, float y, float w, float h);
-
-        auto subWindow(float x, float y, float w, float h) -> Window &;
         void clean();
         void update();
         void render();

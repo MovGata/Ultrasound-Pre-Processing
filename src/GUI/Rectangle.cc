@@ -104,6 +104,12 @@ namespace gui
 
     Volume &Rectangle::allocVolume(unsigned int depth, unsigned int length, int unsigned width, const std::vector<uint8_t> &data)
     {
+
+        if (!texture)
+        {
+            allocTexture(512, 512);
+        }
+
         addCallback(SDL_MOUSEWHEEL, std::bind(volumeBypass, this, std::placeholders::_1));
         addCallback(SDL_MOUSEBUTTONDOWN, std::bind(volumeStartEvent, this, std::placeholders::_1));
         return volume.emplace(depth, length, width, data);
@@ -118,7 +124,6 @@ namespace gui
         clr.reserve(wp * hp);
         std::fill_n(std::back_inserter(clr), wp * hp, static_cast<uint32_t>(colour.r) << 24 | static_cast<uint32_t>(colour.g) << 16 | static_cast<uint32_t>(colour.b) << 8 | static_cast<uint32_t>(colour.a));
         // Texture to render PBO into a quad
-        
 
         glGenTextures(1, &texture);
         glEnable(GL_BLEND);
@@ -135,7 +140,6 @@ namespace gui
         if ((err = glGetError()))
             std::cout << "Texture err: " << err << std::endl;
 
-
         // PBO for OpenCL to render into
         glGenBuffers(1, &pixelBuffer);
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pixelBuffer);
@@ -150,27 +154,24 @@ namespace gui
     {
         glm::mat4 id(1.0f);
         modelview = id;
-        // modelview *= ;
-        // id = glm::rotate(id, angle);
-        modelview = glm::translate(modelview, {x + offX, y + offY, 0.0});
-        
+
         auto ptr = glm::value_ptr(modelview);
         for (int i = 0; i < 16; ++i )
         {
             std::cout << ptr[i] << ' ';
         }
         std::cout << std::endl;
-        
-        modelview = glm::scale(modelview, {w, h, 1.0});
-        
+
+        // id = glm::rotate(id, angle);
+        modelview = glm::translate(modelview, {x + offX, y + offY, 0.0});
         ptr = glm::value_ptr(modelview);
         for (int i = 0; i < 16; ++i )
         {
             std::cout << ptr[i] << ' ';
         }
         std::cout << std::endl;
+        modelview = glm::scale(modelview, {w, h, 1.0});
         modelview *= mv;
-
 
         for (auto &r : subRectangles)
         {
@@ -180,30 +181,29 @@ namespace gui
 
     void Rectangle::render() const
     {
-        // float xlerp = std::lerp(xp, xp + 2.0f * wp, (x + 1.0f) / 2.0f);
-        // float ylerp = std::lerp(yp, yp + 2.0f * hp, (y + 1.0f) / 2.0f);
-        // float wlerp = xlerp + std::lerp(xp, xp + 2.0f * wp, w / 2.0f) + 1.0f;
-        // float hlerp = ylerp + std::lerp(yp, yp + 2.0f * hp, h / 2.0f) + 1.0f;
 
-        // glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pixelBuffer);
         glUniformMatrix4fv(modelviewUni, 1, GL_FALSE, glm::value_ptr(modelview));
-        glBindTexture(GL_TEXTURE_2D, texture);
-        // glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, ww, hh, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, 0);
 
+        glBindTexture(GL_TEXTURE_2D, texture);
+
+        if (volume.has_value())
+        {
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pixelBuffer);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, ww, hh, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, 0);
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+        }
 
         glBindVertexArray(vArray);
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
         glBindVertexArray(0);
 
         glBindTexture(GL_TEXTURE_2D, 0);
-        // glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
         GLint err = 0;
         if ((err = glGetError()))
         {
             std::cerr << "Rectangle render error: " << err << '\n';
         }
-
 
         for (const auto &r : subRectangles)
         {
@@ -238,7 +238,7 @@ namespace gui
             // for (auto i = 0; i < textT->h; ++i)
             // {
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, textT->w, textT->h, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, textT->pixels);
-                // glBufferSubData(GL_PIXEL_UNPACK_BUFFER, i * ww * 4, textT->pitch, static_cast<uint32_t *>(textT->pixels) + i * textT->w);
+            // glBufferSubData(GL_PIXEL_UNPACK_BUFFER, i * ww * 4, textT->pitch, static_cast<uint32_t *>(textT->pixels) + i * textT->w);
             // }
         }
         else
@@ -247,7 +247,6 @@ namespace gui
             // glBufferSubData(GL_PIXEL_UNPACK_BUFFER, 0, (ww * hh) * sizeof(GLubyte) * 4, textT->pixels);
         }
         // glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-
 
         // glBindTexture(GL_TEXTURE_2D, texture);
         glBindTexture(GL_TEXTURE_2D, 0);
@@ -260,6 +259,34 @@ namespace gui
     void Rectangle::setBG(SDL_Colour c)
     {
         colour = c;
+    }
+
+    Rectangle &Rectangle::addRectangle(float xx, float yy, float www, float hhh)
+    {
+        auto &r = subRectangles.emplace_back(xx, yy, www, hhh);
+        r.update(modelview);
+        r.modelviewUni = modelviewUni;
+        return r;
+    }
+
+    bool Rectangle::contains([[maybe_unused]] float rx, [[maybe_unused]] float ry)
+    {
+        glm::mat4 reverse(1.0f);
+        reverse = glm::scale(reverse, {1.0f / w, 1.0f / h, 1.0});
+        reverse = glm::translate(reverse, {-x - offX, -y - offY, 0.0});
+
+        glm::vec4 mvec(rx, ry, 0.0f, 1.0f);
+
+        mvec = reverse * mvec;
+
+        if(mvec.x < -1.0f || mvec.x > 1.0f || mvec.y < -1.0f || mvec.y > 1.0f)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
     }
 
     // DRAG AND DROP EVENTS

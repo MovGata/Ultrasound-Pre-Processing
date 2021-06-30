@@ -14,11 +14,11 @@
 namespace gui
 {
 
-    Window::Window(unsigned int w, unsigned int h, Uint32 flags) : Window(SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w, h, flags) {}
-    Window::Window(unsigned int x, unsigned int y, unsigned int w, unsigned int h, Uint32 flags) : window(nullptr, SDL_DestroyWindow), projection(1.0f)
+    Window::Window(unsigned int www, unsigned int hhh, Uint32 flags) : Window(SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, www, hhh, flags) {}
+    Window::Window(unsigned int xx, unsigned int yy, unsigned int www, unsigned int hhh, Uint32 flags) : window(nullptr, SDL_DestroyWindow), projection(1.0f)
     {
 
-        window.reset(SDL_CreateWindow("Ultrasound Pre-Processor", x, y, w, h, flags));
+        window.reset(SDL_CreateWindow("Ultrasound Pre-Processor", xx, yy, www, hhh, flags));
         if (window == nullptr)
         {
             std::cout << "SDL2 window initialisation failed, error: " << SDL_GetError() << std::endl;
@@ -66,11 +66,14 @@ namespace gui
 
         glDisable(GL_CULL_FACE);
 
-
         // glEnable(GL_TEXTURE_2D);
         glDisable(GL_DEPTH_TEST);
+        
+        modelview = glm::mat4(1.0f);
+        
         clean();
         redraw();
+
     }
 
     Window::~Window()
@@ -168,6 +171,8 @@ namespace gui
 
         glUseProgram(program);
 
+        projectionUni = glGetUniformLocation(program, "projection");
+        modelviewUni = glGetUniformLocation(program, "modelview");
     }
 
     auto Window::getPosition() -> std::pair<int, int>
@@ -189,21 +194,6 @@ namespace gui
         return SDL_GetWindowID(window.get());
     }
 
-    auto Window::subWindow(float x, float y, float w, float h) -> Window &
-    {
-        x = std::clamp(x, -1.0f, 1.0f);
-        y = std::clamp(y, -1.0f, 1.0f);
-        w = std::clamp(w, 0.0f, 1.0f);
-        h = std::clamp(h, 0.0f, 1.0f);
-
-        auto pair = getPosition();
-        auto size = getSize();
-        return subWindows.emplace_back(
-            static_cast<float>(pair.first + size.first) * (x + 1.0f) / 2.0f, static_cast<float>(pair.second + size.second) * (y + 1.0f) / 2.0f,
-            static_cast<float>(size.first) * w, static_cast<float>(size.second) * h,
-            SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS);
-    }
-
     void Window::clean()
     {
         glClear(GL_COLOR_BUFFER_BIT);
@@ -222,7 +212,7 @@ namespace gui
 
         clean();
 
-        for (const auto &rec : rectangles)
+        for (const auto &rec : subRectangles)
         {
             rec.render();
         }
@@ -244,26 +234,23 @@ namespace gui
         if (pair.first > pair.second)
         {
             float aspect = static_cast<float>(pair.first) / static_cast<float>(pair.second);
-            projection = glm::ortho(-1.0f * aspect, 1.0f * aspect, -1.0f, 1.0f, 0.0f, 1.0f);
+            x = -1.0f;
+            y = -1.0f / aspect;
+            w = 2.0f;
+            h = 2.0f * std::abs(y);
         }
         else
         {
             float aspect = static_cast<float>(pair.second) / static_cast<float>(pair.first);
-            projection = glm::ortho(-1.0f, 1.0f, -1.0f * aspect, 1.0f * aspect, 0.0f, 1.0f);
+            x = -1.0f / aspect;
+            y = -1.0f;
+            w = 2.0f * std::abs(x);
+            h = 2.0f;
         }
         
-        projectionUni = glGetUniformLocation(program, "projection");
-        modelviewUni = glGetUniformLocation(program, "modelview");
+        projection = glm::ortho(x, x + w, y, y + h, 0.0f, 1.0f);
+
         glUniformMatrix4fv(projectionUni, 1, GL_FALSE, reinterpret_cast<const GLfloat *>(&projection[0]));
-
-    }
-
-    Rectangle &Window::addRectangle(float x, float y, float w, float h)
-    {
-        auto &r = rectangles.emplace_back(std::clamp(x, -1.0f, 1.0f), std::clamp(y, -1.0f, 1.0f), std::clamp(w, 0.0f, 1.0f), std::clamp(h, 0.0f, 1.0f));
-        r.update(glm::mat4(1.0f));
-        r.modelviewUni = modelviewUni;
-        return r;
     }
 
     void Window::setActive()
@@ -285,19 +272,8 @@ namespace gui
             break;
         case SDL_WINDOWEVENT_SIZE_CHANGED:
             redraw();
-            for (auto &w : subWindows)
-            {
-                w.redraw();
-            }
             break;
         case SDL_WINDOWEVENT_MOVED:
-            for (auto &w : subWindows)
-            {
-                // window.getPosition();
-                SDL_SetWindowPosition(w.window.get(), e.window.data1, e.window.data2);
-                SDL_RaiseWindow(w.window.get());
-            }
-            SDL_SetWindowInputFocus(window.get());
             break;
         default:
             break;
@@ -307,28 +283,16 @@ namespace gui
     void Window::scrollEvent(const SDL_Event &e)
     {
         auto size = getSize();
-        auto diff = std::abs(size.first - size.second);
 
         int mx = 0, my = 0;
         SDL_GetMouseState(&mx, &my);
 
-        if (size.first > size.second)
-        {
-            mx -= diff / 2;
-            size.first -= diff;
-        }
-        else
-        {
-            my -= diff / 2;
-            size.second -= diff;
-        }
+        float rx = std::lerp(x, x+w, static_cast<float>(mx)/static_cast<float>(size.first));
+        float ry = std::lerp(y, y+h, 1.0f - static_cast<float>(my)/static_cast<float>(size.second));
 
-        for (auto &r : rectangles)
+        for (auto &r : subRectangles)
         {
-            if (static_cast<int>((r.x + 1.0f) / 2.0f * static_cast<float>(size.first)) < mx &&
-                static_cast<int>((r.x + r.w + 1.0f) / 2.0f * static_cast<float>(size.first)) > mx &&
-                size.second - static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.second)) > my &&
-                size.second - static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.second)) < my)
+            if (r.contains(rx, ry))
             {
                 r.process(e);
                 break;
@@ -340,27 +304,14 @@ namespace gui
     {
         auto size = getSize();
 
-        auto diff = std::abs(size.first - size.second);
-
         int mx = e.button.x, my = e.button.y;
 
-        if (size.first > size.second)
-        {
-            mx -= diff / 2;
-            size.first -= diff;
-        }
-        else
-        {
-            my -= diff / 2;
-            size.second -= diff;
-        }
+        float rx = std::lerp(x, x+w, static_cast<float>(mx)/static_cast<float>(size.first));
+        float ry = std::lerp(y, y+h, 1.0f - static_cast<float>(my)/static_cast<float>(size.second));
 
-        for (auto &r : rectangles)
+        for (auto &r : subRectangles)
         {
-            if (static_cast<int>((r.x + 1.0f) / 2.0f * static_cast<float>(size.first)) < mx &&
-                static_cast<int>((r.x + r.w + 1.0f) / 2.0f * static_cast<float>(size.first)) > mx &&
-                size.second - static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.second)) > my &&
-                size.second - static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.second)) < my)
+            if (r.contains(rx, ry))
             {
                 r.process(e);
                 break;
@@ -371,32 +322,20 @@ namespace gui
     void Window::dragStopEvent(const SDL_Event &e)
     {
         auto size = getSize();
-        auto diff = std::abs(size.first - size.second);
 
         int mx = e.button.x, my = e.button.y;
 
-        if (size.first > size.second)
-        {
-            mx -= diff / 2;
-            size.first -= diff;
-        }
-        else
-        {
-            my -= diff / 2;
-            size.second -= diff;
-        }
+        float rx = std::lerp(x, x+w, static_cast<float>(mx)/static_cast<float>(size.first));
+        float ry = std::lerp(y, y+h, 1.0f - static_cast<float>(my)/static_cast<float>(size.second));
 
         if (dragObject.has_value())
         {
             if (dragObject->user.type == gui::Rectangle::dropEventData)
             {
-                for (auto &r : rectangles)
+                for (auto &r : subRectangles)
                 {
 
-                    if (static_cast<int>((r.x + 1.0f) / 2.0f * static_cast<float>(size.first)) < mx &&
-                        static_cast<int>((r.x + r.w + 1.0f) / 2.0f * static_cast<float>(size.first)) > mx &&
-                        size.second - static_cast<int>((r.y + 1.0f) / 2.0f * static_cast<float>(size.second)) > my &&
-                        size.second - static_cast<int>((r.y + r.h + 1.0f) / 2.0f * static_cast<float>(size.second)) < my)
+                    if (r.contains(rx, ry))
                     {
                         r.process(dragObject.value());
                         break;
@@ -411,7 +350,7 @@ namespace gui
 
     void Window::dragEvent(const SDL_Event &e)
     {
-        for (auto &r : rectangles)
+        for (auto &r : subRectangles)
         {
             r.process(e);
         }
