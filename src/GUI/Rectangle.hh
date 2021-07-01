@@ -80,6 +80,9 @@ namespace gui
 
         void scaleEvent(const SDL_Event &e);
         void scrollEvent(const SDL_Event &e);
+
+        void doubleDown(const SDL_Event &e);
+        void doubleUp(const SDL_Event &e);
     };
 
 } // namespace gui

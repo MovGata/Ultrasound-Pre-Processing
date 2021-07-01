@@ -302,15 +302,27 @@ namespace gui
 
     void Rectangle::dragStopEvent([[maybe_unused]] const SDL_Event &e)
     {
+        if (e.button.button != SDL_BUTTON_LEFT)
+        {
+            return;
+        }
+
         offX = 0;
         offY = 0;
 
         clearCallback(SDL_MOUSEBUTTONUP);
         clearCallback(SDL_MOUSEMOTION);
+        // addCallback(SDL_MOUSEBUTTONDOWN, std::bind(dragStartEvent, this, std::placeholders::_1));
     }
 
     void Rectangle::dragStartEvent([[maybe_unused]] const SDL_Event &e)
     {
+
+        if (e.button.button != SDL_BUTTON_LEFT)
+        {
+            return;
+        }
+
         SDL_Event ev;
         ev.type = dropEventData;
         ev.user.windowID = e.button.windowID;
@@ -320,27 +332,19 @@ namespace gui
 
         addCallback(SDL_MOUSEBUTTONUP, std::bind(Rectangle::dragStopEvent, this, std::placeholders::_1));
         addCallback(SDL_MOUSEMOTION, std::bind(Rectangle::dragEvent, this, std::placeholders::_1));
+        // clearCallback(SDL_MOUSEBUTTONDOWN); // Ignore Right clicks.
     }
 
     void Rectangle::dropEvent([[maybe_unused]] const SDL_Event &e)
     {
-        // std::cout << "Dropped: " << x << y << ' ' << *static_cast<float *>(e.user.data1) << ' ' << *static_cast<float *>(e.user.data2) << std::endl;
+        
         Rectangle *rp = static_cast<Rectangle *>(e.user.data1);
-        // int mx, my;
-        // SDL_GetMouseState(&mx, &my);
-        // int width, height, wd, hd;
-        // SDL_GetWindowSize(SDL_GetWindowFromID(e.motion.windowID), &width, &height);
-        // wd = hd = std::min(width, height);
-        // my = height - my;
-        // Rectangle &r = subRectangles.emplace_back(2.0f * static_cast<float>(mx - ((width - wd) / 2)) / static_cast<float>(wd) - 1.0f,
-        //                                           2.0f * static_cast<float>(my - ((height - hd) / 2)) / static_cast<float>(hd) - 1.0f, rp->w / 2.0f, rp->h / 2.0f);
+        
         Rectangle &r = subRectangles.emplace_back(rp->x + rp->offX, rp->y + rp->offY, rp->w, rp->h);
         r.update(modelview);
         r.modelviewUni = modelviewUni;
         r.setBG({0xFF, 0xFF, 0xFF, 0xFF});
-        // r.allocTexture(rp->ww, rp->hh);
-        // r.text = rp->text;
-        // r.addText(rp->font, r.text);
+
         r.texture = rp->texture;
         r.pixelBuffer = rp->pixelBuffer;
         r.ww = rp->ww;
@@ -356,20 +360,39 @@ namespace gui
 
     void Rectangle::volumeStartEvent([[maybe_unused]] const SDL_Event &e)
     {
+
         SDL_Event ev;
+        
+        if (e.button.button == SDL_BUTTON_LEFT)
+        {
+            ev.user.code = 0;
+            volume->addCallback(SDL_MOUSEMOTION, std::bind(Volume::rotateEvent, &volume.value(), std::placeholders::_1));
+        }
+        else if (e.button.button == SDL_BUTTON_RIGHT)
+        {
+            ev.user.code = 1;
+            volume->addCallback(SDL_MOUSEMOTION, std::bind(Volume::dragEvent, &volume.value(), std::placeholders::_1));
+        }
+        else
+        {
+            return;
+        }
+        
         ev.type = volumeEventData;
-        ev.user.code = 0;
         ev.user.data1 = this;
         SDL_PushEvent(&ev);
-
+        
         addCallback(SDL_MOUSEBUTTONUP, std::bind(Rectangle::volumeStopEvent, this, std::placeholders::_1));
         addCallback(SDL_MOUSEMOTION, std::bind(Rectangle::volumeBypass, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEBUTTONDOWN, std::bind(Rectangle::doubleDown, this, std::placeholders::_1));
     }
 
     void Rectangle::volumeStopEvent([[maybe_unused]] const SDL_Event &e)
     {
         clearCallback(SDL_MOUSEBUTTONUP);
         clearCallback(SDL_MOUSEMOTION);
+        addCallback(SDL_MOUSEBUTTONDOWN, std::bind(Rectangle::volumeStartEvent, this, std::placeholders::_1));
+        volume->clearCallback(SDL_MOUSEMOTION);
     }
 
     void Rectangle::scrollEvent([[maybe_unused]] const SDL_Event &e)
@@ -378,6 +401,60 @@ namespace gui
 
     void Rectangle::scaleEvent([[maybe_unused]] const SDL_Event &e)
     {
+    }
+
+    void Rectangle::doubleDown([[maybe_unused]] const SDL_Event &e)
+    {
+        SDL_Event ev;
+
+        if (e.button.button == SDL_BUTTON_LEFT)
+        {
+            ev.user.code = 0;
+            volume->addCallback(SDL_MOUSEMOTION, std::bind(Volume::rotateEvent, &volume.value(), std::placeholders::_1));
+        }
+        else if (e.button.button == SDL_BUTTON_RIGHT)
+        {
+            ev.user.code = 1;
+            volume->addCallback(SDL_MOUSEMOTION, std::bind(Volume::dragEvent, &volume.value(), std::placeholders::_1));
+        }
+        else
+        {
+            return;
+        }
+        
+        ev.type = volumeEventData;
+        ev.user.data1 = this;
+        
+        SDL_PushEvent(&ev);
+
+        addCallback(SDL_MOUSEBUTTONUP, std::bind(Rectangle::doubleUp, this, std::placeholders::_1));
+    }
+
+    void Rectangle::doubleUp([[maybe_unused]] const SDL_Event &e)
+    {
+        SDL_Event ev;
+        
+        if (e.button.button == SDL_BUTTON_LEFT)
+        {
+            ev.user.code = 1;
+            volume->addCallback(SDL_MOUSEMOTION, std::bind(Volume::dragEvent, &volume.value(), std::placeholders::_1));
+        }
+        else if (e.button.button == SDL_BUTTON_RIGHT)
+        {
+            ev.user.code = 0;
+            volume->addCallback(SDL_MOUSEMOTION, std::bind(Volume::rotateEvent, &volume.value(), std::placeholders::_1));
+        }
+        else
+        {
+            return;
+        }
+        
+        ev.type = volumeEventData;
+        ev.user.data1 = this;
+        
+        SDL_PushEvent(&ev);
+
+        addCallback(SDL_MOUSEBUTTONUP, std::bind(Rectangle::volumeStopEvent, this, std::placeholders::_1));
     }
 
 } // namespace gui

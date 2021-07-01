@@ -73,6 +73,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     auto timeA = SDL_GetTicks();
     bool quit = false;
+
+
+    
     while (!quit)
     {
         SDL_Event e;

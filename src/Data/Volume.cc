@@ -51,7 +51,7 @@ void Volume::update()
     id = glm::scale(id, {scale, scale, scale});
     id = glm::rotate(id, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, -1.0f));
     id = glm::rotate(id, glm::radians(static_cast<float>(rotation.second)), {static_cast<float>(-std::sin(std::numbers::pi * static_cast<double>(rotation.first) / 180.0)), 0.0f, static_cast<float>(std::cos(std::numbers::pi * static_cast<double>(rotation.first) / 180.0))});
-    id = glm::translate(id, {0.0f, 0.0f, 25.0f});
+    id = glm::translate(id, {offset.first, offset.second, 25.0f});
 
     GLfloat *modelView = glm::value_ptr(id);
 
@@ -78,4 +78,10 @@ void Volume::rotateEvent(const SDL_Event &e)
 {
     rotation.first = (rotation.first + e.motion.xrel) % 360;
     rotation.second = (rotation.second - e.motion.yrel) % 360;
+}
+
+void Volume::dragEvent(const SDL_Event &e)
+{
+    offset.first = std::clamp(offset.first - static_cast<float>(e.motion.xrel)/10.0f, -5.0f, 5.0f);
+    offset.second = std::clamp(offset.second - static_cast<float>(e.motion.yrel)/10.0f, -5.0f, 5.0f);
 }
