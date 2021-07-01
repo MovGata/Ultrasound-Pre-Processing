@@ -53,7 +53,7 @@ namespace gui
         GLuint texture = 0;
         GLuint pixelBuffer = 0;
         GLsizei ww = 0, hh = 0;
-        float x, y, w, h, offX = 0, offY = 0;
+        float w, h, x, y, offX = 0, offY = 0;
 
         Rectangle() = default;
         Rectangle(float x, float y, float w, float h);

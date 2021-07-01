@@ -20,10 +20,10 @@ namespace gui
     const Uint32 Rectangle::volumeEventData = Rectangle::dropEventData + 1;
 
     Rectangle::Rectangle(float xp, float yp, float wp, float hp) : //text(nullptr, SDL_FreeSurface),
-                                                                   x(std::clamp(xp, -1.0f + 1.0f * w, 1.0f - 1.0f * w)),
-                                                                   y(std::clamp(yp, -1.0f + 1.0f * h, 1.0f - 1.0f * h)),
                                                                    w(std::clamp(wp, 0.0f, 1.0f)),
-                                                                   h(std::clamp(hp, 0.0f, 1.0f))
+                                                                   h(std::clamp(hp, 0.0f, 1.0f)),
+                                                                   x(std::clamp(xp, -1.0f + 1.0f * w, 1.0f - 1.0f * w)),
+                                                                   y(std::clamp(yp, -1.0f + 1.0f * h, 1.0f - 1.0f * h))
     {
         std::array<GLfloat, 8> vb = {-1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f};
         glGenBuffers(1, &vBuffer);
@@ -154,22 +154,8 @@ namespace gui
     {
         glm::mat4 id(1.0f);
         modelview = id;
-
-        auto ptr = glm::value_ptr(modelview);
-        for (int i = 0; i < 16; ++i )
-        {
-            std::cout << ptr[i] << ' ';
-        }
-        std::cout << std::endl;
-
         // id = glm::rotate(id, angle);
         modelview = glm::translate(modelview, {x + offX, y + offY, 0.0});
-        ptr = glm::value_ptr(modelview);
-        for (int i = 0; i < 16; ++i )
-        {
-            std::cout << ptr[i] << ' ';
-        }
-        std::cout << std::endl;
         modelview = glm::scale(modelview, {w, h, 1.0});
         modelview *= mv;
 
