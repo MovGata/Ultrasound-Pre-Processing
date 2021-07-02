@@ -20,7 +20,7 @@
 namespace gui
 {
 
-    class Window : public Rectangle
+    class Window : public Rectangle, public events::EventManager<Window>
     {
     private:
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window;
@@ -33,7 +33,6 @@ namespace gui
         void initGL();
 
         void windowEvent(const SDL_Event &);
-        void scrollEvent(const SDL_Event &e);
         void dragStartEvent(const SDL_Event &e);
         void dragStopEvent(const SDL_Event &e);
         void dragEvent(const SDL_Event &e);
@@ -46,6 +45,8 @@ namespace gui
         glm::mat4 projection;
 
     public:
+
+        using events::EventManager<Window>::addCallback;
 
         Window(unsigned int w = 640, unsigned int h = 480, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
         Window(unsigned int x, unsigned int y, unsigned int w, unsigned int h, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
@@ -62,6 +63,8 @@ namespace gui
         auto getPosition() -> std::pair<int, int>;
         auto getSize() -> std::pair<int, int>;
         auto getID() -> Uint32;
+
+        void process(const SDL_Event &e);
     };
 
 } // namespace gui

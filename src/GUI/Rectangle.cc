@@ -3,7 +3,9 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include <GL/glext.h>
-#include <glm/gtx/matrix_transform_2d.hpp>
+
+#include <glm/ext.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include <algorithm>
@@ -52,11 +54,10 @@ namespace gui
         modelview = glm::mat4(1.0f);
     }
 
-    Rectangle::Rectangle(Rectangle &&r)
+    Rectangle::Rectangle(Rectangle &&r) : EventManager<Rectangle>(r)
     {
         volume.swap(r.volume);
         text.swap(r.text);
-        events.swap(r.events);
         colour = r.colour;
         font = r.font;
         subRectangles.swap(r.subRectangles);
@@ -102,6 +103,11 @@ namespace gui
         glDeleteBuffers(1, &pixelBuffer);
     }
 
+    void Rectangle::process(const SDL_Event &e)
+    {
+        EventManager::process(this, e);
+    }
+
     Volume &Rectangle::allocVolume(unsigned int depth, unsigned int length, int unsigned width, const std::vector<uint8_t> &data)
     {
 
@@ -110,9 +116,10 @@ namespace gui
             allocTexture(512, 512);
         }
 
-        addCallback(SDL_MOUSEWHEEL, std::bind(volumeBypass, this, std::placeholders::_1));
-        addCallback(SDL_MOUSEBUTTONDOWN, std::bind(volumeStartEvent, this, std::placeholders::_1));
-        return volume.emplace(depth, length, width, data);
+        addCallback(SDL_MOUSEWHEEL, volumeBypass);
+        addCallback(SDL_MOUSEBUTTONDOWN, volumeStartEvent);
+        volume = std::make_unique<Volume>(depth, length, width, data);
+        return *volume;
     }
 
     void Rectangle::allocTexture(unsigned int wp, unsigned int hp)
@@ -172,7 +179,7 @@ namespace gui
 
         glBindTexture(GL_TEXTURE_2D, texture);
 
-        if (volume.has_value())
+        if (volume)
         {
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pixelBuffer);
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, ww, hh, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, 0);
@@ -239,7 +246,7 @@ namespace gui
         text = str;
 
         SDL_FreeSurface(textT);
-        addCallback(SDL_MOUSEBUTTONDOWN, std::bind(dragStartEvent, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEBUTTONDOWN, dragStartEvent);
     }
 
     void Rectangle::setBG(SDL_Colour c)
@@ -257,13 +264,10 @@ namespace gui
 
     bool Rectangle::contains([[maybe_unused]] float rx, [[maybe_unused]] float ry)
     {
-        glm::mat4 reverse(1.0f);
-        reverse = glm::scale(reverse, {1.0f / w, 1.0f / h, 1.0});
-        reverse = glm::translate(reverse, {-x - offX, -y - offY, 0.0});
-
+        glm::mat4 inv = glm::inverse(modelview);
         glm::vec4 mvec(rx, ry, 0.0f, 1.0f);
 
-        mvec = reverse * mvec;
+        mvec = inv * mvec;
 
         if(mvec.x < -1.0f || mvec.x > 1.0f || mvec.y < -1.0f || mvec.y > 1.0f)
         {
@@ -316,8 +320,8 @@ namespace gui
         ev.user.data1 = this;
         SDL_PushEvent(&ev);
 
-        addCallback(SDL_MOUSEBUTTONUP, std::bind(Rectangle::dragStopEvent, this, std::placeholders::_1));
-        addCallback(SDL_MOUSEMOTION, std::bind(Rectangle::dragEvent, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEBUTTONUP, Rectangle::dragStopEvent);
+        addCallback(SDL_MOUSEMOTION, Rectangle::dragEvent);
         // clearCallback(SDL_MOUSEBUTTONDOWN); // Ignore Right clicks.
     }
 
@@ -352,12 +356,12 @@ namespace gui
         if (e.button.button == SDL_BUTTON_LEFT)
         {
             ev.user.code = 0;
-            volume->addCallback(SDL_MOUSEMOTION, std::bind(Volume::rotateEvent, &volume.value(), std::placeholders::_1));
+            volume->addCallback(SDL_MOUSEMOTION, Volume::rotateEvent);
         }
         else if (e.button.button == SDL_BUTTON_RIGHT)
         {
             ev.user.code = 1;
-            volume->addCallback(SDL_MOUSEMOTION, std::bind(Volume::dragEvent, &volume.value(), std::placeholders::_1));
+            volume->addCallback(SDL_MOUSEMOTION, Volume::dragEvent);
         }
         else
         {
@@ -368,21 +372,38 @@ namespace gui
         ev.user.data1 = this;
         SDL_PushEvent(&ev);
         
-        addCallback(SDL_MOUSEBUTTONUP, std::bind(Rectangle::volumeStopEvent, this, std::placeholders::_1));
-        addCallback(SDL_MOUSEMOTION, std::bind(Rectangle::volumeBypass, this, std::placeholders::_1));
-        addCallback(SDL_MOUSEBUTTONDOWN, std::bind(Rectangle::doubleDown, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEBUTTONUP, Rectangle::volumeStopEvent);
+        addCallback(SDL_MOUSEMOTION, Rectangle::volumeBypass);
+        addCallback(SDL_MOUSEBUTTONDOWN, Rectangle::doubleDown);
     }
 
     void Rectangle::volumeStopEvent([[maybe_unused]] const SDL_Event &e)
     {
         clearCallback(SDL_MOUSEBUTTONUP);
         clearCallback(SDL_MOUSEMOTION);
-        addCallback(SDL_MOUSEBUTTONDOWN, std::bind(Rectangle::volumeStartEvent, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEBUTTONDOWN, Rectangle::volumeStartEvent);
         volume->clearCallback(SDL_MOUSEMOTION);
     }
 
-    void Rectangle::scrollEvent([[maybe_unused]] const SDL_Event &e)
+    void Rectangle::scrollEvent(const SDL_Event &e)
     {
+        std::pair<int, int> size;
+        SDL_GetWindowSize(SDL_GetWindowFromID(e.wheel.windowID), &size.first, &size.second);
+
+        int mx = 0, my = 0;
+        SDL_GetMouseState(&mx, &my);
+
+        float rx = std::lerp(x, x+w, static_cast<float>(mx)/static_cast<float>(size.first));
+        float ry = std::lerp(y, y+h, 1.0f - static_cast<float>(my)/static_cast<float>(size.second));
+
+        for (auto &r : subRectangles)
+        {
+            if (r.contains(rx, ry))
+            {
+                r.process(e);
+                break;
+            }
+        }
     }
 
     void Rectangle::scaleEvent([[maybe_unused]] const SDL_Event &e)
@@ -396,12 +417,12 @@ namespace gui
         if (e.button.button == SDL_BUTTON_LEFT)
         {
             ev.user.code = 0;
-            volume->addCallback(SDL_MOUSEMOTION, std::bind(Volume::rotateEvent, &volume.value(), std::placeholders::_1));
+            volume->addCallback(SDL_MOUSEMOTION, Volume::rotateEvent);
         }
         else if (e.button.button == SDL_BUTTON_RIGHT)
         {
             ev.user.code = 1;
-            volume->addCallback(SDL_MOUSEMOTION, std::bind(Volume::dragEvent, &volume.value(), std::placeholders::_1));
+            volume->addCallback(SDL_MOUSEMOTION, Volume::dragEvent);
         }
         else
         {
@@ -413,7 +434,7 @@ namespace gui
         
         SDL_PushEvent(&ev);
 
-        addCallback(SDL_MOUSEBUTTONUP, std::bind(Rectangle::doubleUp, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEBUTTONUP, Rectangle::doubleUp);
     }
 
     void Rectangle::doubleUp([[maybe_unused]] const SDL_Event &e)
@@ -423,12 +444,12 @@ namespace gui
         if (e.button.button == SDL_BUTTON_LEFT)
         {
             ev.user.code = 1;
-            volume->addCallback(SDL_MOUSEMOTION, std::bind(Volume::dragEvent, &volume.value(), std::placeholders::_1));
+            volume->addCallback(SDL_MOUSEMOTION, Volume::dragEvent);
         }
         else if (e.button.button == SDL_BUTTON_RIGHT)
         {
             ev.user.code = 0;
-            volume->addCallback(SDL_MOUSEMOTION, std::bind(Volume::rotateEvent, &volume.value(), std::placeholders::_1));
+            volume->addCallback(SDL_MOUSEMOTION, Volume::rotateEvent);
         }
         else
         {
@@ -440,7 +461,7 @@ namespace gui
         
         SDL_PushEvent(&ev);
 
-        addCallback(SDL_MOUSEBUTTONUP, std::bind(Rectangle::volumeStopEvent, this, std::placeholders::_1));
+        addCallback(SDL_MOUSEBUTTONUP, Rectangle::volumeStopEvent);
     }
 
 } // namespace gui

@@ -10,7 +10,7 @@
 
 #include "../events/EventManager.hh"
 
-class Volume : public events::EventManager
+class Volume : public events::EventManager<Volume>
 {
 private:
     std::vector<cl_uchar4> raw;
@@ -30,11 +30,15 @@ public:
     void rotateEvent(const SDL_Event &e);
     void dragEvent(const SDL_Event &e);
     
+    Volume(const Volume &)=default;
+    Volume(Volume &&)=default;
     Volume(unsigned int depth, unsigned int length, int unsigned width, const std::vector<uint8_t> &data);
     ~Volume();
 
     void sendToCl(const cl::Context &context);
     void update();
+
+    void process(const SDL_Event &e);
 };
 
 #endif

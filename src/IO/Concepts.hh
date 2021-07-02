@@ -8,9 +8,11 @@ namespace concepts
 {
 
     template <typename T>
-    concept PrintableDepthType = requires (T x, std::ostream &os) {x.print(os, 0);};
-    
-} // namespace concepts
+    concept PrintableDepthType = requires(T x, std::ostream &os)
+    {
+        x.print(os, 0);
+    };
 
+} // namespace concepts
 
 #endif

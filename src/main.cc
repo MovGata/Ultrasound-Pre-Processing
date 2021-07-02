@@ -52,10 +52,16 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     }
 
     {
-        gui::Rectangle &testText = mainWindow.addRectangle(0.75f, 0.9f, 0.25f, 0.1f);
+        gui::Rectangle &testText = mainWindow.addRectangle(0.75f, 0.5f, 0.25f, 0.5f);
         testText.setBG({0xFF, 0x00, 0x00, 0xFF});
         testText.allocTexture(256, 38);
-        testText.addText(font, "Add text test.");
+
+        testText.addCallback(SDL_MOUSEWHEEL, std::bind(gui::Rectangle::scrollEvent, std::placeholders::_1, std::placeholders::_2));
+
+        gui::Rectangle &testElement = testText.addRectangle(0.0f, 0.8f, 1.0f, 0.2f);
+        testElement.setBG({0x00, 0x00, 0xFF, 0xFF});
+        testElement.allocTexture(256, 38);
+        testElement.addText(font, "Add text test.");
     }
 
     {
@@ -64,7 +70,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
         rec.allocTexture(1024, 1024);
     }
 
-    mainWindow.subRectangles.at(0).addCallback(gui::Rectangle::dropEventData, std::bind(gui::Rectangle::dropEvent, &mainWindow.subRectangles.at(0), std::placeholders::_1));
+    mainWindow.subRectangles.at(0).addCallback(gui::Rectangle::dropEventData, gui::Rectangle::dropEvent);
     Volume &volume = mainWindow.subRectangles.at(3).allocVolume(depth, length, width, data);
 
     device.createDisplay(1024, 1024, mainWindow.subRectangles.at(3).pixelBuffer);
@@ -73,8 +79,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     auto timeA = SDL_GetTicks();
     bool quit = false;
-
-
 
     while (!quit)
     {

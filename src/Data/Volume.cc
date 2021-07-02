@@ -27,12 +27,17 @@ Volume::Volume(unsigned int d, unsigned int l, unsigned int w, const std::vector
         }
     }
 
-    addCallback(SDL_MOUSEWHEEL, std::bind(zoomEvent, this, std::placeholders::_1));
-    addCallback(SDL_MOUSEMOTION, std::bind(rotateEvent, this, std::placeholders::_1));
+    addCallback(SDL_MOUSEWHEEL, zoomEvent);
+    addCallback(SDL_MOUSEMOTION, rotateEvent);
 }
 
 Volume::~Volume()
 {
+}
+
+void Volume::process(const SDL_Event &e)
+{
+    EventManager<Volume>::process(this, e);
 }
 
 void Volume::sendToCl(const cl::Context &context)

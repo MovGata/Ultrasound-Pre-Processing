@@ -25,13 +25,13 @@ namespace gui
             return;
         }
 
-        addCallback(SDL_WINDOWEVENT, std::bind(Window::windowEvent, this, std::placeholders::_1));
-        addCallback(SDL_MOUSEWHEEL, std::bind(Window::scrollEvent, this, std::placeholders::_1));
-        addCallback(SDL_MOUSEBUTTONUP, std::bind(Window::dragStopEvent, this, std::placeholders::_1));
-        addCallback(SDL_MOUSEBUTTONDOWN, std::bind(Window::dragStartEvent, this, std::placeholders::_1));
-        addCallback(SDL_MOUSEMOTION, std::bind(Window::dragEvent, this, std::placeholders::_1));
-        addCallback(Rectangle::dropEventData, std::bind(Window::userDrop, this, std::placeholders::_1));
-        addCallback(Rectangle::volumeEventData, std::bind(Window::userDrop, this, std::placeholders::_1));
+        addCallback(SDL_WINDOWEVENT, Window::windowEvent);
+        addCallback(SDL_MOUSEWHEEL, Window::scrollEvent);
+        addCallback(SDL_MOUSEBUTTONUP, Window::dragStopEvent);
+        addCallback(SDL_MOUSEBUTTONDOWN, Window::dragStartEvent);
+        addCallback(SDL_MOUSEMOTION, Window::dragEvent);
+        addCallback(Rectangle::dropEventData, Window::userDrop);
+        addCallback(Rectangle::volumeEventData, Window::userDrop);
 
         glContext = SDL_GL_CreateContext(window.get());
         if (glContext == nullptr)
@@ -175,6 +175,11 @@ namespace gui
         modelviewUni = glGetUniformLocation(program, "modelview");
     }
 
+    void Window::process(const SDL_Event &e)
+    {
+        EventManager<Window>::process(this, e);
+    }
+
     auto Window::getPosition() -> std::pair<int, int>
     {
         std::pair<int, int> p;
@@ -280,29 +285,10 @@ namespace gui
         }
     }
 
-    void Window::scrollEvent(const SDL_Event &e)
-    {
-        auto size = getSize();
-
-        int mx = 0, my = 0;
-        SDL_GetMouseState(&mx, &my);
-
-        float rx = std::lerp(x, x+w, static_cast<float>(mx)/static_cast<float>(size.first));
-        float ry = std::lerp(y, y+h, 1.0f - static_cast<float>(my)/static_cast<float>(size.second));
-
-        for (auto &r : subRectangles)
-        {
-            if (r.contains(rx, ry))
-            {
-                r.process(e);
-                break;
-            }
-        }
-    }
-
     void Window::dragStartEvent(const SDL_Event &e)
     {
-        auto size = getSize();
+        std::pair<int, int> size;
+        SDL_GetWindowSize(SDL_GetWindowFromID(e.button.windowID), &size.first, &size.second);
 
         int mx = e.button.x, my = e.button.y;
 

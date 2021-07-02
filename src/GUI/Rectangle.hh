@@ -8,7 +8,6 @@
 #include <unordered_map>
 #include <functional>
 #include <memory>
-#include <optional>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -19,10 +18,10 @@
 namespace gui
 {
 
-    class Rectangle : public events::EventManager
+    class Rectangle : public events::EventManager<Rectangle>
     {
     private:
-        std::optional<Volume> volume;
+        std::unique_ptr<Volume> volume;
         std::string text;
         
         SDL_Colour colour = {0x4F, 0x4F, 0x4F, 0xFF};
@@ -83,6 +82,8 @@ namespace gui
 
         void doubleDown(const SDL_Event &e);
         void doubleUp(const SDL_Event &e);
+
+        void process(const SDL_Event &e);
     };
 
 } // namespace gui
