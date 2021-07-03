@@ -21,7 +21,10 @@ namespace gui
     class Rectangle : public events::EventManager<Rectangle>
     {
     private:
-        std::unique_ptr<Volume> volume;
+        static std::once_flag onceFlag;
+        static GLuint vBuffer, tBuffer, vArray;
+
+        std::shared_ptr<Volume> volume;
         std::string text;
         
         SDL_Colour colour = {0x4F, 0x4F, 0x4F, 0xFF};
@@ -47,19 +50,17 @@ namespace gui
 
         GLint modelviewUni = -1;
 
-        GLuint vBuffer = 0, tBuffer = 0;
-        GLuint vArray = 0;
-        GLuint texture = 0;
-        GLuint pixelBuffer = 0;
+        std::shared_ptr<GLuint> texture, pixelBuffer;
+
         GLsizei ww = 0, hh = 0;
         float w, h, x, y, offX = 0, offY = 0;
 
         Rectangle() = default;
         Rectangle(float x, float y, float w, float h);
-        ~Rectangle();
+        ~Rectangle() = default;
 
-        Rectangle(const Rectangle &) = delete;
-        Rectangle(Rectangle &&);
+        Rectangle(const Rectangle &) = default;
+        Rectangle(Rectangle &&) = default;
 
         Volume &allocVolume(unsigned int depth, unsigned int length, int unsigned width, const std::vector<uint8_t> &data);
         void allocTexture(unsigned int w, unsigned int h);

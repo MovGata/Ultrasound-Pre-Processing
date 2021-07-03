@@ -21,86 +21,54 @@ namespace gui
     const Uint32 Rectangle::dropEventData = SDL_RegisterEvents(2);
     const Uint32 Rectangle::volumeEventData = Rectangle::dropEventData + 1;
 
-    Rectangle::Rectangle(float xp, float yp, float wp, float hp) : //text(nullptr, SDL_FreeSurface),
-                                                                   w(std::clamp(wp, 0.0f, 1.0f)),
-                                                                   h(std::clamp(hp, 0.0f, 1.0f)),
-                                                                   x(std::clamp(xp, -1.0f + 1.0f * w, 1.0f - 1.0f * w)),
-                                                                   y(std::clamp(yp, -1.0f + 1.0f * h, 1.0f - 1.0f * h))
+    std::once_flag Rectangle::onceFlag;
+
+    GLuint Rectangle::vBuffer = 0;
+    GLuint Rectangle::tBuffer = 0;
+    GLuint Rectangle::vArray = 0;
+
+    Rectangle::Rectangle(float xp, float yp, float wp, float hp)
+        : modelview(1.0f),
+          texture(new GLuint, [](const GLuint *i)
+                  {
+                      glDeleteTextures(1, i);
+                      delete i;
+                  }),
+          pixelBuffer(new GLuint, [](const GLuint *i)
+                      {
+                          glDeleteBuffers(1, i);
+                          delete i;
+                      }),
+          w(std::clamp(wp, 0.0f, 1.0f)), h(std::clamp(hp, 0.0f, 1.0f)), x(std::clamp(xp, -1.0f + 1.0f * w, 1.0f - 1.0f * w)), y(std::clamp(yp, -1.0f + 1.0f * h, 1.0f - 1.0f * h))
     {
-        std::array<GLfloat, 8> vb = {-1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f};
-        glGenBuffers(1, &vBuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, vBuffer);
-        glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(GLfloat), vb.data(), GL_STATIC_DRAW);
+        std::call_once(
+            onceFlag,
+            [this]
+            {
+                std::array<GLfloat, 8> vb = {-1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f};
+                glGenBuffers(1, &vBuffer);
+                glBindBuffer(GL_ARRAY_BUFFER, vBuffer);
+                glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(GLfloat), vb.data(), GL_STATIC_DRAW);
 
-        std::array<GLfloat, 8> tb = {0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f};
-        glGenBuffers(1, &tBuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, tBuffer);
-        glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(GLfloat), tb.data(), GL_STATIC_DRAW);
+                std::array<GLfloat, 8> tb = {0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f};
+                glGenBuffers(1, &tBuffer);
+                glBindBuffer(GL_ARRAY_BUFFER, tBuffer);
+                glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(GLfloat), tb.data(), GL_STATIC_DRAW);
 
-        glGenVertexArrays(1, &vArray);
-        glBindVertexArray(vArray);
+                glGenVertexArrays(1, &vArray);
+                glBindVertexArray(vArray);
 
-        glEnableVertexAttribArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, vBuffer);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+                glEnableVertexAttribArray(0);
+                glBindBuffer(GL_ARRAY_BUFFER, vBuffer);
+                glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
 
-        glEnableVertexAttribArray(1);
-        glBindBuffer(GL_ARRAY_BUFFER, tBuffer);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+                glEnableVertexAttribArray(1);
+                glBindBuffer(GL_ARRAY_BUFFER, tBuffer);
+                glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
 
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
-
-        modelview = glm::mat4(1.0f);
-    }
-
-    Rectangle::Rectangle(Rectangle &&r) : EventManager<Rectangle>(r)
-    {
-        volume.swap(r.volume);
-        text.swap(r.text);
-        colour = r.colour;
-        font = r.font;
-        subRectangles.swap(r.subRectangles);
-        modelview = std::move(r.modelview);
-        angle = r.angle;
-        modelviewUni = r.modelviewUni;
-        vBuffer = r.vBuffer;
-        tBuffer = r.tBuffer;
-        vArray = r.vArray;
-        texture = r.texture;
-        pixelBuffer = r.pixelBuffer;
-        ww = r.ww;
-        hh = r.hh;
-        x = r.x;
-        y = r.y;
-        w = r.w;
-        h = r.h;
-        offX = r.offX;
-        offY = r.offY;
-
-        r.vArray = 0;
-        r.vBuffer = 0;
-        r.tBuffer = 0;
-        r.texture = 0;
-        r.pixelBuffer = 0;
-    }
-
-    Rectangle::~Rectangle()
-    {
-        if (vArray)
-        {
-            glBindVertexArray(vArray);
-            glDisableVertexAttribArray(0);
-            glDisableVertexAttribArray(1);
-            glBindVertexArray(0);
-            glDeleteVertexArrays(1, &vArray);
-        }
-
-        glDeleteBuffers(1, &vBuffer);
-        glDeleteBuffers(1, &tBuffer);
-
-        glDeleteTextures(1, &texture);
-        glDeleteBuffers(1, &pixelBuffer);
+                glBindBuffer(GL_ARRAY_BUFFER, 0);
+                glBindVertexArray(0);
+            });
     }
 
     void Rectangle::process(const SDL_Event &e)
@@ -132,10 +100,10 @@ namespace gui
         std::fill_n(std::back_inserter(clr), wp * hp, static_cast<uint32_t>(colour.r) << 24 | static_cast<uint32_t>(colour.g) << 16 | static_cast<uint32_t>(colour.b) << 8 | static_cast<uint32_t>(colour.a));
         // Texture to render PBO into a quad
 
-        glGenTextures(1, &texture);
+        glGenTextures(1, texture.get());
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glBindTexture(GL_TEXTURE_2D, texture);
+        glBindTexture(GL_TEXTURE_2D, *texture);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
@@ -148,8 +116,8 @@ namespace gui
             std::cout << "Texture err: " << err << std::endl;
 
         // PBO for OpenCL to render into
-        glGenBuffers(1, &pixelBuffer);
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pixelBuffer);
+        glGenBuffers(1, pixelBuffer.get());
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, *pixelBuffer);
         glBufferData(GL_PIXEL_UNPACK_BUFFER, wp * hp * sizeof(GLubyte) * 4, clr.data(), GL_STREAM_DRAW);
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
@@ -177,11 +145,11 @@ namespace gui
 
         glUniformMatrix4fv(modelviewUni, 1, GL_FALSE, glm::value_ptr(modelview));
 
-        glBindTexture(GL_TEXTURE_2D, texture);
+        glBindTexture(GL_TEXTURE_2D, *texture);
 
         if (volume)
         {
-            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pixelBuffer);
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, *pixelBuffer);
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, ww, hh, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, 0);
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
         }
@@ -220,7 +188,7 @@ namespace gui
         }
 
         // glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pixelBuffer);
-        glBindTexture(GL_TEXTURE_2D, texture);
+        glBindTexture(GL_TEXTURE_2D, *texture);
         if (textT->w * textT->h < ww * hh)
         {
 
@@ -269,7 +237,7 @@ namespace gui
 
         mvec = inv * mvec;
 
-        if(mvec.x < -1.0f || mvec.x > 1.0f || mvec.y < -1.0f || mvec.y > 1.0f)
+        if (mvec.x < -1.0f || mvec.x > 1.0f || mvec.y < -1.0f || mvec.y > 1.0f)
         {
             return false;
         }
@@ -288,6 +256,7 @@ namespace gui
         width = height = std::min(width, height);
         offX += static_cast<float>(2 * e.motion.xrel) / static_cast<float>(width);
         offY += static_cast<float>(2 * e.motion.yrel) / static_cast<float>(-height);
+        modelview = glm::translate(glm::mat4(1.0f), {offX, offY, 0.0f}) * glm::inverse(modelview);
     }
 
     void Rectangle::dragStopEvent([[maybe_unused]] const SDL_Event &e)
@@ -327,11 +296,14 @@ namespace gui
 
     void Rectangle::dropEvent([[maybe_unused]] const SDL_Event &e)
     {
-        
+
         Rectangle *rp = static_cast<Rectangle *>(e.user.data1);
-        
-        Rectangle &r = subRectangles.emplace_back(rp->x + rp->offX, rp->y + rp->offY, rp->w, rp->h);
-        r.update(modelview);
+
+        Rectangle &r = subRectangles.emplace_back(*rp);
+
+        glm::mat4 glob = glm::inverse(r.modelview);
+        r.update(glob);
+
         r.modelviewUni = modelviewUni;
         r.setBG({0xFF, 0xFF, 0xFF, 0xFF});
 
@@ -352,7 +324,7 @@ namespace gui
     {
 
         SDL_Event ev;
-        
+
         if (e.button.button == SDL_BUTTON_LEFT)
         {
             ev.user.code = 0;
@@ -367,11 +339,11 @@ namespace gui
         {
             return;
         }
-        
+
         ev.type = volumeEventData;
         ev.user.data1 = this;
         SDL_PushEvent(&ev);
-        
+
         addCallback(SDL_MOUSEBUTTONUP, Rectangle::volumeStopEvent);
         addCallback(SDL_MOUSEMOTION, Rectangle::volumeBypass);
         addCallback(SDL_MOUSEBUTTONDOWN, Rectangle::doubleDown);
@@ -393,8 +365,8 @@ namespace gui
         int mx = 0, my = 0;
         SDL_GetMouseState(&mx, &my);
 
-        float rx = std::lerp(x, x+w, static_cast<float>(mx)/static_cast<float>(size.first));
-        float ry = std::lerp(y, y+h, 1.0f - static_cast<float>(my)/static_cast<float>(size.second));
+        float rx = std::lerp(x, x + w, static_cast<float>(mx) / static_cast<float>(size.first));
+        float ry = std::lerp(y, y + h, 1.0f - static_cast<float>(my) / static_cast<float>(size.second));
 
         for (auto &r : subRectangles)
         {
@@ -428,10 +400,10 @@ namespace gui
         {
             return;
         }
-        
+
         ev.type = volumeEventData;
         ev.user.data1 = this;
-        
+
         SDL_PushEvent(&ev);
 
         addCallback(SDL_MOUSEBUTTONUP, Rectangle::doubleUp);
@@ -440,7 +412,7 @@ namespace gui
     void Rectangle::doubleUp([[maybe_unused]] const SDL_Event &e)
     {
         SDL_Event ev;
-        
+
         if (e.button.button == SDL_BUTTON_LEFT)
         {
             ev.user.code = 1;
@@ -455,10 +427,10 @@ namespace gui
         {
             return;
         }
-        
+
         ev.type = volumeEventData;
         ev.user.data1 = this;
-        
+
         SDL_PushEvent(&ev);
 
         addCallback(SDL_MOUSEBUTTONUP, Rectangle::volumeStopEvent);
