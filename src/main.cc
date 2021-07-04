@@ -38,7 +38,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     Device device;
 
-
     {
         gui::Rectangle &dropRec = mainWindow.addRectangle(0.0f, -0.5f, 1.0f, 0.5f);
         dropRec.setBG({0x4F, 0x7F, 0x4F, 0xFF});
@@ -80,11 +79,29 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     auto timeA = SDL_GetTicks();
     bool quit = false;
 
+    std::size_t eventCount = 1;
     while (!quit)
     {
+
+        if (eventCount) // If no events have occurred, no changes to rendering have occurred.
+        {
+            mainWindow.setActive();
+
+            volume.update();
+            if (volume.modified)
+            {
+                device.render(volume.invMVTransposed.data(), *mainWindow.subRectangles.at(3).pixelBuffer);
+            }
+
+            mainWindow.update();
+            mainWindow.render();
+        }
+
         SDL_Event e;
+        eventCount = 0;
         while (SDL_PollEvent(&e))
         {
+            ++eventCount;
             if (e.type == SDL_QUIT)
             {
                 quit = true;
@@ -110,13 +127,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
                 mainWindow.process(e);
             }
         }
-        
-        mainWindow.setActive();
-
-        volume.update();
-        device.render(volume.invMVTransposed.data(), *mainWindow.subRectangles.at(3).pixelBuffer);
-        mainWindow.update();
-        mainWindow.render();
 
         auto duration = long(timeA) + long(1000.0 / 30.0) - long(SDL_GetTicks());
         if (duration - 2 > 0)

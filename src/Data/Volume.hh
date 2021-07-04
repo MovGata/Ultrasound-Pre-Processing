@@ -23,6 +23,8 @@ private:
 
 
 public:
+    mutable bool modified = true; // Render at least once
+    
     cl::Buffer buffer;
     std::array<float, 12> invMVTransposed;
 

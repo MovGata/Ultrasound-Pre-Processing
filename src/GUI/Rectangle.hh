@@ -42,6 +42,9 @@ namespace gui
 
     protected:
         glm::mat4 modelview;
+        glm::mat4 tf;
+
+        mutable bool modified = false;
 
     public:
         static const Uint32 dropEventData;
@@ -53,7 +56,7 @@ namespace gui
         std::shared_ptr<GLuint> texture, pixelBuffer;
 
         GLsizei ww = 0, hh = 0;
-        float w, h, x, y, offX = 0, offY = 0;
+        float w, h, x, y;
 
         Rectangle() = default;
         Rectangle(float x, float y, float w, float h);

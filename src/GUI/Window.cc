@@ -336,9 +336,9 @@ namespace gui
 
     void Window::dragEvent(const SDL_Event &e)
     {
-        for (auto &r : subRectangles)
+        if (dragObject.has_value())
         {
-            r.process(e);
+            static_cast<gui::Rectangle*>(dragObject->user.data1)->process(e);
         }
     }
 

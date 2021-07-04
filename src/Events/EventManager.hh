@@ -23,7 +23,7 @@ namespace events
         EventManager() = default;
         ~EventManager() = default;
 
-        void process(T*, const SDL_Event &e);
+        bool process(T*, const SDL_Event &e);
 
     public:
         EventManager(const EventManager &e) = default;

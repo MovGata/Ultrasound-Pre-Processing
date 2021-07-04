@@ -47,6 +47,11 @@ void Volume::sendToCl(const cl::Context &context)
 
 void Volume::update()
 {
+    if (!modified)
+    {
+        return;
+    }
+
     float maxEdge = static_cast<float>(std::max(std::max(depth, length), std::max(depth, width)));
 
     // rotation = rotation + 1.0f;
@@ -77,16 +82,19 @@ void Volume::update()
 void Volume::zoomEvent(const SDL_Event &e)
 {
     scale += 0.1f * static_cast<float>(e.wheel.y);
+    modified = true;
 }
 
 void Volume::rotateEvent(const SDL_Event &e)
 {
     rotation.first = (rotation.first + e.motion.xrel) % 360;
     rotation.second = (rotation.second - e.motion.yrel) % 360;
+    modified = true;
 }
 
 void Volume::dragEvent(const SDL_Event &e)
 {
     offset.first = std::clamp(offset.first - static_cast<float>(e.motion.xrel)/10.0f, -5.0f, 5.0f);
     offset.second = std::clamp(offset.second - static_cast<float>(e.motion.yrel)/10.0f, -5.0f, 5.0f);
+    modified = true;
 }

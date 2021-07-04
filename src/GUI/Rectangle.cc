@@ -28,7 +28,7 @@ namespace gui
     GLuint Rectangle::vArray = 0;
 
     Rectangle::Rectangle(float xp, float yp, float wp, float hp)
-        : modelview(1.0f),
+        : modelview(1.0f), tf(1.0f),
           texture(new GLuint, [](const GLuint *i)
                   {
                       glDeleteTextures(1, i);
@@ -73,7 +73,27 @@ namespace gui
 
     void Rectangle::process(const SDL_Event &e)
     {
-        EventManager::process(this, e);
+        if (!EventManager::process(this, e))
+        {
+            std::pair<int, int> size;
+            SDL_GetWindowSize(SDL_GetWindowFromID(e.button.windowID), &size.first, &size.second);
+
+            int mx = e.button.x, my = e.button.y;
+
+            glm::vec4 mv = {0.0f, 0.0f, 0.0f, 1.0f};
+
+            mv.x = std::lerp(-1.0f, 1.0f, static_cast<float>(mx) / static_cast<float>(size.first));
+            mv.y = std::lerp(-1.0f, 1.0f, 1.0f - static_cast<float>(my) / static_cast<float>(size.second));
+
+            for (auto &r : subRectangles)
+            {
+                if (r.contains(mv.x, mv.y))
+                {
+                    r.process(e);
+                    break;
+                }
+            }
+        }
     }
 
     Volume &Rectangle::allocVolume(unsigned int depth, unsigned int length, int unsigned width, const std::vector<uint8_t> &data)
@@ -129,10 +149,10 @@ namespace gui
     {
         glm::mat4 id(1.0f);
         modelview = id;
+        modelview = glm::scale(id, {w, h, 1.0}) * modelview;
         // id = glm::rotate(id, angle);
-        modelview = glm::translate(modelview, {x + offX, y + offY, 0.0});
-        modelview = glm::scale(modelview, {w, h, 1.0});
-        modelview *= mv;
+        modelview = glm::translate(id, {x, y, 0.0}) * modelview;
+        modelview = mv * modelview;
 
         for (auto &r : subRectangles)
         {
@@ -142,16 +162,18 @@ namespace gui
 
     void Rectangle::render() const
     {
-
-        glUniformMatrix4fv(modelviewUni, 1, GL_FALSE, glm::value_ptr(modelview));
+        glm::mat4 rMat = tf * modelview;
+        glUniformMatrix4fv(modelviewUni, 1, GL_FALSE, glm::value_ptr(rMat));
 
         glBindTexture(GL_TEXTURE_2D, *texture);
 
-        if (volume)
+        if (volume && volume->modified)
         {
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER, *pixelBuffer);
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, ww, hh, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, 0);
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+            volume->modified = false;
         }
 
         glBindVertexArray(vArray);
@@ -230,7 +252,7 @@ namespace gui
         return r;
     }
 
-    bool Rectangle::contains([[maybe_unused]] float rx, [[maybe_unused]] float ry)
+    bool Rectangle::contains(float rx, float ry)
     {
         glm::mat4 inv = glm::inverse(modelview);
         glm::vec4 mvec(rx, ry, 0.0f, 1.0f);
@@ -254,9 +276,9 @@ namespace gui
         int width, height;
         SDL_GetWindowSize(SDL_GetWindowFromID(e.motion.windowID), &width, &height);
         width = height = std::min(width, height);
-        offX += static_cast<float>(2 * e.motion.xrel) / static_cast<float>(width);
-        offY += static_cast<float>(2 * e.motion.yrel) / static_cast<float>(-height);
-        modelview = glm::translate(glm::mat4(1.0f), {offX, offY, 0.0f}) * glm::inverse(modelview);
+        float X = static_cast<float>(2 * e.motion.xrel) / static_cast<float>(width);
+        float Y = static_cast<float>(2 * e.motion.yrel) / static_cast<float>(-height);
+        tf = glm::translate(glm::mat4(1.0f), {X, Y, 0.0f}) * tf;
     }
 
     void Rectangle::dragStopEvent([[maybe_unused]] const SDL_Event &e)
@@ -266,17 +288,14 @@ namespace gui
             return;
         }
 
-        offX = 0;
-        offY = 0;
-
         clearCallback(SDL_MOUSEBUTTONUP);
         clearCallback(SDL_MOUSEMOTION);
         // addCallback(SDL_MOUSEBUTTONDOWN, std::bind(dragStartEvent, this, std::placeholders::_1));
+        tf = glm::mat4(1.0f);
     }
 
     void Rectangle::dragStartEvent([[maybe_unused]] const SDL_Event &e)
     {
-
         if (e.button.button != SDL_BUTTON_LEFT)
         {
             return;
@@ -301,16 +320,20 @@ namespace gui
 
         Rectangle &r = subRectangles.emplace_back(*rp);
 
-        glm::mat4 glob = glm::inverse(r.modelview);
-        r.update(glob);
+        glm::mat4 glob = r.tf * r.modelview;
+        glm::vec4 translation = glm::inverse(modelview) * glob * glm::vec4(r.x, r.y, 0.0f, 1.0f);
+        // glm::mat4 scale = glm::inverse(modelview) * glob * glm::scale(glm::mat4(1.0f), {r.w, r.h, 1.0f});
 
-        r.modelviewUni = modelviewUni;
-        r.setBG({0xFF, 0xFF, 0xFF, 0xFF});
+        r.x = translation.x;
+        r.y = translation.y;
 
-        r.texture = rp->texture;
-        r.pixelBuffer = rp->pixelBuffer;
-        r.ww = rp->ww;
-        r.hh = rp->hh;
+        r.w = 0.25f;//scale[0][0];
+        r.h = 0.2f;//scale[1][1];
+
+        // std::cout << r.x << ' ' << r.y << std::endl;
+
+        r.update(modelview);
+        r.tf = glm::mat4(1.0f);
     }
 
     // VOLUME EVENTS

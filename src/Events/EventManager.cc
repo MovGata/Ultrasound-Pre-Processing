@@ -23,13 +23,15 @@ namespace events
     }
 
     template <typename T>
-    void EventManager<T>::process(T *t, const SDL_Event &e)
+    bool EventManager<T>::process(T *t, const SDL_Event &e)
     {
         auto itr = events.find(e.type);
         if (itr != events.end())
         {
             itr->second(t, e);
+            return true;
         }
+        return false;
     }
 
     template class EventManager<Volume>;
