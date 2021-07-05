@@ -21,6 +21,12 @@ namespace events
     {
         events.erase(e);
     }
+    
+    template <typename T>
+    void EventManager<T>::clearCallbacks()
+    {
+        events.clear();
+    }
 
     template <typename T>
     bool EventManager<T>::process(T *t, const SDL_Event &e)

@@ -31,11 +31,13 @@ namespace gui
 
         TTF_Font *font = nullptr;
 
-
         float angle;
 
         void dragEvent(const SDL_Event &e);
         void dragStopEvent(const SDL_Event &e);
+
+        void moveEvent(const SDL_Event &e);
+        void moveStopEvent(const SDL_Event &e);
 
         void volumeBypass(const SDL_Event &e);
         void volumeStopEvent(const SDL_Event &e);
@@ -48,8 +50,11 @@ namespace gui
 
     public:
         static const Uint32 dropEventData;
+        static const Uint32 moveEventData;
         static const Uint32 volumeEventData;
-        std::vector<Rectangle> subRectangles;
+
+        std::vector<std::shared_ptr<Rectangle>> subRectangles;
+        std::vector<std::weak_ptr<Rectangle>> links;
 
         GLint modelviewUni = -1;
 
@@ -65,21 +70,29 @@ namespace gui
         Rectangle(const Rectangle &) = default;
         Rectangle(Rectangle &&) = default;
 
-        Volume &allocVolume(unsigned int depth, unsigned int length, int unsigned width, const std::vector<uint8_t> &data);
+        std::weak_ptr<Volume> allocVolume(unsigned int depth, unsigned int length, int unsigned width, const std::vector<uint8_t> &data);
         void allocTexture(unsigned int w, unsigned int h);
         void addText(TTF_Font *f, const std::string &str);
         void setBG(SDL_Colour c);
         void render() const;
+        void renderChildren() const;
 
         void update(const glm::mat4 &mv);
 
         bool contains(float x, float y);
+        bool containsTF(float x, float y);
+        
+        bool contains(const Rectangle &rec);
+        bool containsTF(const Rectangle &rec);
 
-        Rectangle &addRectangle(float x, float y, float w, float h);
+        std::weak_ptr<Rectangle> addRectangle(float x, float y, float w, float h);
 
         void volumeStartEvent(const SDL_Event &e);
         void dragStartEvent(const SDL_Event &e);
+        void moveStartEvent(const SDL_Event &e);
         void dropEvent(const SDL_Event &e);
+        void stopEvent(const SDL_Event &e);
+        void linkEvent(const SDL_Event &e);
 
         void scaleEvent(const SDL_Event &e);
         void scrollEvent(const SDL_Event &e);
@@ -87,7 +100,7 @@ namespace gui
         void doubleDown(const SDL_Event &e);
         void doubleUp(const SDL_Event &e);
 
-        void process(const SDL_Event &e);
+        bool process(const SDL_Event &e);
     };
 
 } // namespace gui

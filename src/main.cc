@@ -39,42 +39,43 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     Device device;
 
     {
-        gui::Rectangle &dropRec = mainWindow.addRectangle(0.0f, -0.5f, 1.0f, 0.5f);
-        dropRec.setBG({0x4F, 0x7F, 0x4F, 0xFF});
-        dropRec.allocTexture(256, 38);
+        std::shared_ptr<gui::Rectangle> dropRec = mainWindow.addRectangle(0.0f, -0.5f, 1.0f, 0.5f).lock();
+        dropRec->setBG({0x4F, 0x7F, 0x4F, 0xFF});
+        dropRec->allocTexture(256, 38);
     }
 
     {
-        gui::Rectangle &pRec = mainWindow.addRectangle(0.25f, 0.5f, 0.25f, 0.5f);
-        pRec.setBG({0xFF, 0xFF, 0x00, 0xFF});
-        pRec.allocTexture(256, 38);
+        std::shared_ptr<gui::Rectangle> pRec = mainWindow.addRectangle(0.25f, 0.5f, 0.25f, 0.5f).lock();
+        pRec->setBG({0xFF, 0xFF, 0x00, 0xFF});
+        pRec->allocTexture(256, 38);
     }
 
     {
-        gui::Rectangle &testText = mainWindow.addRectangle(0.75f, 0.5f, 0.25f, 0.5f);
-        testText.setBG({0xFF, 0x00, 0x00, 0xFF});
-        testText.allocTexture(256, 38);
+        std::shared_ptr<gui::Rectangle> testText = mainWindow.addRectangle(0.75f, 0.5f, 0.25f, 0.5f).lock();
+        testText->setBG({0xFF, 0x00, 0x00, 0xFF});
+        testText->allocTexture(256, 38);
 
-        testText.addCallback(SDL_MOUSEWHEEL, std::bind(gui::Rectangle::scrollEvent, std::placeholders::_1, std::placeholders::_2));
+        testText->addCallback(SDL_MOUSEWHEEL, std::bind(gui::Rectangle::scrollEvent, std::placeholders::_1, std::placeholders::_2));
 
-        gui::Rectangle &testElement = testText.addRectangle(0.0f, 0.8f, 1.0f, 0.2f);
-        testElement.setBG({0x00, 0x00, 0xFF, 0xFF});
-        testElement.allocTexture(256, 38);
-        testElement.addText(font, "Add text test.");
+        std::shared_ptr<gui::Rectangle> testElement = testText->addRectangle(0.0f, 0.8f, 1.0f, 0.2f).lock();
+        testElement->setBG({0x00, 0x00, 0xFF, 0xFF});
+        testElement->allocTexture(256, 38);
+        testElement->addText(font, "Add text test.");
     }
 
     {
-        gui::Rectangle &rec = mainWindow.addRectangle(-0.5f, 0.5f, 0.5f, 0.5f);
-        rec.setBG({0x00, 0xFF, 0x00, 0xFF});
-        rec.allocTexture(1024, 1024);
+        std::shared_ptr<gui::Rectangle> rec = mainWindow.addRectangle(-0.5f, 0.5f, 0.5f, 0.5f).lock();
+        rec->setBG({0x00, 0xFF, 0x00, 0xFF});
+        rec->allocTexture(1024, 1024);
     }
 
-    mainWindow.subRectangles.at(0).addCallback(gui::Rectangle::dropEventData, gui::Rectangle::dropEvent);
-    Volume &volume = mainWindow.subRectangles.at(3).allocVolume(depth, length, width, data);
+    mainWindow.subRectangles.at(0)->addCallback(gui::Rectangle::dropEventData, gui::Rectangle::dropEvent);
+    mainWindow.subRectangles.at(0)->addCallback(gui::Rectangle::moveEventData, gui::Rectangle::stopEvent);
+    std::shared_ptr<Volume> volume = mainWindow.subRectangles.at(3)->allocVolume(depth, length, width, data).lock();
 
-    device.createDisplay(1024, 1024, *mainWindow.subRectangles.at(3).pixelBuffer);
-    volume.sendToCl(device.context);
-    device.prepareVolume(depth, length, width, volume.buffer);
+    device.createDisplay(1024, 1024, *mainWindow.subRectangles.at(3)->pixelBuffer);
+    volume->sendToCl(device.context);
+    device.prepareVolume(depth, length, width, volume->buffer);
 
     auto timeA = SDL_GetTicks();
     bool quit = false;
@@ -87,10 +88,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
         {
             mainWindow.setActive();
 
-            volume.update();
-            if (volume.modified)
+            volume->update();
+            if (volume->modified)
             {
-                device.render(volume.invMVTransposed.data(), *mainWindow.subRectangles.at(3).pixelBuffer);
+                device.render(volume->invMVTransposed.data(), *mainWindow.subRectangles.at(3)->pixelBuffer);
             }
 
             mainWindow.update();

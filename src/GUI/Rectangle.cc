@@ -18,8 +18,9 @@
 
 namespace gui
 {
-    const Uint32 Rectangle::dropEventData = SDL_RegisterEvents(2);
-    const Uint32 Rectangle::volumeEventData = Rectangle::dropEventData + 1;
+    const Uint32 Rectangle::dropEventData = SDL_RegisterEvents(3);
+    const Uint32 Rectangle::moveEventData = Rectangle::dropEventData + 1;
+    const Uint32 Rectangle::volumeEventData = Rectangle::dropEventData + 2;
 
     std::once_flag Rectangle::onceFlag;
 
@@ -71,7 +72,7 @@ namespace gui
             });
     }
 
-    void Rectangle::process(const SDL_Event &e)
+    bool Rectangle::process(const SDL_Event &e)
     {
         if (!EventManager::process(this, e))
         {
@@ -87,16 +88,21 @@ namespace gui
 
             for (auto &r : subRectangles)
             {
-                if (r.contains(mv.x, mv.y))
+                if (r->contains(mv.x, mv.y))
                 {
-                    r.process(e);
-                    break;
+                    return r->process(e);
                 }
             }
+
+            return false;
+        }
+        else
+        {
+            return true;
         }
     }
 
-    Volume &Rectangle::allocVolume(unsigned int depth, unsigned int length, int unsigned width, const std::vector<uint8_t> &data)
+    std::weak_ptr<Volume> Rectangle::allocVolume(unsigned int depth, unsigned int length, int unsigned width, const std::vector<uint8_t> &data)
     {
 
         if (!texture)
@@ -107,7 +113,7 @@ namespace gui
         addCallback(SDL_MOUSEWHEEL, volumeBypass);
         addCallback(SDL_MOUSEBUTTONDOWN, volumeStartEvent);
         volume = std::make_unique<Volume>(depth, length, width, data);
-        return *volume;
+        return volume;
     }
 
     void Rectangle::allocTexture(unsigned int wp, unsigned int hp)
@@ -156,7 +162,7 @@ namespace gui
 
         for (auto &r : subRectangles)
         {
-            r.update(modelview);
+            r->update(modelview);
         }
     }
 
@@ -187,10 +193,18 @@ namespace gui
         {
             std::cerr << "Rectangle render error: " << err << '\n';
         }
+    }
 
+    void Rectangle::renderChildren() const
+    {
         for (const auto &r : subRectangles)
         {
-            r.render();
+            r->render();
+        }
+        
+        for (const auto &r : subRectangles)
+        {
+            r->renderChildren();
         }
     }
 
@@ -244,11 +258,11 @@ namespace gui
         colour = c;
     }
 
-    Rectangle &Rectangle::addRectangle(float xx, float yy, float www, float hhh)
+    std::weak_ptr<Rectangle> Rectangle::addRectangle(float xx, float yy, float www, float hhh)
     {
-        auto &r = subRectangles.emplace_back(xx, yy, www, hhh);
-        r.update(modelview);
-        r.modelviewUni = modelviewUni;
+        auto &r = subRectangles.emplace_back(std::make_shared<Rectangle>(xx, yy, www, hhh));
+        r->update(modelview);
+        r->modelviewUni = modelviewUni;
         return r;
     }
 
@@ -267,6 +281,55 @@ namespace gui
         {
             return true;
         }
+    }
+
+    bool Rectangle::containsTF(float rx, float ry)
+    {
+        glm::mat4 inv = glm::inverse(tf * modelview);
+        glm::vec4 mvec(rx, ry, 0.0f, 1.0f);
+
+        mvec = inv * mvec;
+
+        if (mvec.x < -1.0f || mvec.x > 1.0f || mvec.y < -1.0f || mvec.y > 1.0f)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    }
+
+    bool Rectangle::contains(const Rectangle &rec)
+    {
+        if (&rec == this)
+        {
+            return false;
+        }
+
+        glm::vec4 bl(-1.0f, -1.0f, 0.0f, 1.0f);
+        bl = rec.modelview * bl;
+
+        glm::vec4 tr(1.0f, 1.0f, 0.0f, 1.0f);
+        tr = rec.modelview * tr;
+
+        return contains(bl.x, bl.y) && contains(tr.x, tr.y);
+    }
+
+    bool Rectangle::containsTF(const Rectangle &rec)
+    {
+        if (&rec == this)
+        {
+            return false;
+        }
+
+        glm::vec4 bl(-1.0f, -1.0f, 0.0f, 1.0f);
+        bl = rec.tf * rec.modelview * bl;
+
+        glm::vec4 tr(1.0f, 1.0f, 0.0f, 1.0f);
+        tr = rec.tf * rec.modelview * tr;
+
+        return containsTF(bl.x, bl.y) && containsTF(tr.x, tr.y);
     }
 
     // DRAG AND DROP EVENTS
@@ -316,18 +379,89 @@ namespace gui
     void Rectangle::dropEvent([[maybe_unused]] const SDL_Event &e)
     {
         Rectangle *rp = static_cast<Rectangle *>(e.user.data1);
-        Rectangle &r = subRectangles.emplace_back(*rp);
+        std::shared_ptr<Rectangle> r = subRectangles.emplace_back(std::make_shared<Rectangle>(*rp));
 
-        glm::mat4 loc = glm::inverse(modelview) * r.tf * r.modelview;
+        glm::mat4 loc = glm::inverse(modelview) * r->tf * r->modelview;
 
-        r.x = loc[3][0];
-        r.y = loc[3][1];
+        r->x = loc[3][0];
+        r->y = loc[3][1];
 
-        r.w = loc[0][0];
-        r.h = loc[1][1];
+        r->w = loc[0][0];
+        r->h = loc[1][1];
 
-        r.update(modelview);
-        r.tf = glm::mat4(1.0f);
+        r->update(modelview);
+        r->tf = glm::mat4(1.0f);
+
+        r->clearCallbacks();
+        r->addCallback(SDL_MOUSEBUTTONDOWN, moveStartEvent);
+    }
+
+    void Rectangle::moveEvent(const SDL_Event &e)
+    {
+        dragEvent(e);
+    }
+
+    void Rectangle::moveStopEvent(const SDL_Event &e)
+    {
+        if (e.button.button != SDL_BUTTON_LEFT)
+        {
+            return;
+        }
+
+        clearCallback(SDL_MOUSEBUTTONUP);
+        clearCallback(SDL_MOUSEMOTION);
+
+        modelview = tf * modelview;
+
+        w = modelview[0][0];
+        h = modelview[1][1];
+        x = modelview[3][0];
+        y = modelview[3][1];
+
+        tf = glm::mat4(1.0f);
+    }
+
+    void Rectangle::moveStartEvent(const SDL_Event &e)
+    {
+        SDL_Event ev;
+        if (e.button.button == SDL_BUTTON_LEFT)
+        {
+            ev.type = moveEventData;
+            ev.user.windowID = e.button.windowID;
+            ev.user.code = 0;
+            ev.user.data1 = this;
+            SDL_PushEvent(&ev);
+
+            addCallback(SDL_MOUSEBUTTONUP, Rectangle::moveStopEvent);
+            addCallback(SDL_MOUSEMOTION, Rectangle::moveEvent);
+        }
+        else if (e.button.button == SDL_BUTTON_RIGHT)
+        {
+            // addRectangle()
+            return;
+        }
+    }
+
+    void Rectangle::stopEvent(const SDL_Event &e)
+    {
+        Rectangle *rec = static_cast<Rectangle *>(e.user.data1);
+        bool child = true;
+        for (auto &r : subRectangles)
+        {
+            if (r->contains(*rec))
+            {
+                r->process(e);
+                child = false;
+                break;
+            }
+        }
+
+        // Optimise via weak pointers.
+        if (child && !containsTF(*rec))
+        {
+            std::erase_if(subRectangles, [rec](const std::shared_ptr<Rectangle> &r)
+                          { return r.get() == rec; });
+        }
     }
 
     // VOLUME EVENTS
@@ -387,9 +521,9 @@ namespace gui
 
         for (auto &r : subRectangles)
         {
-            if (r.contains(rx, ry))
+            if (r->contains(rx, ry))
             {
-                r.process(e);
+                r->process(e);
                 break;
             }
         }

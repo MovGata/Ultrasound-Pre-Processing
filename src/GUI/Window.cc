@@ -32,6 +32,7 @@ namespace gui
         addCallback(SDL_MOUSEMOTION, Window::dragEvent);
         addCallback(Rectangle::dropEventData, Window::userDrop);
         addCallback(Rectangle::volumeEventData, Window::userDrop);
+        addCallback(Rectangle::moveEventData, Window::userDrop);
 
         glContext = SDL_GL_CreateContext(window.get());
         if (glContext == nullptr)
@@ -219,7 +220,12 @@ namespace gui
 
         for (const auto &rec : subRectangles)
         {
-            rec.render();
+            rec->render();
+        }
+
+        for (const auto &rec : subRectangles)
+        {
+            rec->renderChildren();
         }
 
         SDL_GL_SwapWindow(window.get());
@@ -297,9 +303,9 @@ namespace gui
 
         for (auto &r : subRectangles)
         {
-            if (r.contains(rx, ry))
+            if (r->contains(rx, ry))
             {
-                r.process(e);
+                r->process(e);
                 break;
             }
         }
@@ -307,12 +313,13 @@ namespace gui
 
     void Window::dragStopEvent(const SDL_Event &e)
     {
-        auto size = getSize();
+        // auto size = getSize();
 
-        int mx = e.button.x, my = e.button.y;
+        // int mx = e.button.x, my = e.button.y;
 
-        float rx = std::lerp(x, x+w, static_cast<float>(mx)/static_cast<float>(size.first));
-        float ry = std::lerp(y, y+h, 1.0f - static_cast<float>(my)/static_cast<float>(size.second));
+        // float rx = std::lerp(x, x+w, static_cast<float>(mx)/static_cast<float>(size.first));
+        // float ry = std::lerp(y, y+h, 1.0f - static_cast<float>(my)/static_cast<float>(size.second));
+        gui::Rectangle *rec = static_cast<Rectangle *>(dragObject->user.data1);
 
         if (dragObject.has_value())
         {
@@ -320,10 +327,21 @@ namespace gui
             {
                 for (auto &r : subRectangles)
                 {
-
-                    if (r.contains(rx, ry))
+                    if (r->containsTF(*rec))
                     {
-                        r.process(dragObject.value());
+                        r->process(dragObject.value());
+                        break;
+                    }
+                }
+            }
+            else if (dragObject->user.type == gui::Rectangle::moveEventData)
+            {
+                for (auto &r : subRectangles)
+                {
+                    // gui::Rectangle *rec = static_cast<Rectangle *>(dragObject->user.data1);
+                    if (r->contains(*rec))
+                    {
+                        r->process(dragObject.value());
                         break;
                     }
                 }
