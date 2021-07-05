@@ -315,22 +315,16 @@ namespace gui
 
     void Rectangle::dropEvent([[maybe_unused]] const SDL_Event &e)
     {
-
         Rectangle *rp = static_cast<Rectangle *>(e.user.data1);
-
         Rectangle &r = subRectangles.emplace_back(*rp);
 
-        glm::mat4 glob = r.tf * r.modelview;
-        glm::vec4 translation = glm::inverse(modelview) * glob * glm::vec4(r.x, r.y, 0.0f, 1.0f);
-        // glm::mat4 scale = glm::inverse(modelview) * glob * glm::scale(glm::mat4(1.0f), {r.w, r.h, 1.0f});
+        glm::mat4 loc = glm::inverse(modelview) * r.tf * r.modelview;
 
-        r.x = translation.x;
-        r.y = translation.y;
+        r.x = loc[3][0];
+        r.y = loc[3][1];
 
-        r.w = 0.25f;//scale[0][0];
-        r.h = 0.2f;//scale[1][1];
-
-        // std::cout << r.x << ' ' << r.y << std::endl;
+        r.w = loc[0][0];
+        r.h = loc[1][1];
 
         r.update(modelview);
         r.tf = glm::mat4(1.0f);
