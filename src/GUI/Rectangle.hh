@@ -43,20 +43,35 @@ namespace gui
         void volumeStopEvent(const SDL_Event &e);
 
     protected:
-        glm::mat4 modelview;
-        glm::mat4 tf;
+        static Rectangle arrow;
+        static std::optional<glm::mat4> mouseArrow;
 
         mutable bool modified = false;
 
     public:
+        glm::mat4 modelview;
+        glm::mat4 tf;
+
         static const Uint32 dropEventData;
         static const Uint32 moveEventData;
         static const Uint32 volumeEventData;
 
-        std::vector<std::shared_ptr<Rectangle>> subRectangles;
-        std::vector<std::weak_ptr<Rectangle>> links;
+        static constexpr std::size_t DRAG_FILTER = 0;
+        static constexpr std::size_t DRAG_LINK = 1;
 
-        GLint modelviewUni = -1;
+        static constexpr std::size_t MOVE_FILTER = 0;
+
+        static constexpr std::size_t VOLUME_ROTATE = 0;
+        static constexpr std::size_t VOLUME_DRAG = 1;
+
+        static GLint modelviewUni;
+
+        std::vector<std::shared_ptr<Rectangle>> subRectangles;
+        std::weak_ptr<Rectangle> eventRectangle;
+        
+        std::vector<std::pair<std::weak_ptr<Rectangle>, std::shared_ptr<glm::mat4>>> inlinks;
+        std::vector<std::pair<std::weak_ptr<Rectangle>, std::shared_ptr<glm::mat4>>> outlinks;
+
 
         std::shared_ptr<GLuint> texture, pixelBuffer;
 
@@ -76,14 +91,18 @@ namespace gui
         void setBG(SDL_Colour c);
         void render() const;
         void renderChildren() const;
+        void renderLinks();
 
         void update(const glm::mat4 &mv);
 
-        bool contains(float x, float y);
-        bool containsTF(float x, float y);
+        bool contains(float x, float y) const;
+        bool containsTF(float x, float y) const;
         
-        bool contains(const Rectangle &rec);
-        bool containsTF(const Rectangle &rec);
+        bool contains(const Rectangle &rec) const;
+        bool containsTF(const Rectangle &rec) const;
+
+        static glm::vec4 globalMouse(Uint32);
+        glm::vec4 snapToEdge(const glm::vec4 &) const;
 
         std::weak_ptr<Rectangle> addRectangle(float x, float y, float w, float h);
 
@@ -94,6 +113,8 @@ namespace gui
         void stopEvent(const SDL_Event &e);
         void linkEvent(const SDL_Event &e);
 
+        void updateArrow(const SDL_Event &e);
+
         void scaleEvent(const SDL_Event &e);
         void scrollEvent(const SDL_Event &e);
 
@@ -101,6 +122,9 @@ namespace gui
         void doubleUp(const SDL_Event &e);
 
         bool process(const SDL_Event &e);
+
+        gui::Rectangle &operator=(const gui::Rectangle &) = default;
+        gui::Rectangle &operator=(gui::Rectangle &&) = default;
     };
 
 } // namespace gui

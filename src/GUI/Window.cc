@@ -14,6 +14,8 @@
 namespace gui
 {
 
+    std::once_flag Window::glInit;
+
     Window::Window(unsigned int www, unsigned int hhh, Uint32 flags) : Window(SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, www, hhh, flags) {}
     Window::Window(unsigned int xx, unsigned int yy, unsigned int www, unsigned int hhh, Uint32 flags) : window(nullptr, SDL_DestroyWindow), projection(1.0f)
     {
@@ -42,39 +44,49 @@ namespace gui
             return;
         }
 
-        GLenum gError = glewInit();
-        if (gError != GLEW_OK)
-        {
-            std::cout << "Glew init error: " << glewGetErrorString(gError) << std::endl;
-            window.release();
-            return;
-        }
-
-        if (!GLEW_VERSION_3_3)
-        {
-            std::cout << "OpenGL 2.1 minimum" << std::endl;
-            window.release();
-            return;
-        }
-
-        // Vsync
-        if (SDL_GL_SetSwapInterval(1) < 0)
-        {
-            std::cout << "VSync unavailable: " << SDL_GetError() << std::endl;
-        }
-
-        initGL();
-
-        glDisable(GL_CULL_FACE);
-
-        // glEnable(GL_TEXTURE_2D);
-        glDisable(GL_DEPTH_TEST);
-        
         modelview = glm::mat4(1.0f);
-        
+
+        std::call_once(
+            glInit,
+            [this]
+            {
+                GLenum gError = glewInit();
+                if (gError != GLEW_OK)
+                {
+                    std::cout << "Glew init error: " << glewGetErrorString(gError) << std::endl;
+                    window.release();
+                    return;
+                }
+
+                if (!GLEW_VERSION_3_3)
+                {
+                    std::cout << "OpenGL 2.1 minimum" << std::endl;
+                    window.release();
+                    return;
+                }
+
+                // Vsync
+                if (SDL_GL_SetSwapInterval(1) < 0)
+                {
+                    std::cout << "VSync unavailable: " << SDL_GetError() << std::endl;
+                }
+
+                initGL();
+
+                glDisable(GL_CULL_FACE);
+
+                // glEnable(GL_TEXTURE_2D);
+                glDisable(GL_DEPTH_TEST);
+
+                arrow = Rectangle(0.5f, 0.0f, 0.5f, 0.005f);
+                arrow.setBG({0xFF, 0xFF, 0xFF, 0xFF});
+                arrow.allocTexture(1, 1);
+                arrow.update(modelview);
+            });
+
+
         clean();
         redraw();
-
     }
 
     Window::~Window()
@@ -228,7 +240,28 @@ namespace gui
             rec->renderChildren();
         }
 
+        for (const auto &rec : subRectangles)
+        {
+            rec->renderLinks();
+        }
+
+        renderArrow();
+
         SDL_GL_SwapWindow(window.get());
+    }
+
+    void Window::renderArrow()
+    {
+        if (minimised)
+        {
+            return;
+        }
+
+        if (Rectangle::mouseArrow.has_value())
+        {
+            arrow.tf = *mouseArrow;
+            Rectangle::arrow.render();
+        }
     }
 
     void Window::redraw()
@@ -258,7 +291,7 @@ namespace gui
             w = 2.0f * std::abs(x);
             h = 2.0f;
         }
-        
+
         projection = glm::ortho(x, x + w, y, y + h, 0.0f, 1.0f);
 
         glUniformMatrix4fv(projectionUni, 1, GL_FALSE, reinterpret_cast<const GLfloat *>(&projection[0]));
@@ -293,36 +326,43 @@ namespace gui
 
     void Window::dragStartEvent(const SDL_Event &e)
     {
-        std::pair<int, int> size;
-        SDL_GetWindowSize(SDL_GetWindowFromID(e.button.windowID), &size.first, &size.second);
-
-        int mx = e.button.x, my = e.button.y;
-
-        float rx = std::lerp(x, x+w, static_cast<float>(mx)/static_cast<float>(size.first));
-        float ry = std::lerp(y, y+h, 1.0f - static_cast<float>(my)/static_cast<float>(size.second));
-
-        for (auto &r : subRectangles)
+        if (dragObject.has_value())
         {
-            if (r->contains(rx, ry))
+            Rectangle *ptr = static_cast<Rectangle *>(dragObject->user.data2);
+            ptr->process(*dragObject);
+        }
+        else
+        {
+            std::pair<int, int> size;
+            SDL_GetWindowSize(SDL_GetWindowFromID(e.button.windowID), &size.first, &size.second);
+
+            int mx = e.button.x, my = e.button.y;
+
+            glm::vec4 mp = {0.0f, 0.0f, 0.0f, 1.0f};
+
+            mp.x = std::lerp(x, x + w, static_cast<float>(mx) / static_cast<float>(size.first));
+            mp.y = std::lerp(y, y + h, 1.0f - static_cast<float>(my) / static_cast<float>(size.second));
+
+            mp = modelview * mp;
+
+            for (auto &r : subRectangles)
             {
-                r->process(e);
-                break;
+                if (r->contains(mp.x, mp.y))
+                {
+                    r->process(e);
+                    break;
+                }
             }
         }
+
     }
 
     void Window::dragStopEvent(const SDL_Event &e)
     {
-        // auto size = getSize();
-
-        // int mx = e.button.x, my = e.button.y;
-
-        // float rx = std::lerp(x, x+w, static_cast<float>(mx)/static_cast<float>(size.first));
-        // float ry = std::lerp(y, y+h, 1.0f - static_cast<float>(my)/static_cast<float>(size.second));
-        gui::Rectangle *rec = static_cast<Rectangle *>(dragObject->user.data1);
 
         if (dragObject.has_value())
         {
+            std::shared_ptr<Rectangle> rec = static_cast<std::weak_ptr<Rectangle> *>(dragObject->user.data1)->lock();
             if (dragObject->user.type == gui::Rectangle::dropEventData)
             {
                 for (auto &r : subRectangles)
@@ -338,7 +378,6 @@ namespace gui
             {
                 for (auto &r : subRectangles)
                 {
-                    // gui::Rectangle *rec = static_cast<Rectangle *>(dragObject->user.data1);
                     if (r->contains(*rec))
                     {
                         r->process(dragObject.value());
@@ -347,7 +386,7 @@ namespace gui
                 }
             }
 
-            static_cast<Rectangle *>(dragObject->user.data1)->process(e);
+            static_cast<std::weak_ptr<Rectangle> *>(dragObject->user.data1)->lock()->process(e);
             dragObject.reset();
         }
     }
@@ -356,7 +395,7 @@ namespace gui
     {
         if (dragObject.has_value())
         {
-            static_cast<gui::Rectangle*>(dragObject->user.data1)->process(e);
+            static_cast<std::weak_ptr<Rectangle> *>(dragObject->user.data1)->lock()->process(e);
         }
     }
 

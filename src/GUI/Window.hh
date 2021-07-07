@@ -23,11 +23,13 @@ namespace gui
     class Window : public Rectangle, public events::EventManager<Window>
     {
     private:
+        static std::once_flag glInit;
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window;
         // std::unique_ptr<SDL_Surface> surface;
         SDL_GLContext glContext;
 
         std::optional<SDL_Event> dragObject;
+
         GLuint vShader = 0, fShader = 0, program = 0;
 
         void initGL();
@@ -58,6 +60,7 @@ namespace gui
         void clean();
         void update();
         void render();
+        void renderArrow();
         void redraw();
         void setActive();
         auto getPosition() -> std::pair<int, int>;
