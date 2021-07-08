@@ -24,8 +24,8 @@ namespace gui
         static std::once_flag onceFlag;
         static GLuint vBuffer, tBuffer, vArray;
 
+
         std::shared_ptr<Volume> volume;
-        std::string text;
         
         SDL_Colour colour = {0x4F, 0x4F, 0x4F, 0xFF};
 
@@ -49,9 +49,12 @@ namespace gui
         mutable bool modified = false;
 
     public:
+        std::string text;
+        bool visible = true;
         glm::mat4 modelview;
         glm::mat4 tf;
 
+        static const Uint32 showEventData;
         static const Uint32 dropEventData;
         static const Uint32 moveEventData;
         static const Uint32 volumeEventData;
@@ -105,6 +108,9 @@ namespace gui
         glm::vec4 snapToEdge(const glm::vec4 &) const;
 
         std::weak_ptr<Rectangle> addRectangle(float x, float y, float w, float h);
+
+        void showEvent(const SDL_Event &e);
+        void hideEvent(const SDL_Event &e);
 
         void volumeStartEvent(const SDL_Event &e);
         void dragStartEvent(const SDL_Event &e);

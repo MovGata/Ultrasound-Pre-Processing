@@ -39,6 +39,7 @@ namespace gui
         void dragStopEvent(const SDL_Event &e);
         void dragEvent(const SDL_Event &e);
         void userDrop(const SDL_Event &e);
+        void userShow(const SDL_Event &e);
 
         bool minimised = false;
 

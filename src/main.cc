@@ -4,6 +4,8 @@
 #include <thread>
 #include <chrono>
 
+#include "glm/ext.hpp"
+
 #include "GUI/Instance.hh"
 #include "GUI/Window.hh"
 
@@ -38,6 +40,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     Device device;
 
+    int fontHeight = TTF_FontHeight(font) + 1; // +1 so text doesn't touch
+
     {
         std::shared_ptr<gui::Rectangle> dropRec = mainWindow.addRectangle(0.0f, -0.5f, 1.0f, 0.5f).lock();
         dropRec->setBG({0x20, 0x20, 0x20, 0xFF});
@@ -52,20 +56,64 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
         std::shared_ptr<gui::Rectangle> pRec = mainWindow.addRectangle(0.25f, 0.5f, 0.25f, 0.5f).lock();
         pRec->setBG({0x2C, 0x2C, 0x2C, 0xFF});
         pRec->allocTexture(256, 38);
+
+        auto size = mainWindow.getSize();
+        float fontRatio = static_cast<float>(fontHeight) / static_cast<float>(size.second);
+
+        glm::mat4 scale = glm::scale(glm::mat4(1.0f), {1.0f, fontRatio, 1.0f});
+        scale = glm::inverse(pRec->modelview) * scale;
+        glm::mat4 pixels = glm::scale(glm::mat4(1.0f), {1.0f, scale[1][1], 1.0f});
+        pixels = pRec->modelview * pixels;
+
+        std::shared_ptr<gui::Rectangle> program;
+        auto itr = device.programs.begin();
+        for (std::size_t i = 0; i < device.programs.size(); ++i)
+        {
+            program = pRec->addRectangle(0.0f, 1.0f - scale[1][1] - 2.0f*scale[1][1]*static_cast<float>(i), 1.0f, scale[1][1]).lock();
+            program->setBG({0x3C, 0x3C, 0x3C, 0xFF});
+
+            // program = program->addRectangle(, 0.0f, ,1.0f);
+            program->allocTexture(static_cast<int>(pixels[0][0]*static_cast<float>(size.first)), static_cast<int>(pixels[1][1]*static_cast<float>(size.second)));
+            program->addText(font, itr->first);
+            program->addCallback(SDL_MOUSEBUTTONDOWN, gui::Rectangle::hideEvent);
+            ++itr;
+        }
     }
 
     {
-        std::shared_ptr<gui::Rectangle> testText = mainWindow.addRectangle(0.75f, 0.5f, 0.25f, 0.5f).lock();
-        testText->setBG({0x25, 0x25, 0x25, 0xFF});
-        testText->allocTexture(256, 38);
+        auto itr = device.programs.begin();
+        for (std::size_t i = 0; i < device.programs.size(); ++i)
+        {
+            std::shared_ptr<gui::Rectangle> kernels = mainWindow.addRectangle(0.75f, 0.5f, 0.25f, 0.5f).lock();
+            kernels->setBG({0x25, 0x25, 0x25, 0xFF});
+            kernels->allocTexture(1, 1);
+            kernels->addCallback(gui::Rectangle::showEventData, gui::Rectangle::showEvent);
+            kernels->addCallback(SDL_MOUSEBUTTONDOWN, gui::Rectangle::dragStartEvent);
+            kernels->addCallback(SDL_MOUSEWHEEL, gui::Rectangle::scrollEvent);
+            kernels->visible = false;
+            kernels->text = itr->first;
+            
+            auto size = mainWindow.getSize();
+            float fontRatio = static_cast<float>(fontHeight) / static_cast<float>(size.second);
 
-        testText->addCallback(SDL_MOUSEBUTTONDOWN, gui::Rectangle::dragStartEvent);
-        testText->addCallback(SDL_MOUSEWHEEL, gui::Rectangle::scrollEvent);
+            glm::mat4 scale = glm::scale(glm::mat4(1.0f), {1.0f, fontRatio, 1.0f});
+            scale = glm::inverse(kernels->modelview) * scale;
+            glm::mat4 pixels = glm::scale(glm::mat4(1.0f), {1.0f, scale[1][1], 1.0f});
+            pixels = kernels->modelview * pixels;
 
-        std::shared_ptr<gui::Rectangle> testElement = testText->addRectangle(0.0f, 0.8f, 1.0f, 0.2f).lock();
-        testElement->setBG({0x00, 0x00, 0xFF, 0xFF});
-        testElement->allocTexture(256, 38);
-        testElement->addText(font, "Add text test.");
+            std::shared_ptr<gui::Rectangle> kernel;
+            auto kItr = itr->second.kernels.begin();
+            for (std::size_t j = 0; j < itr->second.kernels.size(); ++j)
+            {
+                kernel = kernels->addRectangle(0.0f, 1.0f - scale[1][1] - 2.0f*scale[1][1]*static_cast<float>(j), 1.0f, scale[1][1]).lock();
+                kernel->setBG({0x35, 0x35, 0x35, 0xFF});
+                kernel->allocTexture(static_cast<int>(pixels[0][0]*static_cast<float>(size.first)), static_cast<int>(pixels[1][1]*static_cast<float>(size.second)));
+                kernel->addText(font, kItr->first);
+                ++kItr;
+            }
+            ++itr;
+
+        }
     }
 
     std::shared_ptr<Volume> volume;

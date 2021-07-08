@@ -35,6 +35,7 @@ namespace gui
         addCallback(Rectangle::dropEventData, Window::userDrop);
         addCallback(Rectangle::volumeEventData, Window::userDrop);
         addCallback(Rectangle::moveEventData, Window::userDrop);
+        addCallback(Rectangle::showEventData, Window::userShow);
 
         glContext = SDL_GL_CreateContext(window.get());
         if (glContext == nullptr)
@@ -347,7 +348,7 @@ namespace gui
 
             for (auto &r : subRectangles)
             {
-                if (r->contains(mp.x, mp.y))
+                if (r->contains(mp.x, mp.y) && r->visible)
                 {
                     r->process(e);
                     break;
@@ -402,6 +403,14 @@ namespace gui
     void Window::userDrop(const SDL_Event &e)
     {
         dragObject.emplace(e);
+    }
+
+    void Window::userShow(const SDL_Event &e)
+    {
+        for (auto &r : subRectangles)
+        {
+            r->process(e);
+        }
     }
 
 } // namespace gui

@@ -16,11 +16,12 @@ private:
     cl::Buffer   outBuffer;
     cl::Buffer invMVTransposed;
     cl::CommandQueue cQueue;
-    std::map<std::string, Program> programs;
 
 public:
     cl::Context context;
     cl_device_type type = CL_DEVICE_TYPE_CPU;
+    
+    std::map<std::string, Program> programs;
 
     Device();
     ~Device();

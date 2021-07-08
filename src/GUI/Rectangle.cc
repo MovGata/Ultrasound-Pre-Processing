@@ -18,9 +18,10 @@
 
 namespace gui
 {
-    const Uint32 Rectangle::dropEventData = SDL_RegisterEvents(3);
+    const Uint32 Rectangle::dropEventData = SDL_RegisterEvents(4);
     const Uint32 Rectangle::moveEventData = Rectangle::dropEventData + 1;
-    const Uint32 Rectangle::volumeEventData = Rectangle::dropEventData + 2;
+    const Uint32 Rectangle::showEventData = Rectangle::dropEventData + 2;
+    const Uint32 Rectangle::volumeEventData = Rectangle::dropEventData + 3;
 
     GLint Rectangle::modelviewUni = -1;
 
@@ -107,16 +108,26 @@ namespace gui
     {
         if (!EventManager::process(this, e))
         {
-            glm::vec4 mv = globalMouse(e.button.windowID);
-
-            for (auto &r : subRectangles)
+            if (e.type == showEventData)
             {
-                if (r->contains(mv.x, mv.y))
+                for (auto &r : subRectangles)
                 {
-                    return r->process(e);
+                    r->process(e);
+                }
+                return true;
+            }
+            else
+            {
+                glm::vec4 mv = globalMouse(e.button.windowID);
+
+                for (auto &r : subRectangles)
+                {
+                    if (r->contains(mv.x, mv.y) && r->visible)
+                    {
+                        return r->process(e);
+                    }
                 }
             }
-
             return false;
         }
         else
@@ -191,6 +202,11 @@ namespace gui
 
     void Rectangle::render() const
     {
+        if (!visible)
+        {
+            return;
+        }
+
         glm::mat4 rMat = tf * modelview;
         glUniformMatrix4fv(modelviewUni, 1, GL_FALSE, glm::value_ptr(rMat));
 
@@ -220,6 +236,11 @@ namespace gui
 
     void Rectangle::renderChildren() const
     {
+        if(!visible)
+        {
+            return;
+        }
+
         for (const auto &r : subRectangles)
         {
             r->render();
@@ -233,6 +254,11 @@ namespace gui
 
     void Rectangle::renderLinks()
     {
+        if(!visible)
+        {
+            return;
+        }
+
         std::erase_if(outlinks, [](const std::pair<std::weak_ptr<Rectangle>, std::shared_ptr<glm::mat4>> &p)
                       { return p.first.expired(); });
         
@@ -621,6 +647,32 @@ namespace gui
         mouseArrow = glm::scale(id, {glm::distance(mouse, base), 1.0f, 1.0f});
         mouseArrow = glm::rotate(id, std::atan2(Y, W), {0.0f, 0.0f, 1.0f}) * *mouseArrow;
         mouseArrow = glm::translate(id, {base.x, base.y, 0.0f}) * *mouseArrow;
+    }
+
+    void Rectangle::hideEvent(const SDL_Event &e)
+    {
+        SDL_Event ev;
+        ev.user.type = showEventData;
+        ev.user.windowID = e.button.windowID;
+        ev.user.code = 0;
+        ev.user.data1 = &text;
+        ev.user.data2 = nullptr;
+
+        SDL_PushEvent(&ev);
+
+    }
+
+    void Rectangle::showEvent(const SDL_Event &e)
+    {
+        std::string str = *static_cast<std::string *>(e.user.data1);
+        if (str == text)
+        {
+            visible = true;
+        }
+        else
+        {
+            visible = false;
+        }
     }
 
     // VOLUME EVENTS
