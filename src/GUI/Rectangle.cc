@@ -18,15 +18,47 @@
 
 namespace gui
 {
-    const Uint32 Rectangle::dropEventData = SDL_RegisterEvents(3);
+    const Uint32 Rectangle::dropEventData = SDL_RegisterEvents(4);
     const Uint32 Rectangle::moveEventData = Rectangle::dropEventData + 1;
-    const Uint32 Rectangle::volumeEventData = Rectangle::dropEventData + 2;
+    const Uint32 Rectangle::showEventData = Rectangle::dropEventData + 2;
+    const Uint32 Rectangle::volumeEventData = Rectangle::dropEventData + 3;
+
+    GLint Rectangle::modelviewUni = -1;
 
     std::once_flag Rectangle::onceFlag;
+
+    Rectangle Rectangle::arrow;
+    std::optional<glm::mat4> Rectangle::mouseArrow;
 
     GLuint Rectangle::vBuffer = 0;
     GLuint Rectangle::tBuffer = 0;
     GLuint Rectangle::vArray = 0;
+
+    glm::vec4 Rectangle::globalMouse(Uint32 ID)
+    {
+        int width, height;
+        SDL_GetWindowSize(SDL_GetWindowFromID(ID), &width, &height);
+
+        int mx, my;
+        SDL_GetMouseState(&mx, &my);
+
+        glm::vec4 mouse = {0.0f, 0.0f, 0.0f, 1.0f};
+        mouse.x = std::lerp(-1.0f, 1.0f, static_cast<float>(mx) / static_cast<float>(width));
+        mouse.y = std::lerp(1.0f, -1.0f, static_cast<float>(my) / static_cast<float>(height));
+
+        if (width > height)
+        {
+            float aspect = static_cast<float>(width) / static_cast<float>(height);
+            mouse.y /= aspect;
+        }
+        else
+        {
+            float aspect = static_cast<float>(width) / static_cast<float>(height);
+            mouse.x /= aspect;
+        }
+
+        return mouse;
+    }
 
     Rectangle::Rectangle(float xp, float yp, float wp, float hp)
         : modelview(1.0f), tf(1.0f),
@@ -76,30 +108,49 @@ namespace gui
     {
         if (!EventManager::process(this, e))
         {
-            std::pair<int, int> size;
-            SDL_GetWindowSize(SDL_GetWindowFromID(e.button.windowID), &size.first, &size.second);
+            glm::vec4 mv;
+            switch (e.type)
+            {
+            case SDL_MOUSEBUTTONDOWN:
+            case SDL_MOUSEBUTTONUP:
+                mv = globalMouse(e.button.windowID);
+                break;
+            case SDL_MOUSEMOTION:
+                mv = globalMouse(e.motion.windowID);
+                break;
+            case SDL_MOUSEWHEEL:
+                mv = globalMouse(e.wheel.windowID);
+                break;
+            case SDL_USEREVENT:
+                mv = globalMouse(e.user.windowID);
+                break;
 
-            int mx = e.button.x, my = e.button.y;
-
-            glm::vec4 mv = {0.0f, 0.0f, 0.0f, 1.0f};
-
-            mv.x = std::lerp(-1.0f, 1.0f, static_cast<float>(mx) / static_cast<float>(size.first));
-            mv.y = std::lerp(-1.0f, 1.0f, 1.0f - static_cast<float>(my) / static_cast<float>(size.second));
+            default:
+                return false;
+            }
 
             for (auto &r : subRectangles)
             {
-                if (r->contains(mv.x, mv.y))
+                if (e.type == showEventData)
+                {
+                    r->process(e);
+                }
+                else if (r->contains(mv.x, mv.y))
                 {
                     return r->process(e);
                 }
             }
-
-            return false;
+            if (e.type == showEventData)
+            {
+                return true;
+            }
         }
         else
         {
             return true;
         }
+
+        return false;
     }
 
     std::weak_ptr<Volume> Rectangle::allocVolume(unsigned int depth, unsigned int length, int unsigned width, const std::vector<uint8_t> &data)
@@ -168,6 +219,11 @@ namespace gui
 
     void Rectangle::render() const
     {
+        if (!visible)
+        {
+            return;
+        }
+
         glm::mat4 rMat = tf * modelview;
         glUniformMatrix4fv(modelviewUni, 1, GL_FALSE, glm::value_ptr(rMat));
 
@@ -197,14 +253,44 @@ namespace gui
 
     void Rectangle::renderChildren() const
     {
+        if (!visible)
+        {
+            return;
+        }
+
         for (const auto &r : subRectangles)
         {
             r->render();
         }
-        
+
         for (const auto &r : subRectangles)
         {
             r->renderChildren();
+        }
+    }
+
+    void Rectangle::renderLinks()
+    {
+        if (!visible)
+        {
+            return;
+        }
+
+        std::erase_if(outlinks, [](const std::pair<std::weak_ptr<Rectangle>, std::shared_ptr<glm::mat4>> &p)
+                      { return p.first.expired(); });
+
+        std::erase_if(inlinks, [](const std::pair<std::weak_ptr<Rectangle>, std::shared_ptr<glm::mat4>> &p)
+                      { return p.first.expired(); });
+
+        for (const auto &r : outlinks)
+        {
+            arrow.tf = *r.second;
+            arrow.render();
+        }
+
+        for (const auto &r : subRectangles)
+        {
+            r->renderLinks();
         }
     }
 
@@ -223,7 +309,6 @@ namespace gui
             allocTexture(textT->w, textT->h);
         }
 
-        // glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pixelBuffer);
         glBindTexture(GL_TEXTURE_2D, *texture);
         if (textT->w * textT->h < ww * hh)
         {
@@ -232,25 +317,17 @@ namespace gui
             clr.reserve(ww * hh);
             std::fill_n(std::back_inserter(clr), ww * hh, static_cast<uint32_t>(colour.r) << 24 | static_cast<uint32_t>(colour.g) << 16 | static_cast<uint32_t>(colour.b) << 8 | static_cast<uint32_t>(colour.a));
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, ww, hh, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, clr.data());
-            // for (auto i = 0; i < textT->h; ++i)
-            // {
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, textT->w, textT->h, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, textT->pixels);
-            // glBufferSubData(GL_PIXEL_UNPACK_BUFFER, i * ww * 4, textT->pitch, static_cast<uint32_t *>(textT->pixels) + i * textT->w);
-            // }
         }
         else
         {
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, ww, hh, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8, textT->pixels);
-            // glBufferSubData(GL_PIXEL_UNPACK_BUFFER, 0, (ww * hh) * sizeof(GLubyte) * 4, textT->pixels);
         }
-        // glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
-        // glBindTexture(GL_TEXTURE_2D, texture);
         glBindTexture(GL_TEXTURE_2D, 0);
         text = str;
 
         SDL_FreeSurface(textT);
-        addCallback(SDL_MOUSEBUTTONDOWN, dragStartEvent);
     }
 
     void Rectangle::setBG(SDL_Colour c)
@@ -262,11 +339,11 @@ namespace gui
     {
         auto &r = subRectangles.emplace_back(std::make_shared<Rectangle>(xx, yy, www, hhh));
         r->update(modelview);
-        r->modelviewUni = modelviewUni;
+        // r->modelviewUni = modelviewUni;
         return r;
     }
 
-    bool Rectangle::contains(float rx, float ry)
+    bool Rectangle::contains(float rx, float ry) const
     {
         glm::mat4 inv = glm::inverse(modelview);
         glm::vec4 mvec(rx, ry, 0.0f, 1.0f);
@@ -283,7 +360,7 @@ namespace gui
         }
     }
 
-    bool Rectangle::containsTF(float rx, float ry)
+    bool Rectangle::containsTF(float rx, float ry) const
     {
         glm::mat4 inv = glm::inverse(tf * modelview);
         glm::vec4 mvec(rx, ry, 0.0f, 1.0f);
@@ -300,7 +377,7 @@ namespace gui
         }
     }
 
-    bool Rectangle::contains(const Rectangle &rec)
+    bool Rectangle::contains(const Rectangle &rec) const
     {
         if (&rec == this)
         {
@@ -316,7 +393,7 @@ namespace gui
         return contains(bl.x, bl.y) && contains(tr.x, tr.y);
     }
 
-    bool Rectangle::containsTF(const Rectangle &rec)
+    bool Rectangle::containsTF(const Rectangle &rec) const
     {
         if (&rec == this)
         {
@@ -332,13 +409,20 @@ namespace gui
         return containsTF(bl.x, bl.y) && containsTF(tr.x, tr.y);
     }
 
+    glm::vec4 Rectangle::snapToEdge(const glm::vec4 &v) const
+    {
+        glm::vec4 base = glm::inverse(modelview) * v;
+        base.x = (base.x > 1.0f || base.x < -1.0f) ? std::clamp(base.x, -1.0f, 1.0f) : base.x;
+        base.y = (base.y > 1.0f || base.y < -1.0f) ? std::clamp(base.y, -1.0f, 1.0f) : base.y;
+        return modelview * base; // Back to global
+    }
+
     // DRAG AND DROP EVENTS
 
     void Rectangle::dragEvent(const SDL_Event &e)
     {
         int width, height;
         SDL_GetWindowSize(SDL_GetWindowFromID(e.motion.windowID), &width, &height);
-        width = height = std::min(width, height);
         float X = static_cast<float>(2 * e.motion.xrel) / static_cast<float>(width);
         float Y = static_cast<float>(2 * e.motion.yrel) / static_cast<float>(-height);
         tf = glm::translate(glm::mat4(1.0f), {X, Y, 0.0f}) * tf;
@@ -367,7 +451,7 @@ namespace gui
         SDL_Event ev;
         ev.type = dropEventData;
         ev.user.windowID = e.button.windowID;
-        ev.user.code = 0;
+        ev.user.code = DRAG_FILTER;
         ev.user.data1 = this;
         SDL_PushEvent(&ev);
 
@@ -378,80 +462,150 @@ namespace gui
 
     void Rectangle::dropEvent([[maybe_unused]] const SDL_Event &e)
     {
-        Rectangle *rp = static_cast<Rectangle *>(e.user.data1);
-        std::shared_ptr<Rectangle> r = subRectangles.emplace_back(std::make_shared<Rectangle>(*rp));
+        if (e.user.code == DRAG_FILTER)
+        {
+            Rectangle *rp = static_cast<Rectangle *>(e.user.data1);
+            std::shared_ptr<Rectangle> r = subRectangles.emplace_back(std::make_shared<Rectangle>(*rp));
 
-        glm::mat4 loc = glm::inverse(modelview) * r->tf * r->modelview;
+            glm::mat4 loc = glm::inverse(modelview) * r->tf * r->modelview;
 
-        r->x = loc[3][0];
-        r->y = loc[3][1];
+            r->x = loc[3][0];
+            r->y = loc[3][1];
 
-        r->w = loc[0][0];
-        r->h = loc[1][1];
+            r->w = loc[0][0];
+            r->h = loc[1][1];
 
-        r->update(modelview);
-        r->tf = glm::mat4(1.0f);
+            r->update(modelview);
+            r->tf = glm::mat4(1.0f);
 
-        r->clearCallbacks();
-        r->addCallback(SDL_MOUSEBUTTONDOWN, moveStartEvent);
+            r->clearCallbacks();
+            r->addCallback(SDL_MOUSEBUTTONDOWN, moveStartEvent);
+        }
+        else if (e.user.code == DRAG_LINK)
+        {
+            glm::vec4 mouse = globalMouse(e.user.windowID);
+
+            Rectangle *rp = static_cast<Rectangle *>(e.user.data1);
+            for (auto &r : subRectangles)
+            {
+                if (r.get() != rp && r->contains(mouse.x, mouse.y) && !r->process(e))
+                {
+                    glm::vec4 origin = {0.0f, 0.0f, 0.0f, 1.0f};
+                    glm::vec4 base = rp->snapToEdge(r->modelview * origin);
+                    glm::vec4 tip = r->snapToEdge(rp->modelview * origin);
+
+                    float W = (tip.x - base.x);
+                    float Y = (tip.y - base.y);
+
+                    glm::mat4 id(1.0f);
+                    glm::mat4 linkArrow(1.0f);
+                    linkArrow = glm::scale(id, {glm::distance(tip, base), 1.0f, 1.0f});
+                    linkArrow = glm::rotate(id, std::atan2(Y, W), {0.0f, 0.0f, 1.0f}) * linkArrow;
+                    linkArrow = glm::translate(id, {base.x, base.y, 0.0f}) * linkArrow;
+
+                    rp->outlinks.emplace_back(r->weak_from_this(), std::make_shared<glm::mat4>(linkArrow));
+                    r->inlinks.emplace_back(rp->weak_from_this(), rp->outlinks.back().second);
+                    break;
+                }
+            }
+        }
     }
 
     void Rectangle::moveEvent(const SDL_Event &e)
     {
         dragEvent(e);
+        for (const auto &link : inlinks)
+        {
+            std::shared_ptr in = link.first.lock();
+            glm::vec4 origin = {0.0f, 0.0f, 0.0f, 1.0f};
+            glm::vec4 base = in->snapToEdge(modelview * origin);
+            glm::vec4 tip = snapToEdge(in->modelview * origin);
+
+            float W = (tip.x - base.x);
+            float Y = (tip.y - base.y);
+
+            glm::mat4 id(1.0f);
+            *link.second = glm::scale(id, {glm::distance(tip, base), 1.0f, 1.0f});
+            *link.second = glm::rotate(id, std::atan2(Y, W), {0.0f, 0.0f, 1.0f}) * *link.second;
+            *link.second = glm::translate(id, {base.x, base.y, 0.0f}) * *link.second;
+        }
+
+        for (const auto &link : outlinks)
+        {
+            std::shared_ptr out = link.first.lock();
+            glm::vec4 origin = {0.0f, 0.0f, 0.0f, 1.0f};
+            glm::vec4 base = snapToEdge(out->modelview * origin);
+            glm::vec4 tip = out->snapToEdge(modelview * origin);
+
+            float W = (tip.x - base.x);
+            float Y = (tip.y - base.y);
+
+            glm::mat4 id(1.0f);
+            *link.second = glm::scale(id, {glm::distance(tip, base), 1.0f, 1.0f});
+            *link.second = glm::rotate(id, std::atan2(Y, W), {0.0f, 0.0f, 1.0f}) * *link.second;
+            *link.second = glm::translate(id, {base.x, base.y, 0.0f}) * *link.second;
+        }
     }
 
     void Rectangle::moveStopEvent(const SDL_Event &e)
     {
-        if (e.button.button != SDL_BUTTON_LEFT)
+        if (e.button.button == SDL_BUTTON_LEFT)
+        {
+            modelview = tf * modelview;
+
+            w = modelview[0][0];
+            h = modelview[1][1];
+            x = modelview[3][0];
+            y = modelview[3][1];
+
+            tf = glm::mat4(1.0f);
+        }
+        else if (e.button.button != SDL_BUTTON_RIGHT)
         {
             return;
         }
 
+        mouseArrow.reset();
         clearCallback(SDL_MOUSEBUTTONUP);
         clearCallback(SDL_MOUSEMOTION);
-
-        modelview = tf * modelview;
-
-        w = modelview[0][0];
-        h = modelview[1][1];
-        x = modelview[3][0];
-        y = modelview[3][1];
-
-        tf = glm::mat4(1.0f);
     }
 
     void Rectangle::moveStartEvent(const SDL_Event &e)
     {
         SDL_Event ev;
+        ev.user.windowID = e.button.windowID;
+        ev.user.data1 = this;
         if (e.button.button == SDL_BUTTON_LEFT)
         {
             ev.type = moveEventData;
-            ev.user.windowID = e.button.windowID;
-            ev.user.code = 0;
-            ev.user.data1 = this;
-            SDL_PushEvent(&ev);
-
-            addCallback(SDL_MOUSEBUTTONUP, Rectangle::moveStopEvent);
+            ev.user.code = MOVE_FILTER;
             addCallback(SDL_MOUSEMOTION, Rectangle::moveEvent);
         }
         else if (e.button.button == SDL_BUTTON_RIGHT)
         {
-            // addRectangle()
-            return;
+            ev.type = dropEventData;
+            ev.user.code = DRAG_LINK;
+            addCallback(SDL_MOUSEMOTION, Rectangle::updateArrow);
         }
+        addCallback(SDL_MOUSEBUTTONUP, Rectangle::moveStopEvent);
+        SDL_PushEvent(&ev);
     }
 
     void Rectangle::stopEvent(const SDL_Event &e)
     {
         Rectangle *rec = static_cast<Rectangle *>(e.user.data1);
-        bool child = true;
+        bool child = false;
         for (auto &r : subRectangles)
         {
+            if (r.get() == rec)
+            {
+                child = true;
+                break;
+            }
+
             if (r->contains(*rec))
             {
                 r->process(e);
-                child = false;
                 break;
             }
         }
@@ -461,6 +615,45 @@ namespace gui
         {
             std::erase_if(subRectangles, [rec](const std::shared_ptr<Rectangle> &r)
                           { return r.get() == rec; });
+        }
+    }
+
+    void Rectangle::updateArrow(const SDL_Event &e)
+    {
+        glm::vec4 mouse = globalMouse(e.motion.windowID);
+        glm::vec4 base = snapToEdge(mouse);
+
+        float W = (mouse.x - base.x);
+        float Y = (mouse.y - base.y);
+
+        glm::mat4 id(1.0f);
+        mouseArrow = glm::scale(id, {glm::distance(mouse, base), 1.0f, 1.0f});
+        mouseArrow = glm::rotate(id, std::atan2(Y, W), {0.0f, 0.0f, 1.0f}) * *mouseArrow;
+        mouseArrow = glm::translate(id, {base.x, base.y, 0.0f}) * *mouseArrow;
+    }
+
+    void Rectangle::hideEvent(const SDL_Event &e)
+    {
+        SDL_Event ev;
+        ev.user.type = showEventData;
+        ev.user.windowID = e.button.windowID;
+        ev.user.code = 0;
+        ev.user.data1 = &text;
+        ev.user.data2 = nullptr;
+
+        SDL_PushEvent(&ev);
+    }
+
+    void Rectangle::showEvent(const SDL_Event &e)
+    {
+        std::string str = *static_cast<std::string *>(e.user.data1);
+        if (str == text)
+        {
+            visible = true;
+        }
+        else
+        {
+            visible = false;
         }
     }
 
@@ -478,12 +671,12 @@ namespace gui
 
         if (e.button.button == SDL_BUTTON_LEFT)
         {
-            ev.user.code = 0;
+            ev.user.code = VOLUME_ROTATE;
             volume->addCallback(SDL_MOUSEMOTION, Volume::rotateEvent);
         }
         else if (e.button.button == SDL_BUTTON_RIGHT)
         {
-            ev.user.code = 1;
+            ev.user.code = VOLUME_DRAG;
             volume->addCallback(SDL_MOUSEMOTION, Volume::dragEvent);
         }
         else
@@ -491,7 +684,8 @@ namespace gui
             return;
         }
 
-        ev.type = volumeEventData;
+        ev.user.type = volumeEventData;
+        ev.user.windowID = e.button.windowID;
         ev.user.data1 = this;
         SDL_PushEvent(&ev);
 
@@ -537,14 +731,14 @@ namespace gui
     {
         SDL_Event ev;
 
-        if (e.button.button == SDL_BUTTON_LEFT)
+        if (e.user.code == VOLUME_DRAG)
         {
-            ev.user.code = 0;
+            ev.user.code = VOLUME_ROTATE;
             volume->addCallback(SDL_MOUSEMOTION, Volume::rotateEvent);
         }
-        else if (e.button.button == SDL_BUTTON_RIGHT)
+        else if (e.user.code == VOLUME_ROTATE)
         {
-            ev.user.code = 1;
+            ev.user.code = VOLUME_DRAG;
             volume->addCallback(SDL_MOUSEMOTION, Volume::dragEvent);
         }
         else
@@ -562,25 +756,22 @@ namespace gui
 
     void Rectangle::doubleUp([[maybe_unused]] const SDL_Event &e)
     {
-        SDL_Event ev;
+        SDL_Event ev = e;
 
-        if (e.button.button == SDL_BUTTON_LEFT)
+        if (e.user.code == VOLUME_ROTATE)
         {
-            ev.user.code = 1;
+            ev.user.code = VOLUME_DRAG;
             volume->addCallback(SDL_MOUSEMOTION, Volume::dragEvent);
         }
-        else if (e.button.button == SDL_BUTTON_RIGHT)
+        else if (e.user.code == VOLUME_DRAG)
         {
-            ev.user.code = 0;
+            ev.user.code = VOLUME_ROTATE;
             volume->addCallback(SDL_MOUSEMOTION, Volume::rotateEvent);
         }
         else
         {
             return;
         }
-
-        ev.type = volumeEventData;
-        ev.user.data1 = this;
 
         SDL_PushEvent(&ev);
 

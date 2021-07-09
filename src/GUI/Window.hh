@@ -23,6 +23,7 @@ namespace gui
     class Window : public Rectangle, public events::EventManager<Window>
     {
     private:
+        static std::once_flag glInit;
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window;
         // std::unique_ptr<SDL_Surface> surface;
         SDL_GLContext glContext;
@@ -37,6 +38,7 @@ namespace gui
         void dragStopEvent(const SDL_Event &e);
         void dragEvent(const SDL_Event &e);
         void userDrop(const SDL_Event &e);
+        void userShow(const SDL_Event &e);
 
         bool minimised = false;
 
@@ -58,6 +60,7 @@ namespace gui
         void clean();
         void update();
         void render();
+        void renderArrow();
         void redraw();
         void setActive();
         auto getPosition() -> std::pair<int, int>;

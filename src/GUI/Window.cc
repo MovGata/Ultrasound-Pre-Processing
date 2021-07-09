@@ -13,6 +13,7 @@
 
 namespace gui
 {
+    std::once_flag Window::glInit;
 
     Window::Window(unsigned int www, unsigned int hhh, Uint32 flags) : Window(SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, www, hhh, flags) {}
     Window::Window(unsigned int xx, unsigned int yy, unsigned int www, unsigned int hhh, Uint32 flags) : window(nullptr, SDL_DestroyWindow), projection(1.0f)
@@ -33,6 +34,7 @@ namespace gui
         addCallback(Rectangle::dropEventData, Window::userDrop);
         addCallback(Rectangle::volumeEventData, Window::userDrop);
         addCallback(Rectangle::moveEventData, Window::userDrop);
+        addCallback(Rectangle::showEventData, Window::userShow);
 
         glContext = SDL_GL_CreateContext(window.get());
         if (glContext == nullptr)
@@ -42,39 +44,48 @@ namespace gui
             return;
         }
 
-        GLenum gError = glewInit();
-        if (gError != GLEW_OK)
-        {
-            std::cout << "Glew init error: " << glewGetErrorString(gError) << std::endl;
-            window.release();
-            return;
-        }
-
-        if (!GLEW_VERSION_3_3)
-        {
-            std::cout << "OpenGL 2.1 minimum" << std::endl;
-            window.release();
-            return;
-        }
-
-        // Vsync
-        if (SDL_GL_SetSwapInterval(1) < 0)
-        {
-            std::cout << "VSync unavailable: " << SDL_GetError() << std::endl;
-        }
-
-        initGL();
-
-        glDisable(GL_CULL_FACE);
-
-        // glEnable(GL_TEXTURE_2D);
-        glDisable(GL_DEPTH_TEST);
-        
         modelview = glm::mat4(1.0f);
-        
+
+        std::call_once(
+            glInit,
+            [this]
+            {
+                GLenum gError = glewInit();
+                if (gError != GLEW_OK)
+                {
+                    std::cout << "Glew init error: " << glewGetErrorString(gError) << std::endl;
+                    window.release();
+                    return;
+                }
+
+                if (!GLEW_VERSION_3_3)
+                {
+                    std::cout << "OpenGL 2.1 minimum" << std::endl;
+                    window.release();
+                    return;
+                }
+
+                // Vsync
+                if (SDL_GL_SetSwapInterval(1) < 0)
+                {
+                    std::cout << "VSync unavailable: " << SDL_GetError() << std::endl;
+                }
+
+                initGL();
+
+                glDisable(GL_CULL_FACE);
+
+                // glEnable(GL_TEXTURE_2D);
+                glDisable(GL_DEPTH_TEST);
+
+                arrow = Rectangle(0.5f, 0.0f, 0.5f, 0.005f);
+                arrow.setBG({0xFF, 0xFF, 0xFF, 0xFF});
+                arrow.allocTexture(1, 1);
+                arrow.update(modelview);
+            });
+
         clean();
         redraw();
-
     }
 
     Window::~Window()
@@ -228,7 +239,28 @@ namespace gui
             rec->renderChildren();
         }
 
+        for (const auto &rec : subRectangles)
+        {
+            rec->renderLinks();
+        }
+
+        renderArrow();
+
         SDL_GL_SwapWindow(window.get());
+    }
+
+    void Window::renderArrow()
+    {
+        if (minimised)
+        {
+            return;
+        }
+
+        if (Rectangle::mouseArrow.has_value())
+        {
+            arrow.tf = *mouseArrow;
+            Rectangle::arrow.render();
+        }
     }
 
     void Window::redraw()
@@ -258,7 +290,7 @@ namespace gui
             w = 2.0f * std::abs(x);
             h = 2.0f;
         }
-        
+
         projection = glm::ortho(x, x + w, y, y + h, 0.0f, 1.0f);
 
         glUniformMatrix4fv(projectionUni, 1, GL_FALSE, reinterpret_cast<const GLfloat *>(&projection[0]));
@@ -297,13 +329,16 @@ namespace gui
         SDL_GetWindowSize(SDL_GetWindowFromID(e.button.windowID), &size.first, &size.second);
 
         int mx = e.button.x, my = e.button.y;
+        glm::vec4 mp = {0.0f, 0.0f, 0.0f, 1.0f};
 
-        float rx = std::lerp(x, x+w, static_cast<float>(mx)/static_cast<float>(size.first));
-        float ry = std::lerp(y, y+h, 1.0f - static_cast<float>(my)/static_cast<float>(size.second));
+        mp.x = std::lerp(x, x + w, static_cast<float>(mx) / static_cast<float>(size.first));
+        mp.y = std::lerp(y, y + h, 1.0f - static_cast<float>(my) / static_cast<float>(size.second));
+
+        mp = modelview * mp;
 
         for (auto &r : subRectangles)
         {
-            if (r->contains(rx, ry))
+            if (r->contains(mp.x, mp.y) && r->visible)
             {
                 r->process(e);
                 break;
@@ -356,13 +391,21 @@ namespace gui
     {
         if (dragObject.has_value())
         {
-            static_cast<gui::Rectangle*>(dragObject->user.data1)->process(e);
+            static_cast<gui::Rectangle *>(dragObject->user.data1)->process(e);
         }
     }
 
     void Window::userDrop(const SDL_Event &e)
     {
         dragObject.emplace(e);
+    }
+
+    void Window::userShow(const SDL_Event &e)
+    {
+        for (auto &r : subRectangles)
+        {
+            r->process(e);
+        }
     }
 
 } // namespace gui

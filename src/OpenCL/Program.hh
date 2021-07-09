@@ -13,9 +13,9 @@ class Program
 {
 private:
     cl::Program program;
-    std::map<std::string, Kernel> kernels;
 
 public:
+    std::map<std::string, Kernel> kernels;
     std::string name;
     
     Program(cl::Context context, Source src);

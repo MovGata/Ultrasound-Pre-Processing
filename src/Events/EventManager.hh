@@ -32,6 +32,10 @@ namespace events
         void addCallback(Uint32 e, std::function<void(T*, const SDL_Event &)> fun);
         void clearCallback(Uint32 e);
         void clearCallbacks();
+
+    EventManager &operator=(const EventManager &) = default;
+    EventManager &operator=(EventManager &&) = default;
+    
     };
 
 } // namespace events
