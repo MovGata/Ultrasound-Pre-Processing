@@ -22,8 +22,8 @@ int rayHitBBox(float4 rayOrg, float4 rayDir, float4 bbMin, float4 bbMax, float *
 }
 
 kernel void render(
-    uint w_out, uint l_out, global uint *output,
-    uint depth, uint length, uint width, global uchar4 *data,
+    uint w_out, uint l_out, global uint write_only *output,
+    uint depth, uint length, uint width, read_only global uchar4 *data,
     constant float *invMVTransposed)
 {
     uint x = get_global_id(0);

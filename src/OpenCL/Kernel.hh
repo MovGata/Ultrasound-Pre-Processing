@@ -3,6 +3,7 @@
 
 #include <cctype>
 #include <iostream>
+#include <string>
 
 #include "Concepts.hh"
 
@@ -18,6 +19,10 @@ public:
     ~Kernel();
 
     operator cl::Kernel();
+
+    std::string getArg(unsigned int pos);
+    bool isInput(unsigned int pos);
+    bool isOutput(unsigned int pos);
 
     template <concepts::OpenCLType T>
     void setArg(unsigned int pos, T t, std::size_t size = 0)

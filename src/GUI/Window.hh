@@ -4,6 +4,10 @@
 #include <memory>
 #include <utility>
 #include <functional>
+#include <iostream>
+#include <ranges>
+#include <utility>
+#include <variant>
 #include <vector>
 
 #include <SDL2/SDL.h>
@@ -12,62 +16,234 @@
 #include <GL/gl.h>
 #include <glm/glm.hpp>
 
-
+#include "Instance.hh"
 #include "Rectangle.hh"
 
+#include "../Events/Concepts.hh"
 #include "../Events/EventManager.hh"
 
 namespace gui
 {
 
-    class Window : public Rectangle, public events::EventManager<Window>
+    template <concepts::DrawableType... Drawables>
+    class Window
     {
     private:
-        static std::once_flag glInit;
+        events::EventManager eventManager;
+
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window;
-        // std::unique_ptr<SDL_Surface> surface;
+
         SDL_GLContext glContext;
 
-        std::optional<SDL_Event> dragObject;
-        GLuint vShader = 0, fShader = 0, program = 0;
+        // std::optional<SDL_Event> dragObject;
 
-        void initGL();
-
-        void windowEvent(const SDL_Event &);
-        void dragStartEvent(const SDL_Event &e);
-        void dragStopEvent(const SDL_Event &e);
-        void dragEvent(const SDL_Event &e);
-        void userDrop(const SDL_Event &e);
-        void userShow(const SDL_Event &e);
+        void windowEvent(const SDL_Event &e)
+        {
+            switch (e.window.event)
+            {
+            case SDL_WINDOWEVENT_MINIMIZED:
+                minimised = true;
+                break;
+            case SDL_WINDOWEVENT_MAXIMIZED:
+                break;
+            case SDL_WINDOWEVENT_RESTORED:
+                minimised = false;
+                break;
+            case SDL_WINDOWEVENT_SIZE_CHANGED:
+                redraw(e);
+                break;
+            case SDL_WINDOWEVENT_MOVED:
+                break;
+            default:
+                break;
+            }
+        }
 
         bool minimised = false;
 
-        GLint projectionUni;
-
         glm::mat4 projection;
+        std::pair<float, float> size;
 
     public:
+        std::vector<std::variant<std::shared_ptr<Drawables>...>> drawables;
 
-        using events::EventManager<Window>::addCallback;
+        Window(unsigned int width = 640, unsigned int height = 480, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE) : Window(SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, flags) {}
+        Window(unsigned int xPos, unsigned int yPos, unsigned int width, unsigned int height, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE) : window(nullptr, SDL_DestroyWindow), projection(1.0f), size(static_cast<float>(width), static_cast<float>(height))
+        {
+            window.reset(SDL_CreateWindow("Ultrasound Pre-Processor", xPos, yPos, width, height, flags));
+            if (window == nullptr)
+            {
+                std::cout << "SDL2 window initialisation failed, error: " << SDL_GetError() << std::endl;
+                return;
+            }
 
-        Window(unsigned int w = 640, unsigned int h = 480, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
-        Window(unsigned int x, unsigned int y, unsigned int w, unsigned int h, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
-        ~Window();
+            glContext = SDL_GL_CreateContext(window.get());
+            if (glContext == nullptr)
+            {
+                std::cout << "OpenGL context initialisation failed, error: " << SDL_GetError() << std::endl;
+                window.release();
+                return;
+            }
+
+            eventManager.addCallback(SDL_WINDOWEVENT, std::bind(windowEvent, this, std::placeholders::_1));
+        }
+
+        ~Window()
+        {
+            SDL_GL_DeleteContext(glContext);
+        }
 
         Window(const Window &) = delete;
         Window(Window &&) = default;
 
-        void clean();
-        void update();
-        void render();
-        void renderArrow();
-        void redraw();
-        void setActive();
-        auto getPosition() -> std::pair<int, int>;
-        auto getSize() -> std::pair<int, int>;
-        auto getID() -> Uint32;
+        void clean()
+        {
+            glClear(GL_COLOR_BUFFER_BIT);
+        }
 
-        void process(const SDL_Event &e);
+        void update()
+        {
+        }
+
+        void draw()
+        {
+            if (minimised)
+            {
+                return;
+            }
+
+            for (auto &&drawable : drawables)
+            {
+                std::visit(
+                    [](auto &&d)
+                    { d->draw(); },
+                    drawable);
+            }
+            SDL_GL_SwapWindow(window.get());
+        }
+
+        void redraw()
+        {
+            SDL_Event ev;
+            ev.window.data1 = static_cast<Sint32>(size.first);
+            ev.window.data2 = static_cast<Sint32>(size.second);
+            redraw(ev);
+        }
+
+        // void drawArrow();
+        void redraw(const SDL_Event &e)
+        {
+            if (minimised)
+            {
+                return;
+            }
+
+            // auto pair = getSize();
+
+            glViewport(0, 0, e.window.data1, e.window.data2);
+
+            std::pair<float, float> newSize = {e.window.data1, e.window.data2};
+
+            SDL_Event ev;
+            ev.user.type = events::GUI_REDRAW;
+            ev.user.code = 0;
+            ev.user.data1 = static_cast<void *>(&size);
+            ev.user.data2 = static_cast<void *>(&newSize);
+
+            for (auto &&drawable : drawables)
+            {
+                std::visit(
+                    [ev](auto &&d)
+                    {
+                        if constexpr (concepts::ProcessorType<decltype(*d)>)
+                        {
+                            d->eventManager.process(ev);
+                        }
+                    },
+                    drawable);
+            }
+
+            size.first = static_cast<float>(e.window.data1);
+            size.second = static_cast<float>(e.window.data2);
+            // if (pair.first > pair.second)
+            // {
+            //     float aspect = static_cast<float>(pair.first) / static_cast<float>(pair.second);
+            //     projection = glm::ortho(-1.0f, 1.0f, -1.0f / aspect, 1.0f / aspect, 0.0f, 1.0f);
+            // }
+            // else
+            // {
+            //     float aspect = static_cast<float>(pair.second) / static_cast<float>(pair.first);
+            //     projection = glm::ortho(-1.0f / aspect, 1.0f / aspect, -1.0f, 1.0f, 0.0f, 1.0f);
+            // }
+
+            projection = glm::ortho(0.0f, size.first, size.second, 0.0f, 0.0f, 1.0f);
+            glUniformMatrix4fv(Instance::projectionUni, 1, GL_FALSE, reinterpret_cast<const GLfloat *>(&projection[0]));
+        }
+        // void setActive();
+        auto getPosition() -> std::pair<int, int>
+        {
+            std::pair<int, int> p;
+            SDL_GetWindowPosition(window.get(), &p.first, &p.second);
+            return p;
+        }
+
+        auto getSize() -> std::pair<int, int>
+        {
+            std::pair<int, int> p;
+            SDL_GetWindowSize(window.get(), &p.first, &p.second);
+            return p;
+        }
+
+        auto getID() -> Uint32
+        {
+            return SDL_GetWindowID(window.get());
+        }
+
+        void eraseDrawable(std::size_t i)
+        {
+        }
+
+        void process(const SDL_Event &e)
+        {
+            eventManager.process(e);
+            for (auto &&drawable : std::ranges::reverse_view(drawables)) // Reverse to interact with top drawn elements first.
+            {
+
+                if (std::visit(
+                    [&e = std::as_const(e)](auto &&d)
+                    {
+                        if constexpr (concepts::ProcessorType<decltype(*d)>)
+                        {
+                            if constexpr (concepts::HidableType<decltype(*d)>)
+                            {
+                                if (d->hidden)
+                                {
+                                    return false;
+                                }
+                            }
+
+                            if (events::containsMouse(std::as_const(*d), e))
+                            {
+                                if(d->eventManager.process(e))
+                                {
+                                    return true;
+                                }
+                            }
+                        }
+                        return false;
+                    },
+                    drawable) == true)
+                    {
+                        break;
+                    }
+            }
+        }
+
+        template <concepts::DrawableType Drawable>
+        void addDrawable(std::shared_ptr<Drawable> &&d)
+        {
+            drawables.push_back(std::forward<std::shared_ptr<Drawable>>(d));
+        }
     };
 
 } // namespace gui

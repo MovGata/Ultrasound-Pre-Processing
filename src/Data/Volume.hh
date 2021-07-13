@@ -5,42 +5,43 @@
 #include <utility>
 #include <vector>
 
+#include <glm/glm.hpp>
+
 #include <CL/cl2.hpp>
 #include <SDL2/SDL.h>
 
 #include "../events/EventManager.hh"
 
-class Volume : public events::EventManager<Volume>
+namespace data
 {
-private:
-    std::vector<cl_uchar4> raw;
-    std::pair<int, int> rotation = {0, 0};
-    float scale = 1.0f;
-    std::pair<float, float> offset = {0.0f, 0.0f};
-    unsigned int depth;
-    unsigned int length;
-    unsigned int width;
 
+    class Volume
+    {
+    private:
+        std::vector<cl_uchar4> raw;
 
-public:
-    mutable bool modified = true; // Render at least once
-    
-    cl::Buffer buffer;
-    std::array<float, 12> invMVTransposed;
+        std::pair<float, float> offset = {0.0f, 0.0f};
+        unsigned int depth;
+        unsigned int length;
+        unsigned int width;
 
-    void zoomEvent(const SDL_Event &e);
-    void rotateEvent(const SDL_Event &e);
-    void dragEvent(const SDL_Event &e);
-    
-    Volume(const Volume &)=default;
-    Volume(Volume &&)=default;
-    Volume(unsigned int depth, unsigned int length, int unsigned width, const std::vector<uint8_t> &data);
-    ~Volume();
+    public:
+        glm::vec3 scale = {1.0f, 1.0f, 1.0f};
+        glm::vec3 translation = {0.0f, 0.0f, 0.0f};
+        glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
+        mutable bool modified = true; // Render at least once
 
-    void sendToCl(const cl::Context &context);
-    void update();
+        cl::Buffer buffer;
+        std::array<float, 12> invMVTransposed;
 
-    void process(const SDL_Event &e);
-};
+        Volume(const Volume &) = default;
+        Volume(Volume &&) = default;
+        Volume(unsigned int depth, unsigned int length, int unsigned width, const std::vector<uint8_t> &data);
+        ~Volume();
 
+        void sendToCl(const cl::Context &context);
+        void update();
+    };
+
+}
 #endif

@@ -13,29 +13,32 @@ namespace events
      * @brief Base class for controlling events. Protected constructor prohibits instantiation.
      * 
      */
-    template<typename T>
     class EventManager
     {
     private:
-        std::unordered_map<Uint32, std::function<void(T*, const SDL_Event &)>> events;
+        std::unordered_multimap<Uint32, std::function<void(const SDL_Event &e)>> events;
 
-    protected:
+    public:
         EventManager() = default;
         ~EventManager() = default;
 
-        bool process(T*, const SDL_Event &e);
-
-    public:
-        EventManager(const EventManager &e) = default;
+        EventManager(const EventManager &) = default;
         EventManager(EventManager &&e) = default;
+        
+        bool process(const SDL_Event &);
 
-        void addCallback(Uint32 e, std::function<void(T*, const SDL_Event &)> fun);
-        void clearCallback(Uint32 e);
+        template <typename F, typename... Args>
+        requires std::invocable<F, const SDL_Event &, Args &&...>
+        void addCallback(Uint32 e, F f, Args &&...args)
+        {
+            events.emplace(e, std::bind(f, std::placeholders::_1, std::forward<Args>(args)...));
+        }
+
+        void clearCallback(Uint32);
         void clearCallbacks();
 
-    EventManager &operator=(const EventManager &) = default;
-    EventManager &operator=(EventManager &&) = default;
-    
+        EventManager &operator=(const EventManager &) = default;
+        EventManager &operator=(EventManager &&) = default;
     };
 
 } // namespace events

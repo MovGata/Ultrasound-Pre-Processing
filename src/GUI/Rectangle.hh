@@ -14,116 +14,112 @@
 
 #include "../Data/Volume.hh"
 #include "../Events/EventManager.hh"
+#include "../Events/GUI.hh"
+
+#include "Texture.hh"
 
 namespace gui
 {
 
-    class Rectangle : public std::enable_shared_from_this<Rectangle>, public events::EventManager<Rectangle>
+    class Rectangle
     {
     private:
         static std::once_flag onceFlag;
-        static GLuint vBuffer, tBuffer, vArray;
 
-        std::shared_ptr<Volume> volume;
+        // std::shared_ptr<Volume> volume;
 
-        SDL_Colour colour = {0x4F, 0x4F, 0x4F, 0xFF};
+        // SDL_Colour colour = {0x4F, 0x4F, 0x4F, 0xFF};
 
-        TTF_Font *font = nullptr;
+        // TTF_Font *font = nullptr;
 
         float angle;
 
-        void dragEvent(const SDL_Event &e);
-        void dragStopEvent(const SDL_Event &e);
+        // void dragEvent(const SDL_Event &e);
+        // void dragStopEvent(const SDL_Event &e);
 
-        void moveEvent(const SDL_Event &e);
-        void moveStopEvent(const SDL_Event &e);
+        // void moveEvent(const SDL_Event &e);
+        // void moveStopEvent(const SDL_Event &e);
 
-        void volumeBypass(const SDL_Event &e);
-        void volumeStopEvent(const SDL_Event &e);
+        // void volumeBypass(const SDL_Event &e);
+        // void volumeStopEvent(const SDL_Event &e);
 
     protected:
-        static Rectangle arrow;
-        static std::optional<glm::mat4> mouseArrow;
+        // static Rectangle arrow;
+        // static std::optional<glm::mat4> mouseArrow;
         mutable bool modified = false;
 
     public:
         std::string text;
-        bool visible = true;
+        bool hidden = false;
         glm::mat4 modelview;
-        glm::mat4 tf;
+        glm::mat4 transformations;
 
-        static const Uint32 showEventData;
-        static const Uint32 dropEventData;
-        static const Uint32 moveEventData;
-        static const Uint32 volumeEventData;
+        // events::EventManager eventManager;
 
-        static constexpr std::size_t DRAG_FILTER = 0;
-        static constexpr std::size_t DRAG_LINK = 1;
+        glm::vec3 translation;
 
-        static constexpr std::size_t MOVE_FILTER = 0;
+        // std::vector<std::shared_ptr<Rectangle>> subRectangles;
 
-        static constexpr std::size_t VOLUME_ROTATE = 0;
-        static constexpr std::size_t VOLUME_DRAG = 1;
+        // std::vector<std::pair<std::weak_ptr<Rectangle>, std::shared_ptr<glm::mat4>>> inlinks;
+        // std::vector<std::pair<std::weak_ptr<Rectangle>, std::shared_ptr<glm::mat4>>> outlinks;
+        std::array<GLfloat, 8> vertices = {0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f};
+        std::array<GLfloat, 8> texcoords = {0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f};
+        static GLuint vBuffer, tBuffer, vArray;
 
-        std::vector<std::shared_ptr<Rectangle>> subRectangles;
-        
-        std::vector<std::pair<std::weak_ptr<Rectangle>, std::shared_ptr<glm::mat4>>> inlinks;
-        std::vector<std::pair<std::weak_ptr<Rectangle>, std::shared_ptr<glm::mat4>>> outlinks;
+        std::shared_ptr<Texture> texture;
 
-        static GLint modelviewUni;
-
-        std::shared_ptr<GLuint> texture, pixelBuffer;
-
-        GLsizei ww = 0, hh = 0;
         float w, h, x, y;
 
-        Rectangle() = default;
-        Rectangle(float x, float y, float w, float h);
+        Rectangle();
+        Rectangle(float x, float y, float w, float h, std::shared_ptr<Texture> &&t = std::make_shared<Texture>());
         ~Rectangle() = default;
 
         Rectangle(const Rectangle &) = default;
         Rectangle(Rectangle &&) = default;
 
-        std::weak_ptr<Volume> allocVolume(unsigned int depth, unsigned int length, int unsigned width, const std::vector<uint8_t> &data);
-        void allocTexture(unsigned int w, unsigned int h);
-        void addText(TTF_Font *f, const std::string &str);
-        void setBG(SDL_Colour c);
-        void render() const;
-        void renderChildren() const;
-        void renderLinks();
+        // std::weak_ptr<Volume> allocVolume(unsigned int depth, unsigned int length, int unsigned width, const std::vector<uint8_t> &data);
+        // void allocTexture(unsigned int w, unsigned int h);
 
-        void update(const glm::mat4 &mv);
+        void draw() const
+        {
+            events::draw(*this);
+        }
 
-        bool contains(float x, float y) const;
-        bool containsTF(float x, float y) const;
+        void drawChildren() const;
+        void drawLinks();
 
-        bool contains(const Rectangle &rec) const;
-        bool containsTF(const Rectangle &rec) const;
+        void update();
 
-        static glm::vec4 globalMouse(Uint32);
-        glm::vec4 snapToEdge(const glm::vec4 &) const;
+        // bool contains(float x, float y) const;
+        // bool containsTF(float x, float y) const;
 
-        std::weak_ptr<Rectangle> addRectangle(float x, float y, float w, float h);
+        // bool contains(const Rectangle &rec) const;
+        // bool containsTF(const Rectangle &rec) const;
 
-        void showEvent(const SDL_Event &e);
-        void hideEvent(const SDL_Event &e);
+        // static glm::vec4 globalMouse(Uint32);
+        // glm::vec4 snapToEdge(const glm::vec4 &) const;
 
-        void volumeStartEvent(const SDL_Event &e);
-        void dragStartEvent(const SDL_Event &e);
-        void moveStartEvent(const SDL_Event &e);
-        void dropEvent(const SDL_Event &e);
-        void stopEvent(const SDL_Event &e);
-        void linkEvent(const SDL_Event &e);
+        // std::weak_ptr<Rectangle> addRectangle(float x, float y, float w, float h);
 
-        void updateArrow(const SDL_Event &e);
+        // void showEvent(const SDL_Event &e);
+        // void hideEvent(const SDL_Event &e);
 
-        void scaleEvent(const SDL_Event &e);
-        void scrollEvent(const SDL_Event &e);
+        // void volumeStartEvent(const SDL_Event &e);
+        // void dragStartEvent(const SDL_Event &e);
+        // void moveStartEvent(const SDL_Event &e);
+        // void dropEvent(const SDL_Event &e);
+        // void stopEvent(const SDL_Event &e);
+        // void linkEvent(const SDL_Event &e);
 
-        void doubleDown(const SDL_Event &e);
-        void doubleUp(const SDL_Event &e);
+        // void updateArrow(const SDL_Event &e);
 
-        bool process(const SDL_Event &e);
+        // void scaleEvent(const SDL_Event &e);
+        // void scrollEvent(const SDL_Event &e);
+
+        // void doubleDown(const SDL_Event &e);
+        // void doubleUp(const SDL_Event &e);
+
+        // bool process([[maybe_unused]]const SDL_Event &e){return false;}
 
         gui::Rectangle &operator=(const gui::Rectangle &) = default;
         gui::Rectangle &operator=(gui::Rectangle &&) = default;

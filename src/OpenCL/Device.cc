@@ -14,8 +14,11 @@
 
 #include "Source.hh"
 
-Device::Device()
+Device::Device(unsigned int w, unsigned int h) : width(w), height(h)
 {
+    // Rounds up to nearest multiple of 32 (for performance concerns)
+    width = width + 31 - (width + 31) % 32;
+    height = height + 31 - (height + 31) % 32;
 
     selectDevice();
 
@@ -68,19 +71,31 @@ Device::Device()
     //     std::cerr << "invMatrix, " << e.what() << " : " << e.err() << '\n';
     //     std::terminate();
     // }
+    std::vector<uint32_t> clr;
+    clr.reserve(width * height);
+    std::fill_n(std::back_inserter(clr), width * height, 0);
+
+    glGenBuffers(1, &pixelBuffer);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pixelBuffer);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, width * height * sizeof(GLubyte) * 4, clr.data(), GL_STREAM_DRAW);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+    GLenum err;
+    if ((err = glGetError()))
+        std::cout << "Pixel err: " << err << std::endl;
 }
 
 Device::~Device()
 {
 }
 
-void Device::render(float *inv, cl_GLuint glPixelBuffer)
+void Device::render(float *inv)
 {
 
     // std::cout << "Max work size: " << device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>() << std::endl;
 
-    cl::NDRange global(1024, 1024);
-    cl::NDRange local(32, 32);
+    cl::NDRange global(width, height);
+    // cl::NDRange local(32, 32);
 
     try
     {
@@ -93,15 +108,15 @@ void Device::render(float *inv, cl_GLuint glPixelBuffer)
             memories.push_back(outBuffer);
             err |= cQueue.enqueueAcquireGLObjects(&memories);
             err |= cQueue.enqueueWriteBuffer(invMVTransposed, CL_FALSE, 0, 12 * sizeof(float), inv);
-            err |= cQueue.enqueueNDRangeKernel(programs.at("raytracing").at("render"), cl::NullRange, global, local);
+            err |= cQueue.enqueueNDRangeKernel(programs.at("raytracing").at("render"), cl::NullRange, global);
             err |= cQueue.enqueueReleaseGLObjects(&memories);
         }
         else
         {
             // Copy via host.
             err |= cQueue.enqueueWriteBuffer(invMVTransposed, CL_FALSE, 0, 12 * sizeof(float), inv);
-            err |= cQueue.enqueueNDRangeKernel(programs.at("raytracing").at("render"), cl::NullRange, global, local);
-            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, glPixelBuffer);
+            err |= cQueue.enqueueNDRangeKernel(programs.at("raytracing").at("render"), cl::NullRange, global);
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pixelBuffer);
             GLubyte *p = static_cast<GLubyte *>(glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY));
             auto bSize = outBuffer.getInfo<CL_MEM_SIZE>();
             err |= cQueue.enqueueReadBuffer(outBuffer, CL_TRUE, 0, bSize, p);
@@ -128,12 +143,12 @@ void Device::render(float *inv, cl_GLuint glPixelBuffer)
     }
 }
 
-void Device::createDisplay(unsigned int w, unsigned int h, cl_GLuint glPixelBuffer)
+void Device::createDisplay(unsigned int w, unsigned int h)
 {
 
     try
     {
-        outBuffer = (type == CL_DEVICE_TYPE_GPU ? cl::BufferGL(context, CL_MEM_WRITE_ONLY, glPixelBuffer) : cl::Buffer(context, CL_MEM_WRITE_ONLY, w * h * sizeof(cl_uint)));
+        outBuffer = (type == CL_DEVICE_TYPE_GPU ? cl::BufferGL(context, CL_MEM_WRITE_ONLY, pixelBuffer) : cl::Buffer(context, CL_MEM_WRITE_ONLY, w * h * sizeof(cl_uint)));
         programs.at("raytracing").at("render").setArg(0, w);
         programs.at("raytracing").at("render").setArg(1, h);
         programs.at("raytracing").at("render").setArg(2, outBuffer);
