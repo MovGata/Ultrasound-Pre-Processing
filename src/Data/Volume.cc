@@ -32,6 +32,9 @@ namespace data
             }
         }
 
+        lastview = glm::mat4(1.0f);
+        lastRotation = glm::vec3(0.0f, 0.0f, 0.0f);
+
         // eventManager.addCallback(SDL_MOUSEWHEEL, events::scaleEvent<Volume>, *this);
         // eventManager.addCallback(SDL_MOUSEMOTION, events::rotateEvent<Volume>, *this);
     }
@@ -54,20 +57,30 @@ namespace data
 
         float maxEdge = static_cast<float>(std::max(std::max(depth, length), std::max(depth, width)));
 
-        glm::mat4 id(1.0f);
+        // glm::mat4 id(1.0f);
+        
+        glm::mat4 model(1.0f);
 
         // MODEL
-        id = glm::scale(id, {maxEdge / static_cast<float>(depth), maxEdge / static_cast<float>(length), maxEdge / static_cast<float>(width)});
-        id = glm::scale(id, scale);
-        id = glm::rotate(id, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, -1.0f));
-        id = glm::translate(id, {translation.x, translation.y, translation.z});
+        model = glm::scale(model, {maxEdge / static_cast<float>(depth), maxEdge / static_cast<float>(length), maxEdge / static_cast<float>(width)});
+        // model = glm::scale(model, scale);
+        model = glm::rotate(model, glm::radians(90.0f), {0.0f, 0.0f, -1.0f});
+
+        glm::mat4 view(1.0f);
 
         // VIEW
-        id = glm::translate(id, {0.0f, 0.0f, 2.0f});
-        id = glm::rotate(id, glm::radians(rotation.x), {1.0f, 0.0f, 0.0f});
-        id = glm::rotate(id, glm::radians(rotation.y), {0.0f, 1.0f, 0.0f});
+        
+        // view = glm::rotate(view, glm::radians(rotation.x), {1.0f, 0.0f, 0.0f});
+        // view = glm::rotate(lastview, glm::radians(rotation.y), {0.0f, 1.0f, 0.0f});
+        view = lastview;
+        view = glm::translate(view, {translation.x, translation.y, translation.z});
 
-        GLfloat *modelView = glm::value_ptr(id);
+
+        // id = glm::translate(id, {0.0f, 0.0f, 2.0f});
+        view = model * view;
+
+
+        GLfloat *modelView = glm::value_ptr(view);
 
         invMVTransposed[0] = modelView[0];
         invMVTransposed[1] = modelView[4];
@@ -81,6 +94,8 @@ namespace data
         invMVTransposed[9] = modelView[6];
         invMVTransposed[10] = modelView[10];
         invMVTransposed[11] = modelView[14];
+
+        modified = false;
     }
 
 } // namespace data

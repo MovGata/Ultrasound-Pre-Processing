@@ -50,11 +50,11 @@ namespace concepts
         {decay(t.h)} -> std::same_as<float>;
     };
 
-    template <typename T>
-    concept TransformableType = DrawableType<T> && requires(T t)
-    {
-        {decay(t.transformations)} -> std::same_as<glm::mat4>;
-    };
+    // template <typename T>
+    // concept TransformableType = DrawableType<T> && requires(T t)
+    // {
+    //     {decay(t.transformations)} -> std::same_as<glm::mat4>;
+    // };
 
     template <typename T>
     concept HidableType = DrawableType<T> && requires(T t)
@@ -110,6 +110,9 @@ namespace concepts
     {
         {decay(t.translation)} -> std::same_as<glm::vec3>;
     };
+
+    template<typename T>
+    concept TransformableType = ScalableType<T> && RotatableType<T> && TranslatableType<T>;
 
     template <typename T>
     concept TogglableType = requires(T t)

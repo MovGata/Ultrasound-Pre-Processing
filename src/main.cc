@@ -26,7 +26,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     std::ios::sync_with_stdio(false);
 
     gui::Instance init;
-    gui::Window<gui::Button<gui::Rectangle>, gui::Dropzone<gui::Rectangle>, gui::Renderer<gui::Rectangle>, gui::Tree<gui::Button<gui::Rectangle>, std::tuple<gui::Button<gui::Rectangle>>, std::tuple<gui::Button<gui::Rectangle>>>> mainWindow(1024, 768);
+    gui::Window<gui::Button<gui::Rectangle>, gui::Dropzone<gui::Rectangle>, gui::Renderer<gui::Rectangle, data::Volume>, gui::Tree<gui::Button<gui::Rectangle>, std::tuple<gui::Button<gui::Rectangle>>, std::tuple<gui::Button<gui::Rectangle>>>> mainWindow(1024, 768);
     init.initGL();
 
     mainWindow.redraw();
@@ -128,7 +128,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     std::shared_ptr<data::Volume> volume = std::make_shared<data::Volume>(depth, length, width, data);
     std::shared_ptr<gui::Texture> t = std::make_shared<gui::Texture>(512, 512);
-    std::shared_ptr<gui::Renderer<gui::Rectangle>> vRec = gui::Renderer<gui::Rectangle>::build({(wWidth - std::max(wWidth, wHeight)) / 2.0f, (wHeight - std::max(wWidth, wHeight)) / 2.0f, std::max(wWidth, wHeight), std::max(wWidth, wHeight), std::move(t)});
+    std::shared_ptr<gui::Renderer<gui::Rectangle, data::Volume>> vRec = gui::Renderer<gui::Rectangle, data::Volume>::build({(wWidth - std::max(wWidth, wHeight)) / 2.0f, (wHeight - std::max(wWidth, wHeight)) / 2.0f, std::max(wWidth, wHeight), std::max(wWidth, wHeight), std::move(t)}, std::shared_ptr(volume));
     vRec->update();
     mainWindow.addDrawable(std::shared_ptr(vRec));
 
@@ -190,25 +190,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     while (!quit)
     {
 
-        if (eventCount) // If no events have occurred, no changes to drawing have occurred.
-        {
-            // mainWindow.setActive();
-
-            volume->update();
-            if (volume->modified)
-            {
-                device.render(volume->invMVTransposed.data());
-                vRec->texture->update(device.pixelBuffer);
-            }
-
-            mainWindow.update();
-
-            mainWindow.clean();
-            mainWindow.draw();
-        }
-
         SDL_Event e;
-        eventCount = 0;
         while (SDL_PollEvent(&e))
         {
             ++eventCount;
@@ -237,6 +219,25 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
                 mainWindow.process(e);
             }
         }
+
+        if (eventCount) // If no events have occurred, no changes to drawing have occurred.
+        {
+            // mainWindow.setActive();
+
+            if (volume->modified)
+            {
+                volume->update();
+                device.render(volume->invMVTransposed.data());
+                vRec->texture->update(device.pixelBuffer);
+            }
+
+            mainWindow.update();
+
+            mainWindow.clean();
+            mainWindow.draw();
+        }
+
+        eventCount = 0;
 
         auto duration = long(timeA) + long(1000.0 / 30.0) - long(SDL_GetTicks());
         if (duration - 2 > 0)

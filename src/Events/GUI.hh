@@ -237,9 +237,9 @@ namespace events
     template <concepts::RotatableType R>
     void rotate(R &r, const glm::vec3 &v)
     {
-        r.rotation.x += std::fmod(static_cast<float>(v.x), 360.0f);
-        r.rotation.y += std::fmod(static_cast<float>(v.y), 360.0f);
-        r.rotation.z += std::fmod(static_cast<float>(v.z), 360.0f);
+        r.rotation.x = std::fmod(r.rotation.x + static_cast<float>(v.x), 360.0f);
+        r.rotation.y = std::fmod(r.rotation.y + static_cast<float>(v.y), 360.0f);
+        r.rotation.z = std::fmod(r.rotation.z + static_cast<float>(v.z), 360.0f);
 
         if constexpr (concepts::LazyType<R>)
         {
@@ -269,7 +269,7 @@ namespace events
     template <concepts::TranslatableType T>
     void translateEvent(const SDL_Event &e, T &t)
     {
-        translate(t, {e.motion.xrel, -e.motion.yrel});
+        translate(t, {e.motion.xrel, -e.motion.yrel, 0.0f});
     }
 
 #pragma endregion Transformations
