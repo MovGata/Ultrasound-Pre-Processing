@@ -48,78 +48,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     Device device;
 
-    // int fontHeight = TTF_FontHeight(font) + 1; // +1 so text doesn't touch
-
-    // auto size = mainWindow.getSize();
-    // float fontRatio = static_cast<float>(fontHeight) / static_cast<float>(size.second);
-
-    // {
-    //     std::shared_ptr<gui::Rectangle> dropRec = mainWindow.addRectangle(0.0f, -0.5f, 1.0f, 0.5f).lock();
-    //     dropRec->setBG({0x20, 0x20, 0x20, 0xFF});
-    //     dropRec->allocTexture(256, 38);
-    //     // dropRec->addCallback(gui::Rectangle::dropEventData, gui::Rectangle::dropEvent);
-    //     // dropRec->addCallback(gui::Rectangle::moveEventData, gui::Rectangle::stopEvent);
-    // }
-
-    // {
-    //     std::shared_ptr<gui::Rectangle> pRec = mainWindow.addRectangle(0.25f, 0.5f, 0.25f, 0.5f).lock();
-    //     pRec->setBG({0x2C, 0x2C, 0x2C, 0xFF});
-    //     pRec->allocTexture(256, 38);
-
-    //     glm::mat4 scale = glm::scale(glm::mat4(1.0f), {1.0f, fontRatio, 1.0f});
-    //     scale = glm::inverse(pRec->modelview) * scale;
-    //     glm::mat4 pixels = glm::scale(glm::mat4(1.0f), {1.0f, scale[1][1], 1.0f});
-    //     pixels = pRec->modelview * pixels;
-
-    //     std::shared_ptr<gui::Rectangle> program;
-    //     auto itr = device.programs.begin();
-    //     for (std::size_t i = 0; i < device.programs.size(); ++i)
-    //     {
-    //         program = pRec->addRectangle(0.0f, 1.0f - scale[1][1] - 2.0f * scale[1][1] * static_cast<float>(i), 1.0f, scale[1][1]).lock();
-    //         program->setBG({0x3C, 0x3C, 0x3C, 0xFF});
-
-    //         // program = program->addRectangle(, 0.0f, ,1.0f);
-    //         program->allocTexture(static_cast<int>(pixels[0][0] * static_cast<float>(size.first)), static_cast<int>(pixels[1][1] * static_cast<float>(size.second)));
-    //         program->addText(font, itr->first);
-    //         // program->addCallback(SDL_MOUSEBUTTONDOWN, gui::Rectangle::hideEvent);
-    //         ++itr;
-    //     }
-    // }
-
-    // {
-    //     auto itr = device.programs.begin();
-    //     for (std::size_t i = 0; i < device.programs.size(); ++i)
-    //     {
-    //         std::shared_ptr<gui::Rectangle> kernels = mainWindow.addRectangle(0.75f, 0.5f, 0.25f, 0.5f).lock();
-    //         kernels->setBG({0x25, 0x25, 0x25, 0xFF});
-    //         kernels->allocTexture(1, 1);
-    //         // kernels->addCallback(gui::Rectangle::showEventData, gui::Rectangle::showEvent);
-    //         // kernels->addCallback(SDL_MOUSEWHEEL, gui::Rectangle::scrollEvent);
-    //         kernels->hidden = false;
-    //         kernels->text = itr->first;
-
-    //         glm::mat4 scale = glm::scale(glm::mat4(1.0f), {1.0f, fontRatio, 1.0f});
-    //         scale = glm::inverse(kernels->modelview) * scale;
-    //         glm::mat4 pixels = glm::scale(glm::mat4(1.0f), {1.0f, scale[1][1], 1.0f});
-    //         pixels = kernels->modelview * pixels;
-
-    //         std::shared_ptr<gui::Rectangle> kernel;
-    //         auto kItr = itr->second.kernels.begin();
-    //         for (std::size_t j = 0; j < itr->second.kernels.size(); ++j)
-    //         {
-    //             kernel = kernels->addRectangle(0.0f, 1.0f - scale[1][1] - 2.0f * scale[1][1] * static_cast<float>(j), 1.0f, scale[1][1]).lock();
-    //             kernel->setBG({0x35, 0x35, 0x35, 0xFF});
-    //             kernel->allocTexture(static_cast<int>(pixels[0][0] * static_cast<float>(size.first)), static_cast<int>(pixels[1][1] * static_cast<float>(size.second)));
-    //             kernel->addText(font, kItr->first);
-    //             // kernel->addCallback(SDL_MOUSEBUTTONDOWN, gui::Rectangle::dragStartEvent);
-    //             ++kItr;
-    //         }
-    //         ++itr;
-    //     }
-    // }
-
-    // std::shared_ptr<gui::Rectangle> vRec = mainWindow.addRectangle(-0.5f, 0.5f, 0.5f, 0.5f).lock();
-
     auto size = mainWindow.getSize();
     float wWidth = static_cast<float>(size.first);
     float wHeight = static_cast<float>(size.second);
@@ -143,21 +71,54 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     // KERNELS
 
     int w = 1, h = 1;
-    TTF_SizeText(font, "TEST TEXT", &w, &h);
-
+    TTF_SizeText(font, "KERNELS", &w, &h);
     t = std::make_shared<gui::Texture>(w + 2, h + 2);
-    t->addText(font, "TEST TEXT");
-
+    t->addText(font, "KERNELS");
     auto rec = gui::Button<gui::Rectangle>::build({wWidth - (static_cast<float>(w) + 2.0f), 0.0f, static_cast<float>(w) + 2.0f, static_cast<float>(h) + 2.0f, std::move(t)});
     rec->update();
 
     auto tree = gui::Tree<gui::Button<gui::Rectangle>, std::tuple<gui::Button<gui::Rectangle>>, std::tuple<gui::Button<gui::Rectangle>>>::build(gui::Button<gui::Rectangle>({*rec}));
     tree->x = wWidth - (static_cast<float>(w) + 2.0f);
     tree->y = 0.0f;
-    tree->w = static_cast<float>(w) + 2.0f;
-    tree->h = wHeight / 2.0f;
     tree->texture->fill({0x2C, 0x2C, 0x2C, 0xFF});
     tree->update();
+
+    auto pitr = device.programs.begin();
+    for (std::size_t i = 0; i < device.programs.size(); ++i)
+    {
+        w = 1;
+        h = 1;
+        TTF_SizeText(font, pitr->first.c_str(), &w, &h);
+        t = std::make_shared<gui::Texture>(w + 2, h + 2);
+        t->addText(font, pitr->first);
+
+        rec = gui::Button<gui::Rectangle>::build({wWidth - (static_cast<float>(w) + 2.0f), 0.0f, static_cast<float>(w) + 2.0f, static_cast<float>(h) + 2.0f, std::move(t)});
+        rec->update();
+
+        auto program = gui::Tree<gui::Button<gui::Rectangle>, std::tuple<gui::Button<gui::Rectangle>>, std::tuple<gui::Button<gui::Rectangle>>>::build(gui::Button<gui::Rectangle>({*rec}));
+
+        tree->addBranch(std::shared_ptr(program));
+
+        std::shared_ptr<gui::Button<gui::Rectangle>> kernel;
+        auto kitr = pitr->second.kernels.begin();
+        for (std::size_t j = 0; j < pitr->second.kernels.size(); ++j)
+        {
+            w = 1;
+            h = 1;
+            TTF_SizeText(font, kitr->first.c_str(), &w, &h);
+            t = std::make_shared<gui::Texture>(w + 2, h + 2);
+            t->addText(font, kitr->first);
+
+            kernel = gui::Button<gui::Rectangle>::build({0.0f, 0.0f, static_cast<float>(w) + 2.0f, static_cast<float>(h) + 2.0f, std::move(t)});
+
+            program->addLeaf(std::move(kernel));
+
+            ++kitr;
+        }
+
+        ++pitr;
+    }
+
     mainWindow.addDrawable(std::shared_ptr(tree));
 
     // HIDE BUTTON

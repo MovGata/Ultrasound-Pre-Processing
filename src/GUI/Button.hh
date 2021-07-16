@@ -8,7 +8,8 @@
 namespace gui
 {
 
-    template <concepts::DrawableType Drawable>
+    template <concepts::PositionableType Drawable>
+    requires concepts::TranslatableType<Drawable>
     class Button : public Drawable, public std::enable_shared_from_this<Button<Drawable>>
     {
     private:
