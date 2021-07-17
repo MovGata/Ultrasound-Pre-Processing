@@ -5,6 +5,9 @@
 
 #include <CL/cl2.hpp>
 
+namespace opencl
+{
+
 class Source
 {
 private:
@@ -19,5 +22,7 @@ public:
 
     operator cl::Program::Sources();
 };
+
+} // namespace opencl
 
 #endif

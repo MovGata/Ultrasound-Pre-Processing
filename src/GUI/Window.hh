@@ -18,6 +18,7 @@
 
 #include "Instance.hh"
 #include "Rectangle.hh"
+#include "Kernel.hh"
 
 #include "../Events/Concepts.hh"
 #include "../Events/EventManager.hh"
@@ -66,6 +67,7 @@ namespace gui
 
     public:
         std::vector<std::variant<std::shared_ptr<Drawables>...>> drawables;
+        std::shared_ptr<Kernel> kernel;
 
         Window(unsigned int width = 640, unsigned int height = 480, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE) : Window(SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, flags) {}
         Window(unsigned int xPos, unsigned int yPos, unsigned int width, unsigned int height, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE) : window(nullptr, SDL_DestroyWindow), projection(1.0f), size(static_cast<float>(width), static_cast<float>(height))
@@ -119,6 +121,12 @@ namespace gui
                     { d->draw(); },
                     drawable);
             }
+
+            if (kernel)
+            {
+                kernel->draw();
+            }
+
             SDL_GL_SwapWindow(window.get());
         }
 

@@ -2,13 +2,16 @@
 #define GUI_DROPZONE_HH
 
 #include <memory>
+#include <vector>
 
 #include "Button.hh"
 #include "Rectangle.hh"
 #include "Texture.hh"
+#include "Kernel.hh"
 
 #include "../Events/Concepts.hh"
 #include "../Events/EventManager.hh"
+
 
 namespace gui
 {
@@ -22,8 +25,10 @@ namespace gui
             
         }
 
+
     public:
         ~Dropzone() = default;
+        std::vector<std::shared_ptr<Kernel>> kernels;
 
         events::EventManager eventManager;
 
@@ -31,6 +36,11 @@ namespace gui
         {
             if (!Drawable::hidden)
                 Drawable::draw();
+
+            for (auto &&k : kernels)
+            {
+                k->draw();
+            }
         }
 
         static std::shared_ptr<Dropzone<Drawable>> build(Drawable &&d)
@@ -50,6 +60,16 @@ namespace gui
                     ptr->x = xd;
                     ptr->y = yd;
                     ptr->update();
+                });
+            rptr->eventManager.addCallback(
+                events::GUI_DROP, [wptr = rptr->weak_from_this()](const SDL_Event &e)
+                {
+                    auto ptr = wptr.lock();
+
+                    if (e.user.code == events::DROPEVENT_KERNEL)
+                    {
+                        ptr->kernels.emplace_back(*static_cast<std::shared_ptr<Kernel> *>(e.user.data1));
+                    }
                 });
             return rptr;
         }

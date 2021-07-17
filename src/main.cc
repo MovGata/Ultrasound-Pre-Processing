@@ -46,7 +46,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     [[maybe_unused]] TTF_Font *font = init.loadFont("./res/fonts/cour.ttf");
     // const int numIterations = 50;
 
-    Device device;
+    opencl::Device device;
 
     auto size = mainWindow.getSize();
     float wWidth = static_cast<float>(size.first);
@@ -71,17 +71,63 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     // KERNELS
 
     int w = 1, h = 1;
-    TTF_SizeText(font, "KERNELS", &w, &h);
+    TTF_SizeText(font, "> KERNELS", &w, &h);
     t = std::make_shared<gui::Texture>(w + 2, h + 2);
-    t->addText(font, "KERNELS");
-    auto rec = gui::Button<gui::Rectangle>::build({wWidth - (static_cast<float>(w) + 2.0f), 0.0f, static_cast<float>(w) + 2.0f, static_cast<float>(h) + 2.0f, std::move(t)});
+    t->addText(font, "> KERNELS");
+
+    auto alt = std::make_shared<gui::Texture>(*t);
+
+    auto rec = gui::Button<gui::Rectangle>::build({wWidth - 2.0f * (static_cast<float>(w) + 2.0f), 0.0f, static_cast<float>(w) + 2.0f, static_cast<float>(h) + 2.0f, std::move(t)});
     rec->update();
 
-    auto tree = gui::Tree<gui::Button<gui::Rectangle>, std::tuple<gui::Button<gui::Rectangle>>, std::tuple<gui::Button<gui::Rectangle>>>::build(gui::Button<gui::Rectangle>({*rec}));
-    tree->x = wWidth - (static_cast<float>(w) + 2.0f);
+    int oneWidth;
+    TTF_SizeText(font, ">", &oneWidth, nullptr);
+
+    alt->rotate(1, 1, oneWidth, oneWidth);
+
+    auto tree = gui::Tree<gui::Button<gui::Rectangle>, std::tuple<gui::Button<gui::Rectangle>>, std::tuple<gui::Button<gui::Rectangle>>>::build(gui::Button<gui::Rectangle>({*rec}), std::move(alt));
+    tree->x = wWidth - 2.0f * (static_cast<float>(w) + 2.0f);
+    tree->w *= 2.0f;
     tree->y = 0.0f;
     tree->texture->fill({0x2C, 0x2C, 0x2C, 0xFF});
     tree->update();
+
+    // w = 1;
+    // h = 1;
+    // TTF_SizeText(font, "INPUTS", &w, &h);
+    // t = std::make_shared<gui::Texture>(w + 2, h + 2);
+    // t->addText(font, "INPUTS");
+
+    // rec = gui::Button<gui::Rectangle>::build({wWidth - (static_cast<float>(w) + 2.0f), 0.0f, static_cast<float>(w) + 2.0f, static_cast<float>(h) + 2.0f, std::move(t)});
+    // rec->update();
+    // auto inputTree = gui::Tree<gui::Button<gui::Rectangle>, std::tuple<gui::Button<gui::Rectangle>>, std::tuple<gui::Button<gui::Rectangle>>>::build(gui::Button<gui::Rectangle>({*rec}));
+    // tree->addBranch(std::shared_ptr(inputTree));
+
+    // w = 1;
+    // h = 1;
+    // TTF_SizeText(font, "MINDRAY", &w, &h);
+    // t = std::make_shared<gui::Texture>(w + 2, h + 2);
+    // t->addText(font, "MINDRAY");
+
+    // auto mindray = gui::Button<gui::Rectangle>::build({0.0f, 0.0f, static_cast<float>(w) + 2.0f, static_cast<float>(h) + 2.0f, std::move(t)});
+
+    // mindray->onPress(
+    //     [&sk = mainWindow.kernel, &dropzone]() mutable
+    //     {
+    //         sk = gui::Kernel::build(k);
+    //         sk->eventManager.addCallback(
+    //             SDL_MOUSEBUTTONUP,
+    //             [&sk, &dropzone](const SDL_Event &e)
+    //             {
+    //                 if (events::containsMouse(*dropzone, e))
+    //                 {
+    //                     dropzone->kernels.push_back(sk);
+    //                 }
+    //                 sk.reset();
+    //             });
+    //     });
+
+    // inputTree->addLeaf(std::move(mindray));
 
     auto pitr = device.programs.begin();
     for (std::size_t i = 0; i < device.programs.size(); ++i)
@@ -110,6 +156,22 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
             t->addText(font, kitr->first);
 
             kernel = gui::Button<gui::Rectangle>::build({0.0f, 0.0f, static_cast<float>(w) + 2.0f, static_cast<float>(h) + 2.0f, std::move(t)});
+
+            kernel->onPress(
+                [&sk = mainWindow.kernel, &dropzone, k = kitr->second]() mutable
+                {
+                    sk = gui::Kernel::build(k);
+                    sk->eventManager.addCallback(
+                        SDL_MOUSEBUTTONUP,
+                        [&sk, &dropzone](const SDL_Event &e)
+                        {
+                            if (events::containsMouse(*dropzone, e))
+                            {
+                                dropzone->kernels.push_back(sk);
+                            }
+                            sk.reset();
+                        });
+                });
 
             program->addLeaf(std::move(kernel));
 
@@ -177,7 +239,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
             }
             else
             {
-                mainWindow.process(e);
+                if (mainWindow.kernel)
+                {
+                    mainWindow.kernel->eventManager.process(e);
+                }
+                else
+                {
+                    mainWindow.process(e);
+                }
             }
         }
 

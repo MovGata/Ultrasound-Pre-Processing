@@ -35,11 +35,13 @@ namespace gui
 
     protected:
         Tree(Trunk &&t);
+        Tree(Trunk &&t, std::shared_ptr<Texture> &&alt);
 
     public:
         events::EventManager eventManager;
 
         static std::shared_ptr<Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>> build(Trunk &&t);
+        static std::shared_ptr<Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>> build(Trunk &&t, std::shared_ptr<Texture> &&alt);
 
         Tree() = default;
         ~Tree() = default;
@@ -66,6 +68,19 @@ namespace gui
     {
         trunk.setTexture(0, std::shared_ptr<Texture>(t.texture));
         trunk.setTexture(1, std::shared_ptr<Texture>(t.texture));
+
+        w = trunk.w;
+        h = trunk.h;
+        update();
+    }
+
+    template <concepts::PositionableType Trunk, concepts::PositionableType... Branches, concepts::PositionableType... Leaves>
+    requires concepts::ProcessorType<Trunk> && concepts::TranslatableType<Trunk> &&(concepts::ProcessorType<Branches> &&...) && (concepts::TranslatableType<Branches> && ...) && (concepts::ProcessorType<Leaves> && ...) && (concepts::TranslatableType<Leaves> && ...) //
+        Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::Tree(Trunk &&t, std::shared_ptr<Texture> &&alt) : trunk(std::forward<Trunk>(t))
+    {
+        trunk.setTexture(0, std::shared_ptr<Texture>(t.texture));
+        trunk.setTexture(1, std::forward<std::shared_ptr<Texture>>(alt));
+
         w = trunk.w;
         h = trunk.h;
         update();
@@ -76,6 +91,145 @@ namespace gui
         Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::build(Trunk &&t)
     {
         auto rptr = std::shared_ptr<Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>>(new Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>(std::forward<Trunk>(t)));
+
+        rptr->eventManager.addCallback(
+            events::GUI_REDRAW, [wptr = rptr->weak_from_this()](const SDL_Event &e)
+            {
+                auto ptr = wptr.lock();
+
+                std::pair<float, float> *oldSize = static_cast<std::pair<float, float> *>(e.user.data1);
+                std::pair<float, float> *newSize = static_cast<std::pair<float, float> *>(e.user.data2);
+
+                auto xd = newSize->first / oldSize->first * (ptr->x + ptr->w) - ptr->w;
+                auto yd = ptr->y * newSize->second / oldSize->second;
+                // ptr->h = ptr->h * newSize->second / oldSize->second;
+
+                for (auto &&branch : ptr->branches)
+                {
+                    std::visit(
+                        [offsetY = yd - ptr->y, offsetX = xd - ptr->x](auto &&b)
+                        {
+                            b->update(offsetX, offsetY);
+                        },
+                        branch);
+                }
+
+                for (auto &&leaf : ptr->leaves)
+                {
+                    std::visit(
+                        [offsetY = yd - ptr->y, offsetX = xd - ptr->x](auto &&l)
+                        {
+                            l->x += offsetX;
+                            l->y += offsetY;
+                            l->update();
+                        },
+                        leaf);
+                }
+
+                ptr->x = xd;
+                ptr->y = yd;
+                ptr->update();
+
+                ptr->trunk.x = xd;
+                ptr->trunk.y = yd;
+                ptr->trunk.update();
+            });
+        rptr->eventManager.addCallback(
+            SDL_MOUSEBUTTONDOWN, [wptr = rptr->weak_from_this()](const SDL_Event &e)
+            {
+                auto ptr = wptr.lock();
+
+                float offset = 0;
+                if (events::containsMouse(std::as_const(ptr->trunk), e))
+                {
+                    ptr->toggle();
+                }
+                else
+                {
+                    bool branchHit = false;
+                    bool leafHit = false;
+                    for (auto &&branch : ptr->branches)
+                    {
+                        if (!branchHit && !leafHit)
+                        {
+                            std::visit(
+                                [e, &offset, &branchHit, &leafHit](auto &&b)
+                                {
+                                    if (events::containsMouse(std::as_const(b->trunk), e))
+                                    {
+                                        offset = -b->h; // Subtract size before closing/opening
+                                        b->eventManager.process(e);
+                                        offset += b->h; // Add size after opening/closing
+                                        branchHit = true;
+                                    }
+                                    else if (events::containsMouse(std::as_const(*b), e))
+                                    {
+                                        b->eventManager.process(e);
+                                        leafHit = true;
+                                    }
+                                },
+                                branch);
+                        }
+                        else
+                        {
+                            std::visit(
+                                [offset](auto &&b)
+                                {
+                                    b->update(offset);
+                                },
+                                branch);
+                        }
+                    }
+
+                    if (branchHit)
+                    {
+                        ptr->h += offset;
+                        ptr->update();
+                        for (auto &&leaf : ptr->leaves)
+                        {
+                            std::visit(
+                                [offset](auto &&l)
+                                {
+                                    l->y += offset;
+                                    l->update();
+                                },
+                                leaf);
+                        }
+                    }
+                    else if (!leafHit)
+                    {
+                        for (auto &&leaf : ptr->leaves)
+                        {
+                            if (std::visit(
+                                    [&e, &branchHit](auto &&l)
+                                    {
+                                        if (events::containsMouse(std::as_const(*l), e))
+                                        {
+                                            l->eventManager.process(e);
+                                            return true;
+                                        }
+                                        else
+                                        {
+                                            return false;
+                                        }
+                                    },
+                                    leaf))
+                            {
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+        return rptr;
+    }
+
+    template <concepts::PositionableType Trunk, concepts::PositionableType... Branches, concepts::PositionableType... Leaves>
+    requires concepts::ProcessorType<Trunk> && concepts::TranslatableType<Trunk> &&(concepts::ProcessorType<Branches> &&...) && (concepts::TranslatableType<Branches> && ...) && (concepts::ProcessorType<Leaves> && ...) && (concepts::TranslatableType<Leaves> && ...) std::shared_ptr<Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>> //
+        Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::build(Trunk &&t, std::shared_ptr<Texture> &&alt)
+    {
+        auto rptr = std::shared_ptr<Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>>(new Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>(std::forward<Trunk>(t), std::forward<std::shared_ptr<Texture>>(alt)));
+
         rptr->eventManager.addCallback(
             events::GUI_REDRAW, [wptr = rptr->weak_from_this()](const SDL_Event &e)
             {
@@ -284,7 +438,6 @@ namespace gui
     requires concepts::ProcessorType<Trunk> && concepts::TranslatableType<Trunk> &&(concepts::ProcessorType<Branches> &&...) && (concepts::TranslatableType<Branches> && ...) && (concepts::ProcessorType<Leaves> && ...) && (concepts::TranslatableType<Leaves> && ...) //
         void Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::draw()
     {
-        // trunk.nextTexture();
         if (Rectangle::hidden)
             return;
 
@@ -320,6 +473,8 @@ namespace gui
         float Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::toggle()
     {
         open = !open;
+
+        trunk.nextTexture();
 
         float dy = -h;
 
@@ -361,7 +516,7 @@ namespace gui
     requires concepts::ProcessorType<U> && concepts::TranslatableType<U>
     void Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::addBranch(std::shared_ptr<U> &&u)
     {
-        u->x = x;
+        u->x = x + 4.0f;
         if (branches.empty())
         {
             u->y = trunk.y + trunk.h;
@@ -405,7 +560,8 @@ namespace gui
     void Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::addLeaf(std::shared_ptr<U> &&u)
     {
 
-        u->x = x;
+        u->x = x + 4.0f;
+
         if (branches.empty() && leaves.empty())
         {
             u->y = trunk.y + trunk.h;

@@ -34,6 +34,9 @@ namespace events
     constexpr Uint32 TOGGLEEVENT_OFF = 0;
     constexpr Uint32 TOGGLEEVENT_ON = 1;
 
+    constexpr Uint32 DROPEVENT_KERNEL = 0;
+    constexpr Uint32 DROPEVENT_LINK = 1;
+
     template <concepts::DrawableType Drawable>
     void draw(Drawable &d)
     {

@@ -9,6 +9,9 @@
 
 #include <CL\cl2.hpp>
 
+namespace opencl
+{
+
 class Kernel
 {
 private:
@@ -23,6 +26,8 @@ public:
     std::string getArg(unsigned int pos);
     bool isInput(unsigned int pos);
     bool isOutput(unsigned int pos);
+
+    cl_uint numArgs();
 
     template <concepts::OpenCLType T>
     void setArg(unsigned int pos, T t, std::size_t size = 0)
@@ -68,5 +73,7 @@ public:
         }
     }
 };
+
+} // namespace opencl
 
 #endif

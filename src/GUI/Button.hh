@@ -47,33 +47,33 @@ namespace gui
         events::EventManager eventManager;
 
         template <typename F, typename... Args>
-        requires std::invocable<F, const SDL_Event &, const Args &...>
-        void onPress(const F &f, const Args &...args)
+        requires std::invocable<F, const SDL_Event &, Args &...>
+        void onPress(F f, Args &&...args)
         {
-            eventManager.addCallback(SDL_MOUSEBUTTONDOWN, f, args...);
+            eventManager.addCallback(SDL_MOUSEBUTTONDOWN, f, std::forward<Args>(args)...);
         }
 
         template <typename F, typename... Args>
-        requires std::invocable<F, const Args &...>
-        void onPress(const F &f, const Args &...args)
+        requires std::invocable<F, Args &...>
+        void onPress(F f, Args &&...args)
         {
-            onPress([f, args...]([[maybe_unused]] const SDL_Event &e)
-                    { f(args...); });
+            onPress([f, args...]([[maybe_unused]] const SDL_Event &e) mutable
+                    { f(std::forward<Args>(args)...); });
         }
 
         template <typename F, typename... Args>
-        requires std::invocable<F, const SDL_Event &, const Args &...>
-        void onRelease(const F &f, const Args &...args)
+        requires std::invocable<F, const SDL_Event &, Args &...>
+        void onRelease(F f, Args &&...args)
         {
-            eventManager.addCallback(SDL_MOUSEBUTTONUP, f, args...);
+            eventManager.addCallback(SDL_MOUSEBUTTONUP, f, std::forward<Args>(args)...);
         }
 
         template <typename F, typename... Args>
-        requires std::invocable<F, const Args &...>
-        void onRelease(const F &f, const Args &...args)
+        requires std::invocable<F, Args &...>
+        void onRelease(F f, Args &&...args)
         {
-            onRelease([f, args...]([[maybe_unused]] const SDL_Event &e)
-                      { f(args...); });
+            onRelease([f, args...]([[maybe_unused]] const SDL_Event &e) mutable
+                      { f(std::forward<Args>(args)...); });
         }
     };
 }

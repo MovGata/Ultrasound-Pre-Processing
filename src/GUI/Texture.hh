@@ -17,15 +17,21 @@ namespace gui
         GLuint texture;
         GLsizei textureW = 0, textureH = 0;
 
+
     public:
+        static TTF_Font *lastFont;
+        
         Texture(unsigned int w = 1, unsigned int h = 1);
         ~Texture();
 
-        Texture(const Texture &) = delete;
+        Texture(const Texture &);
 
         void update(GLuint pixelBuffer);
         void addText(TTF_Font *f, const std::string &str);
+        void addText(const std::string &str);
         void fill(SDL_Colour c);
+
+        void rotate(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
 
         operator GLuint();
     };

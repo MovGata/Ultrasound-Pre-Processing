@@ -9,6 +9,9 @@
 #include "Kernel.hh"
 #include "Source.hh"
 
+namespace opencl
+{
+
 class Program
 {
 private:
@@ -24,5 +27,6 @@ public:
     Kernel &at(std::string str);
     // cl::Program *operator->();
 };
+} // namespace opencl
 
 #endif

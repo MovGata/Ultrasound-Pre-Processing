@@ -5,6 +5,11 @@
 #include <string>
 #include <vector>
 
+namespace opencl
+{
+    
+
+
 Source::Source(const std::string &url) : name(url)
 {
     std::ifstream f(url);
@@ -30,3 +35,5 @@ Source::operator cl::Program::Sources()
 {
     return src;
 }
+
+} // namespace opencl

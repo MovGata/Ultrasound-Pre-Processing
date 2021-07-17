@@ -2,6 +2,11 @@
 
 #include <CL/cl2.hpp>
 
+namespace opencl
+{
+    
+
+
 Kernel::Kernel(cl::Kernel k) : kernel(k)
 {
 }
@@ -35,3 +40,10 @@ bool Kernel::isOutput(unsigned int pos)
 
     return (addr != CL_KERNEL_ARG_ADDRESS_CONSTANT && (acce == CL_KERNEL_ARG_ACCESS_WRITE_ONLY || acce == CL_KERNEL_ARG_ACCESS_READ_WRITE));
 }
+
+cl_uint Kernel::numArgs()
+{
+    return kernel.getInfo<CL_KERNEL_NUM_ARGS>();
+}
+
+} // namespace opencl

@@ -14,6 +14,11 @@
 
 #include "Source.hh"
 
+namespace opencl
+{
+    
+
+
 Device::Device(unsigned int w, unsigned int h) : width(w), height(h)
 {
     // Rounds up to nearest multiple of 32 (for performance concerns)
@@ -303,3 +308,4 @@ void Device::selectDevice()
         std::cerr << e.what() << '\n';
     }
 }
+} // namespace opencl

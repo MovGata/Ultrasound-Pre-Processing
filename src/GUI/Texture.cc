@@ -5,6 +5,7 @@
 
 namespace gui
 {
+    TTF_Font *Texture::lastFont;
 
     Texture::Texture(unsigned int w, unsigned int h) : textureW(w), textureH(h)
     {
@@ -19,8 +20,8 @@ namespace gui
         glBindTexture(GL_TEXTURE_2D, texture);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, clr.data());
@@ -49,6 +50,7 @@ namespace gui
 
     void Texture::addText(TTF_Font *font, const std::string &str)
     {
+        lastFont = font;
         SDL_Surface *s = TTF_RenderText_Blended(font, str.c_str(), SDL_Colour{0xFF, 0xFF, 0xFF, 0xFF});
         if (!s)
         {
@@ -62,16 +64,9 @@ namespace gui
         {
 
             std::vector<uint32_t> clr(textureW * textureH);
-            // clr.reserve(textureW * textureH);
-            // std::fill_n(std::back_inserter(clr), textureW * textureH, 0);
+            
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, textureW, textureH, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, clr.data());
             glTexSubImage2D(GL_TEXTURE_2D, 0, 1, 1, textT->w, textT->h, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, textT->pixels);
-            // for (unsigned int y = 1; y < 1+textT->h; ++y)
-            // {
-            //     glTexSubImage2D(GL_TEXTURE_2D, 0, 1, y, textT->w, textT->h, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, textT->pixels);
-            //     glTexSubImage2D(GL_TEXTURE_2D, 0, 1+text->w, y, textT->w, textT->h, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, textT->pixels);
-            // }
-            // glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, textureW, textureH, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, clr.data());
         }
         else
         {
@@ -82,6 +77,11 @@ namespace gui
         // text = str;
 
         SDL_FreeSurface(textT);
+    }
+    
+    void Texture::addText(const std::string &str)
+    {
+        addText(lastFont, str);
     }
 
     void Texture::update(GLuint pixelBuffer)
@@ -99,5 +99,54 @@ namespace gui
     {
         return texture;
     }
+
+    Texture::Texture(const Texture &t) : textureW(t.textureW), textureH(t.textureH)
+    {
+        std::vector<uint32_t> data(textureW * textureH);
+        glBindTexture(GL_TEXTURE_2D, t.texture);
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, data.data());
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+
+        glGenTextures(1, &texture);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, textureW, textureH, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, data.data());
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        GLenum err;
+        if ((err = glGetError()))
+            std::cout << "Texture err: " << err << std::endl;
+    }
+
+    void Texture::rotate(unsigned int x, unsigned int y, unsigned int w, unsigned int h)
+    {
+        if (x+w > static_cast<unsigned int>(textureW) || x+w > static_cast<unsigned int>(textureH) || y+h > static_cast<unsigned int>(textureW) || y+h > static_cast<unsigned int>(textureH))
+        {
+            return;
+        }
+
+        std::vector<uint32_t> data(textureW * textureH);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, data.data());
+        std::vector<uint32_t> rotated = data;
+        for (unsigned int i = 0; i < h; ++i)
+        {
+            for (unsigned int j = 0; j < w; ++j)
+            {
+                rotated[(y+j)*textureW+x+w-1-(i)] = data[(y+i)*textureW+x+j];
+            }
+        }
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, textureW, textureH, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, rotated.data());
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
 
 } // namespace gui

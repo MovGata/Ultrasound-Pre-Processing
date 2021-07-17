@@ -6,6 +6,11 @@
 
 #include "Source.hh"
 
+namespace opencl
+{
+    
+
+
 Program::Program(cl::Context context, Source src) : program(context, src), name(std::string_view(src.name).substr(src.name.find_last_of('/') + 1, src.name.find_last_of('.')))
 {
     try
@@ -43,3 +48,5 @@ Kernel &Program::at(std::string str)
 // {
 //     return &program;
 // }
+
+} // namespace opencl

@@ -169,7 +169,7 @@ namespace gui
 
     TTF_Font *Instance::loadFont(const std::string &url)
     {
-        font.reset(TTF_OpenFont(url.c_str(), 16));
+        font.reset(TTF_OpenFont(url.c_str(), 12));
         return font.get();
     }
 

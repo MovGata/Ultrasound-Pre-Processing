@@ -8,6 +8,11 @@
 
 #include "Program.hh"
 
+namespace opencl
+{
+    
+
+
 class Device
 {
 private:
@@ -39,4 +44,5 @@ public:
 
 };
 
+} // namespace opencl
 #endif

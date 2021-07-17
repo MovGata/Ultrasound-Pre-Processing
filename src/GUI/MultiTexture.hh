@@ -59,6 +59,7 @@ namespace gui
 
         void nextTexture()
         {
+            toggle = !toggle;
             index = static_cast<std::size_t>(toggle);
             Drawable::texture = textures.at(index);
         }
