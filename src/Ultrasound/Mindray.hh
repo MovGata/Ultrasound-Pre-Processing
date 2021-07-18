@@ -15,28 +15,38 @@
 #include <vector>
 
 #include "../IO/InfoStore.hh"
+#include "../Data/Volume.hh"
+
+#include "CL/cl2.hpp"
 
 namespace ultrasound
 {
-    
-class Mindray
-{
-private:
-public:
-    Mindray(/* args */);
-    ~Mindray();
-    
-    using vmBinInfoStore = io::InfoStore<bool, int8_t, int16_t, int32_t, uint8_t, uint16_t, uint32_t, float, double>;
-    using vmTxtInfoStore = io::InfoStore<uint32_t, double, std::string>;
-    using cpInfoStore = io::InfoStore<uint8_t, int32_t, float, std::size_t>;
+    class Mindray : public data::Volume
+    {
+    private:
+        std::vector<cl_uchar4> raw;
 
-    vmBinInfoStore vmBinStore;
-    vmTxtInfoStore vmTxtStore;
-    cpInfoStore cpStore;
+    public:
+        Mindray();
+        ~Mindray();
 
-    bool load(const char *vm_txt, const char *vm_bin, const char *cp);
+        const std::string in = "IN";
+        const std::string out = "3D";
 
-};
+        using vmBinInfoStore = io::InfoStore<bool, int8_t, int16_t, int32_t, uint8_t, uint16_t, uint32_t, float, double>;
+        using vmTxtInfoStore = io::InfoStore<uint32_t, double, std::string>;
+        using cpInfoStore = io::InfoStore<uint8_t, int32_t, float, std::size_t>;
+
+        vmBinInfoStore vmBinStore;
+        vmTxtInfoStore vmTxtStore;
+        cpInfoStore cpStore;
+
+        bool load(const char *dir);
+
+        void load(const cl::Context &context, unsigned int d, unsigned int l, unsigned int w, const std::vector<uint8_t> &data);
+        void sendToCl(const cl::Context &context);
+
+    };
 
 } // namespace ultrasound
 

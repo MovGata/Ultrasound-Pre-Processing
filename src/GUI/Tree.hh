@@ -9,6 +9,7 @@
 
 #include "MultiTexture.hh"
 #include "Rectangle.hh"
+#include "Button.hh"
 
 #include "../Events/Concepts.hh"
 #include "../Events/GUI.hh"
@@ -40,6 +41,7 @@ namespace gui
     public:
         events::EventManager eventManager;
 
+        static std::shared_ptr<Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>> build(const std::string &str);
         static std::shared_ptr<Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>> build(Trunk &&t);
         static std::shared_ptr<Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>> build(Trunk &&t, std::shared_ptr<Texture> &&alt);
 
@@ -84,6 +86,21 @@ namespace gui
         w = trunk.w;
         h = trunk.h;
         update();
+    }
+
+    template <concepts::PositionableType Trunk, concepts::PositionableType... Branches, concepts::PositionableType... Leaves>
+    requires concepts::ProcessorType<Trunk> && concepts::TranslatableType<Trunk> &&(concepts::ProcessorType<Branches> &&...) && (concepts::TranslatableType<Branches> && ...) && (concepts::ProcessorType<Leaves> && ...) && (concepts::TranslatableType<Leaves> && ...) std::shared_ptr<Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>> //
+        Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::build(const std::string &str)
+    {
+        int w, h;
+        TTF_SizeText(Texture::lastFont, str.c_str(), &w, &h);
+        auto t = std::make_shared<gui::Texture>(w + 2, h + 2);
+        t->addText(Texture::lastFont, str.c_str());
+
+        auto rec = gui::Button<gui::Rectangle>::build({0.0f, 0.0f, static_cast<float>(w) + 2.0f, static_cast<float>(h) + 2.0f, std::move(t)});
+        rec->update();
+
+        return build(gui::Button<gui::Rectangle>({*rec}));
     }
 
     template <concepts::PositionableType Trunk, concepts::PositionableType... Branches, concepts::PositionableType... Leaves>

@@ -20,12 +20,12 @@ namespace data
     private:
         std::vector<cl_uchar4> raw;
 
-        std::pair<float, float> offset = {0.0f, 0.0f};
-        unsigned int depth;
-        unsigned int length;
-        unsigned int width;
+        // std::pair<float, float> offset = {0.0f, 0.0f};
 
         glm::vec3 lastRotation;
+
+    protected:
+        Volume()=default;
 
     public:
         glm::mat4 lastview;
@@ -34,6 +34,9 @@ namespace data
         glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
         bool modified = true; // Render at least once
 
+        unsigned int depth;
+        unsigned int length;
+        unsigned int width;
         cl::Buffer buffer;
         std::array<float, 12> invMVTransposed = {0};
 

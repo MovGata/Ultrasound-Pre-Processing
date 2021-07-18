@@ -43,6 +43,12 @@ namespace concepts
     concept OpenCLType = OpenCLScalarType<T> || OpenCLVectorType<T> || std::is_pointer_v<T> || std::is_same_v<T, cl::Buffer>;
 
 
+    // template<typename T>
+    // concept KernelType = requires(T t)
+    // {
+
+    // };
+
 } // namespace concepts
 
 #endif

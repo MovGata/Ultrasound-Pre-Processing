@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <charconv>
+#include <filesystem>
 #include <istream>
 #include <iostream>
 #include <string_view>
@@ -14,7 +15,7 @@
 namespace ultrasound
 {
 
-    Mindray::Mindray(/* args */)
+    Mindray::Mindray() : Volume()
     {
     }
 
@@ -22,14 +23,36 @@ namespace ultrasound
     {
     }
 
-    bool Mindray::load(const char *vmTxt, const char *vmBin, const char *cp)
+    bool Mindray::load(const char *dir)
     {
-        std::string s;
+        std::string vmTxt, vmBin, cp;
+        for (const auto &entry : std::filesystem::directory_iterator(dir))
+        {
+            if (entry.path().filename() == "VirtualMachine.txt")
+            {
+                vmTxt = entry.path().generic_string();
+            }
+            else if (entry.path().filename() == "VirtualMachine.bin")
+            {
+                vmBin = entry.path().generic_string();
+            }
+            else if (entry.path().filename() == "BC_CinePartition0.bin")
+            {
+                cp = entry.path().generic_string();
+            }
+        }
 
+        if (vmTxt.empty() || vmBin.empty() || cp.empty())
+        {
+            std::cout << "Could not find Mindray files" << std::endl;
+            return false;
+        }
+
+        std::string s;
         {
             std::unique_ptr<SDL_RWops, decltype(&SDL_RWclose)> vmTxtOps(nullptr, SDL_RWclose);
 
-            vmTxtOps.reset(SDL_RWFromFile(vmTxt, "r"));
+            vmTxtOps.reset(SDL_RWFromFile(vmTxt.c_str(), "r"));
             if (vmTxtOps == nullptr)
             {
                 std::cout << "SDL2 failed to open Mindray virtual machine file '" << vmTxt << "', error: " << SDL_GetError();
@@ -127,7 +150,7 @@ namespace ultrasound
         {
             std::unique_ptr<SDL_RWops, decltype(&SDL_RWclose)> vmBinOps(nullptr, SDL_RWclose);
 
-            vmBinOps.reset(SDL_RWFromFile(vmBin, "r"));
+            vmBinOps.reset(SDL_RWFromFile(vmBin.c_str(), "r"));
             if (vmBinOps == nullptr)
             {
                 std::cout << "SDL2 failed to open Mindray virtual machine file '" << vmBin << "', error: " << SDL_GetError();
@@ -304,10 +327,10 @@ namespace ultrasound
             std::vector<int32_t> frameCount = vmBinStore.fetch<int32_t>("FrameCountPerVolume");
             std::vector<float> angleRange = vmBinStore.fetch<float>("BDispLineRange");
 
-            int32_t length = std::abs(lineRange.at(0) - lineRange.at(1)) + 1;
-            int32_t depth = std::abs(pointRange.at(0) - pointRange.at(1)) + 1;
-            int32_t width = frameCount.at(0);
-            float angleDelta = std::abs(angleRange.at(0) - angleRange.at(1)) / static_cast<float>(length);
+            int32_t vLength = std::abs(lineRange.at(0) - lineRange.at(1)) + 1;
+            int32_t vDepth = std::abs(pointRange.at(0) - pointRange.at(1)) + 1;
+            int32_t vWidth = frameCount.at(0);
+            float angleDelta = std::abs(angleRange.at(0) - angleRange.at(1)) / static_cast<float>(vLength);
 
             std::vector<uint8_t> headers;
             std::vector<uint8_t> data;
@@ -317,10 +340,10 @@ namespace ultrasound
 
             std::size_t headerSize = 128;
             std::size_t otherSize = vmOffset > 16 ? 304 : 0;
-            std::size_t dataSize = length * depth;
+            std::size_t dataSize = vLength * vDepth;
             std::size_t frameSize = dataSize + headerSize + otherSize;
 
-            cpOps.reset(SDL_RWFromFile(cp, "r"));
+            cpOps.reset(SDL_RWFromFile(cp.c_str(), "r"));
             if (cpOps == nullptr)
             {
                 std::cout << "SDL2 failed to open Mindray cine partition file '" << cp << "', error: " << SDL_GetError();
@@ -350,12 +373,46 @@ namespace ultrasound
             cpStore.load<std::size_t>("OtherSize", std::move(otherSize));
             cpStore.load<std::size_t>("DataSize", std::move(dataSize));
 
-            cpStore.load<int32_t>("Length", std::move(length));
-            cpStore.load<int32_t>("Depth", std::move(depth));
-            cpStore.load<int32_t>("Width", std::move(width));
+            cpStore.load<int32_t>("Length", std::move(vLength));
+            cpStore.load<int32_t>("Depth", std::move(vDepth));
+            cpStore.load<int32_t>("Width", std::move(vWidth));
             cpStore.load<float>("AngleDelta", std::move(angleDelta));
+            
         }
+
+
         return true;
+    }
+
+    void Mindray::load(const cl::Context &context, unsigned int d, unsigned int l, unsigned int w, const std::vector<uint8_t> &data)
+    {
+        depth = d;
+        length = l;
+        width = w;
+
+        raw.reserve(width * depth * length);
+        for (unsigned int z = 0; z < width; ++z)
+        {
+            auto zyx = z * length * depth;
+            for (unsigned int y = 0; y < length; ++y)
+            {
+                auto yx = y * depth;
+                for (unsigned int x = 0; x < depth; ++x)
+                {
+                    cl_uchar bnw = data.at(x + yx + zyx);
+                    cl_uchar4 arr = {bnw, bnw, bnw, 0xFF};
+                    raw.push_back(arr);
+                }
+            }
+        }
+
+        buffer = cl::Buffer(context, CL_MEM_READ_WRITE, d * l * w * sizeof(cl_uchar4));
+        // mvBuffer = cl::Buffer(context, CL_MEM_READ_ONLY, 12 * sizeof(cl_float));
+    }
+
+    void Mindray::sendToCl(const cl::Context &context)
+    {
+        buffer = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(raw[0]) * raw.size(), raw.data());
     }
 
 } // namespace ultrasound

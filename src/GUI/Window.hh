@@ -22,6 +22,7 @@
 
 #include "../Events/Concepts.hh"
 #include "../Events/EventManager.hh"
+#include "../Ultrasound/Mindray.hh"
 
 namespace gui
 {
@@ -67,7 +68,7 @@ namespace gui
 
     public:
         std::vector<std::variant<std::shared_ptr<Drawables>...>> drawables;
-        std::shared_ptr<Kernel> kernel;
+        std::variant<std::shared_ptr<Kernel<opencl::Kernel>>, std::shared_ptr<Kernel<ultrasound::Mindray>>> kernel;
 
         Window(unsigned int width = 640, unsigned int height = 480, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE) : Window(SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, flags) {}
         Window(unsigned int xPos, unsigned int yPos, unsigned int width, unsigned int height, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE) : window(nullptr, SDL_DestroyWindow), projection(1.0f), size(static_cast<float>(width), static_cast<float>(height))
@@ -122,10 +123,12 @@ namespace gui
                     drawable);
             }
 
-            if (kernel)
-            {
-                kernel->draw();
-            }
+            std::visit([](auto &&k)
+                       {
+                           if (k)
+                               k->draw();
+                       },
+                       kernel);
 
             SDL_GL_SwapWindow(window.get());
         }
@@ -218,32 +221,32 @@ namespace gui
             {
 
                 if (std::visit(
-                    [&e = std::as_const(e)](auto &&d)
-                    {
-                        if constexpr (concepts::ProcessorType<decltype(*d)>)
+                        [&e = std::as_const(e)](auto &&d)
                         {
-                            if constexpr (concepts::HidableType<decltype(*d)>)
+                            if constexpr (concepts::ProcessorType<decltype(*d)>)
                             {
-                                if (d->hidden)
+                                if constexpr (concepts::HidableType<decltype(*d)>)
                                 {
-                                    return false;
+                                    if (d->hidden)
+                                    {
+                                        return false;
+                                    }
                                 }
-                            }
 
-                            if (events::containsMouse(std::as_const(*d), e))
-                            {
-                                if(d->eventManager.process(e))
+                                if (events::containsMouse(std::as_const(*d), e))
                                 {
-                                    return true;
+                                    if (d->eventManager.process(e))
+                                    {
+                                        return true;
+                                    }
                                 }
                             }
-                        }
-                        return false;
-                    },
-                    drawable) == true)
-                    {
-                        break;
-                    }
+                            return false;
+                        },
+                        drawable) == true)
+                {
+                    break;
+                }
             }
         }
 

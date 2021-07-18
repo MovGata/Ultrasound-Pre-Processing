@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <vector>
+#include <variant>
 
 #include "Button.hh"
 #include "Rectangle.hh"
@@ -12,40 +13,43 @@
 #include "../Events/Concepts.hh"
 #include "../Events/EventManager.hh"
 
+#include "../OpenCL/Concepts.hh"
 
 namespace gui
 {
 
-    template <concepts::HidableType Drawable>
-    class Dropzone : public Drawable, public std::enable_shared_from_this<Dropzone<Drawable>>
+    template <concepts::HidableType Drawable, typename... K>
+    class Dropzone : public Drawable, public std::enable_shared_from_this<Dropzone<Drawable, K...>>
     {
     private:
         Dropzone(Drawable &&d) : Drawable(std::forward<Drawable>(d))
         {
-            
         }
-
 
     public:
         ~Dropzone() = default;
-        std::vector<std::shared_ptr<Kernel>> kernels;
+        std::vector<std::variant<std::shared_ptr<Kernel<K>>...>> kernels;
 
         events::EventManager eventManager;
 
         void draw() const
         {
-            if (!Drawable::hidden)
-                Drawable::draw();
+            if (Drawable::hidden)
+                return;
 
-            for (auto &&k : kernels)
+            Drawable::draw();
+
+            for (auto &&kernel : kernels)
             {
-                k->draw();
+                std::visit([](auto &&k)
+                           { k->draw(); },
+                           kernel);
             }
         }
 
-        static std::shared_ptr<Dropzone<Drawable>> build(Drawable &&d)
+        static std::shared_ptr<Dropzone<Drawable, K...>> build(Drawable &&d)
         {
-            auto rptr = std::shared_ptr<Dropzone<Drawable>>(new Dropzone<Drawable>(std::forward<Drawable>(d)));
+            auto rptr = std::shared_ptr<Dropzone<Drawable, K...>>(new Dropzone<Drawable, K...>(std::forward<Drawable>(d)));
             rptr->eventManager.addCallback(
                 events::GUI_REDRAW, [wptr = rptr->weak_from_this()](const SDL_Event &e)
                 {
@@ -61,16 +65,16 @@ namespace gui
                     ptr->y = yd;
                     ptr->update();
                 });
-            rptr->eventManager.addCallback(
-                events::GUI_DROP, [wptr = rptr->weak_from_this()](const SDL_Event &e)
-                {
-                    auto ptr = wptr.lock();
+            // rptr->eventManager.addCallback(
+            //     events::GUI_DROP, [wptr = rptr->weak_from_this()](const SDL_Event &e)
+            //     {
+            //         auto ptr = wptr.lock();
 
-                    if (e.user.code == events::DROPEVENT_KERNEL)
-                    {
-                        ptr->kernels.emplace_back(*static_cast<std::shared_ptr<Kernel> *>(e.user.data1));
-                    }
-                });
+            //         if (e.user.code == events::DROPEVENT_KERNEL)
+            //         {
+            //             ptr->kernels.emplace_back(*static_cast<std::shared_ptr<Kernel> *>(e.user.data1));
+            //         }
+            //     });
             return rptr;
         }
     };
