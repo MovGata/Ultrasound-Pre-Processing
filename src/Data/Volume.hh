@@ -33,12 +33,15 @@ namespace data
         glm::vec3 scale = {1.0f, 1.0f, 1.0f};
         glm::vec3 translation = {0.0f, 0.0f, 5.0f};
         glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
-        bool modified = true; // Render at least once
+        bool modified = false; // Render at least once
 
         cl_uint depth;
         cl_uint length;
         cl_uint width;
         cl::Buffer buffer;
+        cl_float ratio;
+        cl_float delta;
+
         std::array<float, 12> invMVTransposed = {0};
 
         Volume(const Volume &) = default;

@@ -21,13 +21,13 @@ private:
     cl::Device device;
     cl::Buffer   outBuffer;
     cl::Buffer invMVTransposed;
-    cl::CommandQueue cQueue;
 
     unsigned int width = 0;
     unsigned int height = 0;
 
 public:
     cl_GLuint pixelBuffer;
+    cl::CommandQueue cQueue;
 
     std::map<std::string, std::shared_ptr<Program>> programs;
     cl::Context context;

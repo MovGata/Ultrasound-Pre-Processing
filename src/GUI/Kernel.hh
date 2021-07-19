@@ -71,7 +71,14 @@ namespace gui
                 [wptr = sptr->weak_from_this()](const SDL_Event &e)
                 {
                     auto ptr = wptr.lock();
-                    if (events::containsMouse(std::as_const(*ptr->outNode), e))
+                    if (ptr->kernel->in == "IN" && events::containsMouse(std::as_const(*ptr->inNode), e))
+                    {
+                        if (e.button.clicks == 2)
+                        {
+                            ptr->execute();
+                        }
+                    }
+                    else if (events::containsMouse(std::as_const(*ptr->outNode), e))
                     {
                         if (ptr->outLink)
                         {
@@ -187,6 +194,25 @@ namespace gui
             }
         }
 
+        void execute()
+        {
+            if (inLink)
+            {
+                std::visit(
+                    [this](auto &&k)
+                    { kernel->template input<std::decay_t<decltype(*k->kernel)>>(*k->kernel); },
+                    *inLink);
+            }
+
+            if (outLink)
+            {
+                std::visit(
+                    [](auto &&k)
+                    { k->execute(); },
+                    *outLink);
+            }
+        }
+
         void update(float dy)
         {
             y += dy;
@@ -211,7 +237,10 @@ namespace gui
                     if (k->inLink)
                     {
                         std::visit([](auto &&krnl)
-                                   { krnl->outLink.reset(); },
+                                   {
+                                       krnl->outLink.reset();
+                                       krnl->outLine.hidden = true;
+                                   },
                                    *k->inLink);
                     }
 
@@ -242,9 +271,21 @@ namespace gui
                     if (k->inLink)
                     {
                         std::visit([](auto &&krnl)
-                                   { krnl->outLink.reset(); },
+                                   {
+                                       krnl->outLink.reset();
+                                       krnl->outLine.hidden = true;
+                                   },
                                    *k->inLink);
                     }
+
+                    float oy = k->inNode->y + k->inNode->h / 2.0f;
+                    float ox = k->inNode->x;
+                    ptr->outLine.y = ptr->outNode->y + ptr->outNode->h / 2.0f - ptr->outLine.h / 2.0f;
+                    ptr->outLine.x = ptr->x + ptr->w;
+                    ptr->outLine.angle = std::atan2(oy - ptr->outLine.y, ox - ptr->outLine.x);
+                    ptr->outLine.h = 3.0f;
+                    ptr->outLine.w = std::sqrt((oy - ptr->outLine.y) * (oy - ptr->outLine.y) + (ox - ptr->outLine.x) * (ox - ptr->outLine.x));
+                    ptr->outLine.update();
                     ptr->outLink = std::make_shared<std::variant<std::shared_ptr<Kernel<KS, KS...>>...>>(k);
                     k->inLink = std::make_shared<std::variant<std::shared_ptr<Kernel<KS, KS...>>...>>(ptr);
                     ptr->outLine.hidden = false;
@@ -321,6 +362,5 @@ namespace gui
             return button;
         }
     };
-
 }
 #endif

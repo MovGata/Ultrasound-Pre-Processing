@@ -377,18 +377,20 @@ namespace ultrasound
             cpStore.load<int32_t>("Depth", std::move(vDepth));
             cpStore.load<int32_t>("Width", std::move(vWidth));
             cpStore.load<float>("AngleDelta", std::move(angleDelta));
-            
+            cpStore.load<float>("Ratio", 0.2f);
         }
-
 
         return true;
     }
 
-    void Mindray::load(const cl::Context &context, unsigned int d, unsigned int l, unsigned int w, const std::vector<uint8_t> &data)
+    void Mindray::load(const cl::Context &context)
     {
-        depth = d;
-        length = l;
-        width = w;
+        depth = cpStore.fetch<int32_t>("Depth", 0);
+        length = cpStore.fetch<int32_t>("Length", 0);
+        width = cpStore.fetch<int32_t>("Width", 0);
+        delta = cpStore.fetch<float>("AngleDelta", 0);
+        ratio = cpStore.fetch<float>("Ratio", 0);
+        std::vector<uint8_t> &data = cpStore.fetch<uint8_t>("Data");
 
         raw.reserve(width * depth * length);
         for (unsigned int z = 0; z < width; ++z)
@@ -406,13 +408,18 @@ namespace ultrasound
             }
         }
 
-        buffer = cl::Buffer(context, CL_MEM_READ_ONLY, d * l * w * sizeof(cl_uchar4));
+        buffer = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(raw[0]) * raw.size(), raw.data());
         // mvBuffer = cl::Buffer(context, CL_MEM_READ_ONLY, 12 * sizeof(cl_float));
     }
 
     void Mindray::sendToCl(const cl::Context &context)
     {
         buffer = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(raw[0]) * raw.size(), raw.data());
+    }
+
+    void Mindray::execute()
+    {
+        modified = true;
     }
 
 } // namespace ultrasound

@@ -53,7 +53,6 @@ namespace gui
                     auto sptr = wptr.lock();
                     if (e.button.button == SDL_BUTTON_LEFT)
                     {
-                        // sptr->eventManager.addCallback(SDL_MOUSEMOTION, events::rotateEvent<TF>, *sptr->tf);
                         sptr->eventManager.addCallback(
                             SDL_MOUSEMOTION, [wptr](const SDL_Event &ev)
                             {

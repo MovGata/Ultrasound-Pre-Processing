@@ -20,61 +20,59 @@ namespace opencl
         cl_uint indepth;
         cl::Buffer inBuffer;
 
-        cl_float inRatio;
-        cl_float angleDelta;
-
-        cl_uint outlength;
-        cl_uint outdepth;
-        cl_uint outwidth;
-        cl::Buffer outBuffer;
-
     public:
-        const std::string in = "3D";
-        const std::string out = "2D";
+        cl_float ratio;
+        cl_float delta;
 
-        ToPolar(const std::shared_ptr<opencl::Kernel> &ptr) : kernel(ptr)
+        cl_uint length;
+        cl_uint depth;
+        cl_uint width;
+        cl::Buffer buffer;
+
+        cl::Context context;
+        cl::CommandQueue queue;
+
+        const std::string in = "3D";
+        const std::string out = "3D";
+
+        ToPolar(const cl::Context &c, const cl::CommandQueue &q, const std::shared_ptr<opencl::Kernel> &ptr) : kernel(ptr), context(c), queue(q)
         {
         }
         
         ~ToPolar() = default;
 
         template<concepts::VolumeType V>
-        void input(cl::Context &context, const V &v)
+        void input(const V &v)
         {
             inlength = v.length;
             inwidth = v.width;
             indepth = v.depth;
-            inBuffer = v.Buffer;
-            inRatio = v.ratio;
-            angleDelta = v.delta;
+            inBuffer = v.buffer;
+            ratio = v.ratio;
+            delta = v.delta;
             
-            outlength = 512;
-            outwidth = 512;
-            outdepth = 512;
-            outBuffer = cl::Buffer(context, CL_MEM_READ_WRITE, outlength * outdepth * outwidth * sizeof(cl_float));
+            length = 512;
+            width = 512;
+            depth = 512;
+            buffer = cl::Buffer(context, CL_MEM_READ_WRITE, length * depth * width * sizeof(cl_float));
         }
 
-        void execute(cl::CommandQueue &cQueue)
+        void execute()
         {
             kernel->setArg(0, indepth);
             kernel->setArg(1, inlength);
             kernel->setArg(2, inwidth);
             kernel->setArg(3, inBuffer);
-            kernel->setArg(4, outdepth);
-            kernel->setArg(5, outlength);
-            kernel->setArg(6, outwidth);
-            kernel->setArg(7, outBuffer);
-            kernel->setArg(8, inRatio);
-            kernel->setArg(9, angleDelta);
+            kernel->setArg(4, depth);
+            kernel->setArg(5, length);
+            kernel->setArg(6, width);
+            kernel->setArg(7, buffer);
+            kernel->setArg(8, ratio);
+            kernel->setArg(9, delta);
             
 
-            kernel->global = cl::NDRange(outdepth, outlength, outwidth);
-            kernel->execute(cQueue);
-        }
-
-        void cleanup([[maybe_unused]] cl::CommandQueue &cQueue)
-        {
-
+            kernel->global = cl::NDRange(depth, length, width);
+            kernel->execute(queue);
         }
     };
 

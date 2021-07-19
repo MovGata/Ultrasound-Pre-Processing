@@ -14,10 +14,12 @@
 #include <string>
 #include <vector>
 
+#include <CL/cl2.hpp>
+
 #include "../IO/InfoStore.hh"
 #include "../Data/Volume.hh"
+#include "../OpenCL/Concepts.hh"
 
-#include "CL/cl2.hpp"
 
 namespace ultrasound
 {
@@ -43,7 +45,12 @@ namespace ultrasound
 
         bool load(const char *dir);
 
-        void load(const cl::Context &context, unsigned int d, unsigned int l, unsigned int w, const std::vector<uint8_t> &data);
+        void load(const cl::Context &context);
+
+        template<concepts::VolumeType V>
+        void input([[maybe_unused]] const V &v){}
+        void execute();
+
         void sendToCl(const cl::Context &context);
 
     };

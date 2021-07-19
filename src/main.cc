@@ -48,27 +48,19 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
         std::terminate();
     }
 
-    auto depth = reader->cpStore.fetch<int32_t>("Depth", 0);
-    auto length = reader->cpStore.fetch<int32_t>("Length", 0);
-    auto width = reader->cpStore.fetch<int32_t>("Width", 0);
-    // auto angleD = reader->cpStore.fetch<float>("AngleDelta", 0);
-
-    std::cout << depth << ' ' << length << ' ' << width << std::endl;
-
-    std::vector<uint8_t> &data = reader->cpStore.fetch<uint8_t>("Data");
-
-    [[maybe_unused]] TTF_Font *font = init.loadFont("./res/fonts/cour.ttf");
-    // const int numIterations = 50;
-
     opencl::Device device;
+
+    TTF_Font *font = init.loadFont("./res/fonts/cour.ttf");
 
     auto size = mainWindow.getSize();
     float wWidth = static_cast<float>(size.first);
     float wHeight = static_cast<float>(size.second);
 
+    reader->load(device.context);
+
     // RENDERER
 
-    std::shared_ptr<data::Volume> volume = std::make_shared<data::Volume>(depth, length, width, data);
+    std::shared_ptr<data::Volume> volume = std::static_pointer_cast<data::Volume>(reader);
 
     std::shared_ptr<gui::Texture> t = std::make_shared<gui::Texture>(512, 512);
     std::shared_ptr<Renderer> vRec = Renderer::build({(wWidth - std::max(wWidth, wHeight)) / 2.0f, (wHeight - std::max(wWidth, wHeight)) / 2.0f, std::max(wWidth, wHeight), std::max(wWidth, wHeight), std::move(t)}, std::shared_ptr(volume));
@@ -115,7 +107,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     tree->addBranch(std::shared_ptr(outputTree));
     tree->addBranch(std::shared_ptr(dataTree));
 
-    std::shared_ptr<opencl::ToPolar> polar = std::make_shared<opencl::ToPolar>(device.programs.at("cartesian")->at("toSpherical"));
+    std::shared_ptr<opencl::ToPolar> polar = std::make_shared<opencl::ToPolar>(device.context, device.cQueue, device.programs.at("cartesian")->at("toSpherical"));
 
     auto mindray = gui::Kernel<ultrasound::Mindray, opencl::ToPolar, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(dropzone)>("MINDRAY", mainWindow.kernel, dropzone, reader);
     auto toPolar = gui::Kernel<opencl::ToPolar, opencl::ToPolar, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(dropzone)>("To Polar", mainWindow.kernel, dropzone, polar);
@@ -146,8 +138,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     device.createDisplay(512, 512);
 
-    volume->sendToCl(device.context);
-    device.prepareVolume(depth, length, width, volume->buffer);
+    // volume->sendToCl(device.context);
+    device.prepareVolume(volume->depth, volume->length, volume->width, volume->buffer);
 
     auto timeA = SDL_GetTicks();
     bool quit = false;
