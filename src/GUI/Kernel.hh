@@ -18,21 +18,23 @@
 namespace gui
 {
 
-    template <typename K>
-    class Kernel : public Rectangle, public std::enable_shared_from_this<Kernel<K>>
+    template <typename K, typename... KS>
+    class Kernel : public Rectangle, public std::enable_shared_from_this<Kernel<K, KS...>>
     {
     private:
-        Kernel(std::shared_ptr<K> &&k) : Rectangle(0.0f, 0.0f, 40.0f, 40.0f), kernel(std::forward<std::shared_ptr<K>>(k)), outLine({0.0f, 0.0f, 1.0f, 1.0f})
+        Kernel(std::shared_ptr<K> &&k, std::shared_ptr<Texture> &&tptr) : Rectangle(0.0f, 0.0f, 40.0f, 40.0f), kernel(std::forward<std::shared_ptr<K>>(k)), outLine({0.0f, 0.0f, 1.0f, 1.0f}), title(0.0f, 0.0f, static_cast<float>(tptr->textureW), static_cast<float>(tptr->textureH), std::forward<std::shared_ptr<Texture>>(tptr))
         {
             texture->fill({0x5C, 0x5C, 0x5C, 0xFF});
 
             inNode = (Button<Rectangle>::build(kernel->in));
-            inNode->onPress([str = kernel->in]()
-                            { std::cout << str << std::endl; });
 
             outNode = (Button<Rectangle>::build(kernel->out));
-            outNode->onPress([str = kernel->out]()
-                             { std::cout << str << std::endl; });
+
+            w = std::max(w, title.w);
+            h = title.h * 3.0f;
+
+            title.x = x + w / 2.0f - title.w / 2.0f;
+            title.y = y;
 
             inNode->y = y + h / 2.0f;
             inNode->x = x + 2.0f;
@@ -46,34 +48,47 @@ namespace gui
             outLine.texture->fill({0xD3, 0xD3, 0xD3, 0xFF});
         }
 
-        std::shared_ptr<K> kernel;
-
     public:
+        std::shared_ptr<K> kernel;
         std::shared_ptr<Button<Rectangle>> inNode;
         std::shared_ptr<Button<Rectangle>> outNode;
-        events::EventManager eventManager;
+
         gui::Rectangle outLine;
+        gui::Rectangle title;
+
+        std::shared_ptr<std::variant<std::shared_ptr<Kernel<KS, KS...>>...>> inLink;
+        std::shared_ptr<std::variant<std::shared_ptr<Kernel<KS, KS...>>...>> outLink;
+
+        events::EventManager eventManager;
 
         bool link = false;
 
-        static std::shared_ptr<Kernel<K>> build(std::shared_ptr<K> &&k)
+        static std::shared_ptr<Kernel<K, KS...>> build(std::shared_ptr<K> &&k, std::shared_ptr<Texture> &&tptr)
         {
-            auto sptr = std::shared_ptr<Kernel<K>>(new Kernel<K>(std::forward<std::shared_ptr<K>>(k)));
+            auto sptr = std::shared_ptr<Kernel<K, KS...>>(new Kernel<K, KS...>(std::forward<std::shared_ptr<K>>(k), std::forward<std::shared_ptr<Texture>>(tptr)));
             sptr->eventManager.addCallback(
                 SDL_MOUSEBUTTONDOWN,
                 [wptr = sptr->weak_from_this()](const SDL_Event &e)
                 {
                     auto ptr = wptr.lock();
-                    if (events::containsMouse(std::as_const(*ptr->inNode), e))
+                    if (events::containsMouse(std::as_const(*ptr->outNode), e))
                     {
-                        ptr->link = true;
-                        ptr->inNode->eventManager.process(e);
-                        return;
-                    }
-                    else if (events::containsMouse(std::as_const(*ptr->outNode), e))
-                    {
-                        ptr->link = true;
+                        if (ptr->outLink)
+                        {
+                            std::visit([](auto &&krnl)
+                                       { krnl->inLink.reset(); },
+                                       *ptr->outLink);
+                        }
+
+                        ptr->outLine.y = ptr->outNode->y + ptr->outNode->h / 2.0f - ptr->outLine.h / 2.0f;
+                        ptr->outLine.x = ptr->x + ptr->w;
+                        ptr->outLine.angle = std::atan2(static_cast<float>(e.motion.y) - ptr->outLine.y, static_cast<float>(e.motion.x) - ptr->outLine.x);
+                        ptr->outLine.h = 3.0f;
+                        ptr->outLine.w = std::sqrt((static_cast<float>(e.motion.y) - ptr->outLine.y) * (static_cast<float>(e.motion.y) - ptr->outLine.y) + (static_cast<float>(e.motion.x) - ptr->outLine.x) * (static_cast<float>(e.motion.x) - ptr->outLine.x));
+                        ptr->outLine.update();
+
                         ptr->outLine.hidden = false;
+                        ptr->link = true;
                         ptr->outNode->eventManager.process(e);
                         return;
                     }
@@ -82,6 +97,7 @@ namespace gui
                         ptr->link = false;
                     }
                 });
+
             sptr->eventManager.addCallback(
                 SDL_MOUSEMOTION,
                 [wptr = sptr->weak_from_this()](const SDL_Event &e)
@@ -90,7 +106,7 @@ namespace gui
 
                     if (ptr->link)
                     {
-                        ptr->outLine.y = ptr->outNode->y + ptr->outNode->w / 2.0f - ptr->outLine.h / 2.0f;
+                        ptr->outLine.y = ptr->outNode->y + ptr->outNode->h / 2.0f - ptr->outLine.h / 2.0f;
                         ptr->outLine.x = ptr->x + ptr->w;
                         ptr->outLine.angle = std::atan2(static_cast<float>(e.motion.y) - ptr->outLine.y, static_cast<float>(e.motion.x) - ptr->outLine.x);
                         ptr->outLine.h = 3.0f;
@@ -116,6 +132,41 @@ namespace gui
                         ptr->outNode->y += dy;
                         ptr->outNode->x += dx;
                         ptr->outNode->update();
+
+                        ptr->title.y += dy;
+                        ptr->title.x += dx;
+                        ptr->title.update();
+
+                        if (ptr->outLink)
+                        {
+                            float oy = std::visit([](auto &&l)
+                                                  { return l->inNode->y + l->inNode->h / 2.0f; },
+                                                  *ptr->outLink);
+                            float ox = std::visit([](auto &&l)
+                                                  { return l->inNode->x; },
+                                                  *ptr->outLink);
+
+                            ptr->outLine.y = ptr->outNode->y + ptr->outNode->h / 2.0f - ptr->outLine.h / 2.0f;
+                            ptr->outLine.x = ptr->x + ptr->w;
+                            ptr->outLine.angle = std::atan2(oy - ptr->outLine.y, ox - ptr->outLine.x);
+                            ptr->outLine.h = 3.0f;
+                            ptr->outLine.w = std::sqrt((oy - ptr->outLine.y) * (oy - ptr->outLine.y) + (ox - ptr->outLine.x) * (ox - ptr->outLine.x));
+                            ptr->outLine.update();
+                        }
+
+                        if (ptr->inLink)
+                        {
+                            std::visit([oy = ptr->inNode->y + ptr->inNode->h / 2.0f, ox = ptr->inNode->x + ptr->inNode->w](auto &&l)
+                                       {
+                                           l->outLine.y = l->outNode->y + l->outNode->h / 2.0f - l->outLine.h / 2.0f;
+                                           l->outLine.x = l->x + l->w;
+                                           l->outLine.angle = std::atan2(oy - l->outLine.y, ox - l->outLine.x);
+                                           l->outLine.h = 3.0f;
+                                           l->outLine.w = std::sqrt((oy - l->outLine.y) * (oy - l->outLine.y) + (ox - l->outLine.x) * (ox - l->outLine.x));
+                                           l->outLine.update();
+                                       },
+                                       *ptr->inLink);
+                        }
                     }
                 });
             return sptr;
@@ -126,27 +177,13 @@ namespace gui
         void draw()
         {
             Rectangle::draw();
+            title.draw();
             inNode->draw();
             outNode->draw();
 
             if (!outLine.hidden)
             {
                 outLine.draw();
-            }
-        }
-
-        void handleMouse(const SDL_Event &e)
-        {
-            if (e.button.type == SDL_MOUSEBUTTONDOWN)
-            {
-                if (events::containsMouse(*outNode, e))
-                {
-                    outLine.hidden = false;
-                }
-            }
-            else if (e.button.type == SDL_MOUSEBUTTONUP)
-            {
-                outLine.hidden = true;
             }
         }
 
@@ -163,33 +200,92 @@ namespace gui
             outLine.update();
         }
 
+        template <typename KT>
+        static bool endLink(const SDL_Event &e, std::weak_ptr<Kernel<K, KS...>> wptr, std::shared_ptr<KT> &k)
+        {
+            auto ptr = wptr.lock();
+            if constexpr (std::same_as<std::decay_t<decltype(k)>, std::shared_ptr<Kernel<K, KS...>>>)
+            {
+                if ((k.get() != ptr.get()) && ptr->kernel->out == k->kernel->in && events::containsMouse(*k->inNode, e))
+                {
+                    if (k->inLink)
+                    {
+                        std::visit([](auto &&krnl)
+                                   { krnl->outLink.reset(); },
+                                   *k->inLink);
+                    }
+
+                    float oy = k->inNode->y + k->inNode->h / 2.0f;
+                    float ox = k->inNode->x;
+                    ptr->outLine.y = ptr->outNode->y + ptr->outNode->h / 2.0f - ptr->outLine.h / 2.0f;
+                    ptr->outLine.x = ptr->x + ptr->w;
+                    ptr->outLine.angle = std::atan2(oy - ptr->outLine.y, ox - ptr->outLine.x);
+                    ptr->outLine.h = 3.0f;
+                    ptr->outLine.w = std::sqrt((oy - ptr->outLine.y) * (oy - ptr->outLine.y) + (ox - ptr->outLine.x) * (ox - ptr->outLine.x));
+                    ptr->outLine.update();
+
+                    ptr->outLink = std::make_shared<std::variant<std::shared_ptr<Kernel<KS, KS...>>...>>(k);
+                    k->inLink = std::make_shared<std::variant<std::shared_ptr<Kernel<KS, KS...>>...>>(ptr);
+                    ptr->outLine.hidden = false;
+                    return true;
+                }
+                else
+                {
+                    ptr->link = false;
+                    ptr->outLine.hidden = true;
+                }
+            }
+            else
+            {
+                if (ptr->kernel->out == k->kernel->in && events::containsMouse(*k->inNode, e))
+                {
+                    if (k->inLink)
+                    {
+                        std::visit([](auto &&krnl)
+                                   { krnl->outLink.reset(); },
+                                   *k->inLink);
+                    }
+                    ptr->outLink = std::make_shared<std::variant<std::shared_ptr<Kernel<KS, KS...>>...>>(k);
+                    k->inLink = std::make_shared<std::variant<std::shared_ptr<Kernel<KS, KS...>>...>>(ptr);
+                    ptr->outLine.hidden = false;
+                    return true;
+                }
+                else
+                {
+                    ptr->link = false;
+                    ptr->outLine.hidden = true;
+                }
+            }
+            return false;
+        }
+
         template <typename WK, typename D>
         static std::shared_ptr<Button<Rectangle>> buildButton(const std::string &str, WK &wk, D &d, std::shared_ptr<K> &t)
         {
             auto button = Button<Rectangle>::build(str);
 
             button->onPress(
-                [&sk = wk, &dropzone = d, k = t]() mutable
+                [&sk = wk, &dropzone = d, k = t, wptr = std::weak_ptr<Texture>(button->texture)]() mutable
                 {
-                    std::shared_ptr<Kernel<K>> ptr = Kernel<K>::build(std::shared_ptr(k));
+                    std::shared_ptr<Kernel<K, KS...>> ptr = Kernel<K, KS...>::build(std::shared_ptr(k), wptr.lock());
                     ptr->eventManager.addCallback(
                         SDL_MOUSEBUTTONUP,
                         [&sk, &dropzone](const SDL_Event &e)
                         {
                             if (events::containsMouse(*dropzone, e))
                             {
-                                auto kptr = std::get<std::shared_ptr<Kernel<K>>>(sk);
+                                auto kptr = std::get<std::shared_ptr<Kernel<K, KS...>>>(sk);
                                 kptr->y = std::max(dropzone->y, kptr->y);
                                 kptr->y = std::min(dropzone->y + dropzone->h - kptr->h, kptr->y);
 
-                                dropzone->kernels.emplace_back(kptr);
+                                dropzone->kernels.emplace_back(std::make_shared<std::variant<std::shared_ptr<Kernel<KS, KS...>>...>>(kptr));
 
                                 kptr->eventManager.addCallback(
                                     SDL_MOUSEBUTTONDOWN,
                                     [wptr = kptr->weak_from_this(), &dropzone, &sk]([[maybe_unused]] const SDL_Event &ev)
                                     {
                                         auto cptr = wptr.lock();
-                                        sk.template emplace<std::shared_ptr<Kernel<K>>>(cptr);
+                                        sk.template emplace<std::shared_ptr<Kernel<K, KS...>>>(cptr);
                                         cptr->eventManager.clearCallback(SDL_MOUSEBUTTONUP);
                                         cptr->eventManager.addCallback(
                                             SDL_MOUSEBUTTONUP,
@@ -202,39 +298,8 @@ namespace gui
                                                     {
                                                         if (std::visit(
                                                                 [&evv, wptr2 = skptr->weak_from_this()](auto &&krnl)
-                                                                {
-                                                                    auto sptr2 = wptr2.lock();
-                                                                    if constexpr (std::same_as<std::decay_t<decltype(krnl)>, std::shared_ptr<Kernel<K>>>)
-                                                                    {
-                                                                        if ((krnl.get() != sptr2.get()) && events::containsMouse(*krnl->inNode, evv))
-                                                                        {
-                                                                            
-                                                                            sptr2->outLine.hidden = false;
-                                                                            return true;
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            sptr2->link = false;
-                                                                            sptr2->outLine.hidden = true;
-                                                                        }
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        if (events::containsMouse(*krnl->inNode, evv))
-                                                                        {
-                                                                            std::cout << "LINK MADE" << std::endl;
-                                                                            sptr2->outLine.hidden = false;
-                                                                            return true;
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            sptr2->link = false;
-                                                                            sptr2->outLine.hidden = true;
-                                                                        }
-                                                                    }
-                                                                    return false;
-                                                                },
-                                                                kernel))
+                                                                { return endLink(evv, wptr2, krnl); },
+                                                                *kernel))
                                                         {
                                                             break;
                                                         }
@@ -245,13 +310,13 @@ namespace gui
                                             SDL_MOUSEBUTTONUP,
                                             [&sk]([[maybe_unused]] const SDL_Event &evv)
                                             {
-                                                std::get<std::shared_ptr<Kernel<K>>>(sk).template reset<Kernel<K>>(nullptr);
+                                                std::get<std::shared_ptr<Kernel<K, KS...>>>(sk).template reset<Kernel<K, KS...>>(nullptr);
                                             });
                                     });
                             }
-                            std::get<std::shared_ptr<Kernel<K>>>(sk).template reset<Kernel<K>>(nullptr);
+                            std::get<std::shared_ptr<Kernel<K, KS...>>>(sk).template reset<Kernel<K, KS...>>(nullptr);
                         });
-                    sk.template emplace<std::shared_ptr<Kernel<K>>>(std::move(ptr));
+                    sk.template emplace<std::shared_ptr<Kernel<K, KS...>>>(std::move(ptr));
                 });
             return button;
         }

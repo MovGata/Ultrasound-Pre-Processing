@@ -117,8 +117,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     std::shared_ptr<opencl::ToPolar> polar = std::make_shared<opencl::ToPolar>(device.programs.at("cartesian")->at("toSpherical"));
 
-    auto mindray = gui::Kernel<ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(dropzone)>("MINDRAY", mainWindow.kernel, dropzone, reader);
-    auto toPolar = gui::Kernel<opencl::ToPolar>::buildButton<decltype(mainWindow.kernel), decltype(dropzone)>("To Polar", mainWindow.kernel, dropzone, polar);
+    auto mindray = gui::Kernel<ultrasound::Mindray, opencl::ToPolar, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(dropzone)>("MINDRAY", mainWindow.kernel, dropzone, reader);
+    auto toPolar = gui::Kernel<opencl::ToPolar, opencl::ToPolar, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(dropzone)>("To Polar", mainWindow.kernel, dropzone, polar);
 
     inputTree->addLeaf(std::move(mindray));
     dataTree->addLeaf(std::move(toPolar));

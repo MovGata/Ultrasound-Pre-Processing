@@ -1,6 +1,7 @@
 #ifndef GUI_DROPZONE_HH
 #define GUI_DROPZONE_HH
 
+#include <unordered_map>
 #include <memory>
 #include <vector>
 #include <variant>
@@ -28,7 +29,7 @@ namespace gui
 
     public:
         ~Dropzone() = default;
-        std::vector<std::variant<std::shared_ptr<Kernel<K>>...>> kernels;
+        std::vector<std::shared_ptr<std::variant<std::shared_ptr<Kernel<K, K...>>...>>> kernels;
 
         events::EventManager eventManager;
 
@@ -43,7 +44,7 @@ namespace gui
             {
                 std::visit([](auto &&k)
                            { k->draw(); },
-                           kernel);
+                           *kernel);
             }
         }
 
@@ -71,7 +72,7 @@ namespace gui
                         std::visit(
                             [yd](auto &&k) {
                                 k->update(yd);
-                            }, kernel);
+                            }, *kernel);
                     }
                 });
             rptr->eventManager.addCallback(
@@ -90,7 +91,7 @@ namespace gui
                                     }
                                     return false;
                                 },
-                                kernel))
+                                *kernel))
                         {
                             break;
                         }

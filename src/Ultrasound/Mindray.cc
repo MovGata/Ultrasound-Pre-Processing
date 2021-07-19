@@ -406,7 +406,7 @@ namespace ultrasound
             }
         }
 
-        buffer = cl::Buffer(context, CL_MEM_READ_WRITE, d * l * w * sizeof(cl_uchar4));
+        buffer = cl::Buffer(context, CL_MEM_READ_ONLY, d * l * w * sizeof(cl_uchar4));
         // mvBuffer = cl::Buffer(context, CL_MEM_READ_ONLY, 12 * sizeof(cl_float));
     }
 

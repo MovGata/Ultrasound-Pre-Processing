@@ -35,9 +35,9 @@ namespace data
         glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
         bool modified = true; // Render at least once
 
-        unsigned int depth;
-        unsigned int length;
-        unsigned int width;
+        cl_uint depth;
+        cl_uint length;
+        cl_uint width;
         cl::Buffer buffer;
         std::array<float, 12> invMVTransposed = {0};
 

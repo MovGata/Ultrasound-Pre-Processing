@@ -15,10 +15,10 @@ namespace gui
     {
     private:
         GLuint texture;
-        GLsizei textureW = 0, textureH = 0;
 
 
     public:
+        GLsizei textureW = 0, textureH = 0;
         static TTF_Font *lastFont;
         
         Texture(unsigned int w = 1, unsigned int h = 1);
