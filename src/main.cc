@@ -15,6 +15,8 @@
 #include "OpenCL/Device.hh"
 #include "OpenCL/Kernel.hh"
 
+#include "OpenCL/Kernels/toPolar.hh"
+
 #include "IO/InfoStore.hh"
 #include "Ultrasound/Mindray.hh"
 
@@ -27,7 +29,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     std::ios::sync_with_stdio(false);
 
     using RButton = gui::Button<gui::Rectangle>;
-    using Dropzone = gui::Dropzone<gui::Rectangle, opencl::Kernel, ultrasound::Mindray>;
+    using Dropzone = gui::Dropzone<gui::Rectangle, opencl::ToPolar, ultrasound::Mindray>;
     using Renderer = gui::Renderer<gui::Rectangle, data::Volume>;
     using Tree = gui::Tree<RButton, std::tuple<RButton>, std::tuple<RButton>>;
 
@@ -113,114 +115,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     tree->addBranch(std::shared_ptr(outputTree));
     tree->addBranch(std::shared_ptr(dataTree));
 
-    auto mindray = RButton::build("MINDRAY");
+    std::shared_ptr<opencl::ToPolar> polar = std::make_shared<opencl::ToPolar>(device.programs.at("cartesian")->at("toSpherical"));
 
-    // INTEGRATE INTO NEW SUB-CLASS OF BUTTON
-    mindray->onPress(
-        [&sk = mainWindow.kernel, &dropzone, k = reader]() mutable
-        {
-            std::shared_ptr<gui::Kernel<ultrasound::Mindray>> ptr = gui::Kernel<ultrasound::Mindray>::build(std::shared_ptr(k));
-            ptr->eventManager.addCallback(
-                SDL_MOUSEBUTTONUP,
-                [&sk, &dropzone](const SDL_Event &e)
-                {
-                    if (events::containsMouse(*dropzone, e))
-                    {
-                        auto kptr = std::get<std::shared_ptr<gui::Kernel<ultrasound::Mindray>>>(sk);
-                        kptr->y = std::max(dropzone->y, kptr->y);
-                        kptr->y = std::min(dropzone->y + dropzone->h - kptr->h, kptr->y);
-                        dropzone->kernels.emplace_back(kptr); // ADD DROPPED KERNEL FUNCTIONS HERE
-                    }
-                    std::get<std::shared_ptr<gui::Kernel<ultrasound::Mindray>>>(sk).reset<gui::Kernel<ultrasound::Mindray>>(nullptr);
-                });
-            sk.emplace<std::shared_ptr<gui::Kernel<ultrasound::Mindray>>>(std::move(ptr));
-        });
+    auto mindray = gui::Kernel<ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(dropzone)>("MINDRAY", mainWindow.kernel, dropzone, reader);
+    auto toPolar = gui::Kernel<opencl::ToPolar>::buildButton<decltype(mainWindow.kernel), decltype(dropzone)>("To Polar", mainWindow.kernel, dropzone, polar);
 
     inputTree->addLeaf(std::move(mindray));
-
-    // opencl::Renderer oclR(device.programs.at("raytracing")->at("render"));
-
-    // auto renderer = RButton::build("RENDERER");
-
-    // renderer->onPress(
-    //     [&sk = mainWindow.kernel, &dropzone, k = oclR]() mutable
-    //     {
-    //         std::shared_ptr<gui::Kernel<opencl::Renderer>> ptr = gui::Kernel<opencl::Renderer>::build(std::shared_ptr(k));
-    //         ptr->eventManager.addCallback(
-    //             SDL_MOUSEBUTTONUP,
-    //             [&sk, &dropzone](const SDL_Event &e)
-    //             {
-    //                 if (events::containsMouse(*dropzone, e))
-    //                 {
-    //                     auto kptr = std::get<std::shared_ptr<gui::Kernel<ultrasound::Mindray>>>(sk);
-    //                     kptr->y = std::max(dropzone->y, kptr->y);
-    //                     kptr->y = std::min(dropzone->y + dropzone->h - kptr->h, kptr->y);
-    //                     dropzone->kernels.emplace_back(kptr);
-    //                 }
-    //                 std::get<std::shared_ptr<gui::Kernel<ultrasound::Mindray>>>(sk).reset<gui::Kernel<ultrasound::Mindray>>(nullptr);
-    //             });
-    //         sk.emplace<std::shared_ptr<gui::Kernel<ultrasound::Mindray>>>(std::move(ptr));
-    //     });
-
-    // outputTree->addLeaf(std::move(renderer));
-
-    
-
-    // auto pitr = device.programs.begin();
-    // for (std::size_t i = 0; i < device.programs.size(); ++i)
-    // {
-    //     w = 1;
-    //     h = 1;
-    //     TTF_SizeText(font, pitr->first.c_str(), &w, &h);
-    //     t = std::make_shared<gui::Texture>(w + 2, h + 2);
-    //     t->addText(font, pitr->first);
-    //
-    //     rec = RButton::build({wWidth - (static_cast<float>(w) + 2.0f), 0.0f, static_cast<float>(w) + 2.0f, static_cast<float>(h) + 2.0f, std::move(t)});
-    //     rec->update();
-    //
-    //     auto program = Tree::build(RButton({*rec}));
-    //
-    //     tree->addBranch(std::shared_ptr(program));
-    //
-    //     std::shared_ptr<RButton> kernel;
-    //     auto kitr = pitr->second->kernels.begin();
-    //     for (std::size_t j = 0; j < pitr->second->kernels.size(); ++j)
-    //     {
-    //         w = 1;
-    //         h = 1;
-    //         TTF_SizeText(font, kitr->first.c_str(), &w, &h);
-    //         t = std::make_shared<gui::Texture>(w + 2, h + 2);
-    //         t->addText(font, kitr->first);
-    //
-    //         kernel = RButton::build({0.0f, 0.0f, static_cast<float>(w) + 2.0f, static_cast<float>(h) + 2.0f, std::move(t)});
-    //
-    //         kernel->onPress(
-    //             [&sk = mainWindow.kernel, &dropzone, k = kitr->second]() mutable
-    //             {
-    //                 std::shared_ptr<gui::Kernel<opencl::Kernel>> ptr = gui::Kernel<opencl::Kernel>::build(std::shared_ptr(k));
-    //                 ptr->eventManager.addCallback(
-    //                     SDL_MOUSEBUTTONUP,
-    //                     [&sk, &dropzone](const SDL_Event &e)
-    //                     {
-    //                         if (events::containsMouse(*dropzone, e))
-    //                         {
-    //                             auto kptr = std::get<std::shared_ptr<gui::Kernel<opencl::Kernel>>>(sk);
-    //                             kptr->y = std::max(dropzone->y, kptr->y);
-    //                             kptr->y = std::min(dropzone->y + dropzone->h - kptr->h, kptr->y);
-    //                             dropzone->kernels.emplace_back(kptr);
-    //                         }
-    //                         std::get<std::shared_ptr<gui::Kernel<opencl::Kernel>>>(sk).reset<gui::Kernel<opencl::Kernel>>(nullptr);
-    //                     });
-    //                 sk.emplace<std::shared_ptr<gui::Kernel<opencl::Kernel>>>(std::move(ptr));
-    //             });
-    //
-    //         program->addLeaf(std::move(kernel));
-    //
-    //         ++kitr;
-    //     }
-    //
-    //     ++pitr;
-    // }
+    inputTree->addLeaf(std::move(toPolar));
 
 
     mainWindow.addDrawable(std::shared_ptr(tree));

@@ -18,7 +18,6 @@ namespace data
     class Volume
     {
     private:
-        std::vector<cl_uchar4> raw;
 
         // std::pair<float, float> offset = {0.0f, 0.0f};
 
@@ -26,6 +25,8 @@ namespace data
 
     protected:
         Volume()=default;
+        
+        std::vector<cl_uchar4> raw;
 
     public:
         glm::mat4 lastview;

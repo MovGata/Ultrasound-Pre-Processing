@@ -3,6 +3,7 @@
 
 #include <string>
 #include <map>
+#include <memory>
 
 #include <CL/cl2.hpp>
 
@@ -18,13 +19,13 @@ private:
     cl::Program program;
 
 public:
-    std::map<std::string, Kernel> kernels;
+    std::map<std::string, std::shared_ptr<Kernel>> kernels;
     std::string name;
     
     Program(cl::Context context, Source src);
     ~Program();
 
-    Kernel &at(std::string str);
+    std::shared_ptr<Kernel> &at(std::string str);
     // cl::Program *operator->();
 };
 } // namespace opencl

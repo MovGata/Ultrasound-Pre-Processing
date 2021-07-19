@@ -38,44 +38,13 @@ Device::Device(unsigned int w, unsigned int h) : width(w), height(h)
         Source src(file.path().string());
 
         auto f = name.find_last_of('/');
-        programs.emplace(name.substr(f + 1, name.find_last_of('.') - f - 1), std::move(Program(context, src)));
+        programs.emplace(name.substr(f + 1, name.find_last_of('.') - f - 1), std::make_shared<Program>(context, src));
         //, "-g -cl-opt-disable -s \"D:\\Documents\\Programming\\Uni\\Thesis\\filters\\raytracing.cl\"");
     }
 
-    // try
-    // {
-
-    // programs.at("raytracing").at("render") = cl::Kernel(program, "render");
-    // programs.at("raytracing").at("render").getInfo<CL_KERNEL_FUNCTION_NAME>();
-    // }
-    // catch (const cl::BuildError &e)
-    // {
-    //     for (auto &p : e.getBuildLog())
-    //     {
-    //         std::cout << p.second << std::endl;
-    //     }
-    //     std::terminate();
-    // }
-    // catch (const cl::Error &e)
-    // {
-    //     std::cerr << "we, " << e.what() << " : " << e.err() << '\n';
-    // }
-    // catch (const std::exception &e)
-    // {
-    //     std::cerr << "we, " << e.what() << '\n';
-    // }
-
-    // try
-    // {
-
     invMVTransposed = cl::Buffer(context, CL_MEM_READ_ONLY, 12 * sizeof(float));
-    programs.at("raytracing").at("render").setArg(7, invMVTransposed);
-    // }
-    // catch (const cl::Error &e)
-    // {
-    //     std::cerr << "invMatrix, " << e.what() << " : " << e.err() << '\n';
-    //     std::terminate();
-    // }
+    programs.at("raytracing")->at("render")->setArg(7, invMVTransposed);
+
     std::vector<uint32_t> clr;
     clr.reserve(width * height);
     std::fill_n(std::back_inserter(clr), width * height, 0);
@@ -113,14 +82,14 @@ void Device::render(float *inv)
             memories.push_back(outBuffer);
             err |= cQueue.enqueueAcquireGLObjects(&memories);
             err |= cQueue.enqueueWriteBuffer(invMVTransposed, CL_FALSE, 0, 12 * sizeof(float), inv);
-            err |= cQueue.enqueueNDRangeKernel(programs.at("raytracing").at("render"), cl::NullRange, global);
+            err |= cQueue.enqueueNDRangeKernel(*programs.at("raytracing")->at("render"), cl::NullRange, global);
             err |= cQueue.enqueueReleaseGLObjects(&memories);
         }
         else
         {
             // Copy via host.
             err |= cQueue.enqueueWriteBuffer(invMVTransposed, CL_FALSE, 0, 12 * sizeof(float), inv);
-            err |= cQueue.enqueueNDRangeKernel(programs.at("raytracing").at("render"), cl::NullRange, global);
+            err |= cQueue.enqueueNDRangeKernel(*programs.at("raytracing")->at("render"), cl::NullRange, global);
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pixelBuffer);
             GLubyte *p = static_cast<GLubyte *>(glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY));
             auto bSize = outBuffer.getInfo<CL_MEM_SIZE>();
@@ -154,9 +123,9 @@ void Device::createDisplay(unsigned int w, unsigned int h)
     try
     {
         outBuffer = (type == CL_DEVICE_TYPE_GPU ? cl::BufferGL(context, CL_MEM_WRITE_ONLY, pixelBuffer) : cl::Buffer(context, CL_MEM_WRITE_ONLY, w * h * sizeof(cl_uint)));
-        programs.at("raytracing").at("render").setArg(0, w);
-        programs.at("raytracing").at("render").setArg(1, h);
-        programs.at("raytracing").at("render").setArg(2, outBuffer);
+        programs.at("raytracing")->at("render")->setArg(0, w);
+        programs.at("raytracing")->at("render")->setArg(1, h);
+        programs.at("raytracing")->at("render")->setArg(2, outBuffer);
     }
     catch (const cl::Error &e)
     {
@@ -175,11 +144,11 @@ void Device::prepareVolume(unsigned int d, unsigned int l, unsigned int w, const
     try
     {
         std::cout << "Mem Size: " << v.getInfo<CL_MEM_SIZE>() << std::endl;
-        programs.at("raytracing").at("render").setArg(3, d);
-        programs.at("raytracing").at("render").setArg(4, l);
-        programs.at("raytracing").at("render").setArg(5, w);
+        programs.at("raytracing")->at("render")->setArg(3, d);
+        programs.at("raytracing")->at("render")->setArg(4, l);
+        programs.at("raytracing")->at("render")->setArg(5, w);
         // programs.at("raytracing").at("render").setArg(6, angle);
-        programs.at("raytracing").at("render").setArg(6, v);
+        programs.at("raytracing")->at("render")->setArg(6, v);
     }
     catch (const cl::Error &e)
     {

@@ -43,11 +43,16 @@ namespace concepts
     concept OpenCLType = OpenCLScalarType<T> || OpenCLVectorType<T> || std::is_pointer_v<T> || std::is_same_v<T, cl::Buffer>;
 
 
-    // template<typename T>
-    // concept KernelType = requires(T t)
-    // {
-
-    // };
+    template<typename T>
+    concept VolumeType = requires(T t)
+    {
+        {decay(t.depth)} -> std::same_as<cl_uint>;
+        {decay(t.length)} -> std::same_as<cl_uint>;
+        {decay(t.width)} -> std::same_as<cl_uint>;
+        {decay(t.buffer)} -> std::same_as<cl::Buffer>;
+        {decay(t.ratio)} -> std::same_as<cl_float>;
+        {decay(t.delta)} -> std::same_as<cl_float>;
+    };
 
 } // namespace concepts
 

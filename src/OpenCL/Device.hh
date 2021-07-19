@@ -2,6 +2,7 @@
 #define GUI_OPENCL_DEVICE
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <CL/cl2.hpp>
@@ -28,7 +29,7 @@ private:
 public:
     cl_GLuint pixelBuffer;
 
-    std::map<std::string, Program> programs;
+    std::map<std::string, std::shared_ptr<Program>> programs;
     cl::Context context;
     cl_device_type type = CL_DEVICE_TYPE_CPU;
 

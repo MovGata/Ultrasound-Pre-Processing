@@ -24,7 +24,7 @@ namespace ultrasound
     class Mindray : public data::Volume
     {
     private:
-        std::vector<cl_uchar4> raw;
+        // std::vector<cl_uchar4> raw;
 
     public:
         Mindray();

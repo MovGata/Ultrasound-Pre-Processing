@@ -20,7 +20,7 @@ Program::Program(cl::Context context, Source src) : program(context, src), name(
         program.createKernels(&kernelVec);
         for (auto &&k : kernelVec)
         {
-            kernels.emplace(k.getInfo<CL_KERNEL_FUNCTION_NAME>(), std::move(k));
+            kernels.emplace(k.getInfo<CL_KERNEL_FUNCTION_NAME>(), std::make_shared<Kernel>(k));
         }
     }
     catch(const cl::BuildError& e)
@@ -39,7 +39,7 @@ Program::~Program()
 {
 }
 
-Kernel &Program::at(std::string str)
+std::shared_ptr<Kernel> &Program::at(std::string str)
 {
     return kernels.at(str);
 }

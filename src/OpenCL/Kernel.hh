@@ -12,67 +12,90 @@
 namespace opencl
 {
 
-class Kernel
-{
-private:
-    cl::Kernel kernel;
-
-public:
-    Kernel(cl::Kernel kernel);
-    ~Kernel();
-
-    operator cl::Kernel();
-
-    std::string getArg(unsigned int pos);
-    bool isInput(unsigned int pos);
-    bool isOutput(unsigned int pos);
-
-    cl_uint numArgs();
-
-    template <concepts::OpenCLType T>
-    void setArg(unsigned int pos, T t, std::size_t size = 0)
+    class Kernel
     {
-        if constexpr (concepts::OpenCLScalarType<T>)
+    private:
+        cl::Kernel kernel;
+
+    public:
+        Kernel(cl::Kernel kernel);
+        ~Kernel();
+
+        operator cl::Kernel();
+
+        cl::NDRange global;
+
+        std::string getArg(unsigned int pos);
+        bool isInput(unsigned int pos);
+        bool isOutput(unsigned int pos);
+
+        cl_uint numArgs();
+
+        template <concepts::OpenCLType T>
+        void setArg(unsigned int pos, T t, std::size_t size = 0)
         {
-            std::string name = kernel.getArgInfo<CL_KERNEL_ARG_TYPE_NAME>(pos);
-            if (!std::isalpha(name.back()))
+            if constexpr (concepts::OpenCLScalarType<T>)
             {
-                std::cout << kernel.getArgInfo<CL_KERNEL_ARG_TYPE_NAME>(pos) << " is not a scalar type." << std::endl;
-                return;
+                std::string name = kernel.getArgInfo<CL_KERNEL_ARG_TYPE_NAME>(pos);
+                if (!std::isalpha(name.back()))
+                {
+                    std::cout << kernel.getArgInfo<CL_KERNEL_ARG_TYPE_NAME>(pos) << " is not a scalar type." << std::endl;
+                    return;
+                }
+                kernel.setArg(pos, t);
             }
-            kernel.setArg(pos, t);
+            else if constexpr (concepts::OpenCLVectorType<T>)
+            {
+                std::string name = kernel.getArgInfo<CL_KERNEL_ARG_TYPE_NAME>(pos);
+                if (!std::isdigit(name.back()))
+                {
+                    std::cout << kernel.getArgInfo<CL_KERNEL_ARG_TYPE_NAME>(pos) << " is not a vector type." << std::endl;
+                    return;
+                }
+                kernel.setArg(pos, t);
+            }
+            else if constexpr (std::is_pointer_v<T>)
+            {
+                std::string name = kernel.getArgInfo<CL_KERNEL_ARG_TYPE_NAME>(pos);
+                if (name.back() != '*')
+                {
+                    std::cout << kernel.getArgInfo<CL_KERNEL_ARG_TYPE_NAME>(pos) << " is not a pointer type." << std::endl;
+                    return;
+                }
+                else if (size == 0)
+                {
+                    std::cout << "Pointer size < 0." << std::endl;
+                    return;
+                }
+                kernel.setArg(pos, size, t);
+            }
+            else if constexpr (std::is_same_v<T, cl::Buffer>)
+            {
+                kernel.setArg(pos, t);
+            }
         }
-        else if constexpr (concepts::OpenCLVectorType<T>)
+
+        void execute(cl::CommandQueue &cQueue)
         {
-            std::string name = kernel.getArgInfo<CL_KERNEL_ARG_TYPE_NAME>(pos);
-            if (!std::isdigit(name.back()))
+            try
             {
-                std::cout << kernel.getArgInfo<CL_KERNEL_ARG_TYPE_NAME>(pos) << " is not a vector type." << std::endl;
-                return;
+                cl_int err = 0;
+
+                err |= cQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global);
+
+                if (err != CL_SUCCESS)
+                {
+                    std::cerr << err << '\n';
+                    std::terminate();
+                }
             }
-            kernel.setArg(pos, t);
-        }
-        else if constexpr (std::is_pointer_v<T>)
-        {
-            std::string name = kernel.getArgInfo<CL_KERNEL_ARG_TYPE_NAME>(pos);
-            if (name.back() != '*')
+            catch (const cl::Error &e)
             {
-                std::cout << kernel.getArgInfo<CL_KERNEL_ARG_TYPE_NAME>(pos) << " is not a pointer type." << std::endl;
-                return;
+                std::cerr << "Finish, " << e.what() << " : " << e.err() << '\n';
+                std::terminate();
             }
-            else if (size == 0)
-            {
-                std::cout << "Pointer size < 0." << std::endl;
-                return;
-            }
-            kernel.setArg(pos, size, t);
         }
-        else if constexpr (std::is_same_v<T, cl::Buffer>)
-        {
-            kernel.setArg(pos, t);
-        }
-    }
-};
+    };
 
 } // namespace opencl
 
