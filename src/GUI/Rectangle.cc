@@ -81,7 +81,7 @@ namespace gui
         glm::mat4 id(1.0f);
         modelview = id;
         modelview = glm::scale(id, {w, h, 1.0}) * modelview;
-        // id = glm::rotate(id, angle);
+        modelview = glm::rotate(id, angle, {0.0f, 0.0f, 1.0f}) * modelview;
         modelview = glm::translate(id, {x, y, 0.0}) * modelview;
     }
 
@@ -103,30 +103,30 @@ namespace gui
         // }
     }
 
-    void Rectangle::drawLinks()
-    {
-        if (!hidden)
-        {
-            return;
-        }
+    // void Rectangle::drawLinks()
+    // {
+    //     if (!hidden)
+    //     {
+    //         return;
+    //     }
 
-        // std::erase_if(outlinks, [](const std::pair<std::weak_ptr<Rectangle>, std::shared_ptr<glm::mat4>> &p)
-        //               { return p.first.expired(); });
+    //     std::erase_if(outlinks, [](const std::pair<std::weak_ptr<Rectangle>, std::shared_ptr<glm::mat4>> &p)
+    //                   { return p.first.expired(); });
 
-        // std::erase_if(inlinks, [](const std::pair<std::weak_ptr<Rectangle>, std::shared_ptr<glm::mat4>> &p)
-        //               { return p.first.expired(); });
+    //     std::erase_if(inlinks, [](const std::pair<std::weak_ptr<Rectangle>, std::shared_ptr<glm::mat4>> &p)
+    //                   { return p.first.expired(); });
 
-        // for (const auto &r : outlinks)
-        // {
-        //     arrow.transformations = *r.second;
-        //     arrow.draw();
-        // }
+    //     for (const auto &r : outlinks)
+    //     {
+    //         arrow.transformations = *r.second;
+    //         arrow.draw();
+    //     }
 
-        // for (const auto &r : subRectangles)
-        // {
-        //     r->drawLinks();
-        // }
-    }
+    //     for (const auto &r : subRectangles)
+    //     {
+    //         r->drawLinks();
+    //     }
+    // }
 
     // void Rectangle::addText(TTF_Font *f, const std::string &str)
     // {

@@ -6,6 +6,8 @@
 #include <variant>
 #include <vector>
 
+#include <glm/ext.hpp>
+
 #include "Rectangle.hh"
 #include "Button.hh"
 
@@ -15,11 +17,12 @@
 
 namespace gui
 {
+
     template <typename K>
     class Kernel : public Rectangle, public std::enable_shared_from_this<Kernel<K>>
     {
     private:
-        Kernel(std::shared_ptr<K> &&k) : Rectangle(0.0f, 0.0f, 40.0f, 40.0f), kernel(std::forward<std::shared_ptr<K>>(k))
+        Kernel(std::shared_ptr<K> &&k) : Rectangle(0.0f, 0.0f, 40.0f, 40.0f), kernel(std::forward<std::shared_ptr<K>>(k)), outLine({0.0f, 0.0f, 1.0f, 1.0f})
         {
             texture->fill({0x5C, 0x5C, 0x5C, 0xFF});
 
@@ -38,6 +41,9 @@ namespace gui
             outNode->y = y + h / 2.0f;
             outNode->x = x + w - 2.0f - outNode->w;
             outNode->update();
+
+            outLine.hidden = true;
+            outLine.texture->fill({0xD3, 0xD3, 0xD3, 0xFF});
         }
 
         std::shared_ptr<K> kernel;
@@ -45,8 +51,13 @@ namespace gui
         std::shared_ptr<Button<Rectangle>> inNode;
         std::shared_ptr<Button<Rectangle>> outNode;
 
+        std::shared_ptr<Kernel> outLink;
+        gui::Rectangle outLine;
+
     public:
         events::EventManager eventManager;
+
+        bool link = false;
 
         static std::shared_ptr<Kernel<K>> build(std::shared_ptr<K> &&k)
         {
@@ -58,13 +69,20 @@ namespace gui
                     auto ptr = wptr.lock();
                     if (events::containsMouse(std::as_const(*ptr->inNode), e))
                     {
+                        ptr->link = true;
                         ptr->inNode->eventManager.process(e);
                         return;
                     }
                     else if (events::containsMouse(std::as_const(*ptr->outNode), e))
                     {
+                        ptr->link = true;
+                        ptr->outLine.hidden = false; 
                         ptr->outNode->eventManager.process(e);
                         return;
+                    }
+                    else
+                    {
+                        ptr->link = false;
                     }
                 });
             sptr->eventManager.addCallback(
@@ -73,23 +91,36 @@ namespace gui
                 {
                     auto ptr = wptr.lock();
 
-                    auto dy = ptr->y;
-                    auto dx = ptr->x;
+                    if (ptr->link)
+                    {
+                        ptr->outLine.y = ptr->outNode->y + ptr->outNode->w/2.0f - ptr->outLine.h/2.0f;
+                        ptr->outLine.x = ptr->x+ptr->w;
+                        ptr->outLine.angle = std::atan2(static_cast<float>(e.motion.y) - ptr->outLine.y, static_cast<float>(e.motion.x) - ptr->outLine.x);
+                        ptr->outLine.h = 3.0f;
+                        ptr->outLine.w = std::sqrt((static_cast<float>(e.motion.y) - ptr->outLine.y)*(static_cast<float>(e.motion.y) - ptr->outLine.y) + (static_cast<float>(e.motion.x) - ptr->outLine.x)*(static_cast<float>(e.motion.x) - ptr->outLine.x));
+                        ptr->outLine.update();
+                    }
+                    else
+                    {
+                        auto dy = ptr->y;
+                        auto dx = ptr->x;
 
-                    ptr->x = static_cast<float>(e.motion.x) - ptr->w / 2.0f;
-                    ptr->y = static_cast<float>(e.motion.y) - ptr->h / 2.0f;
-                    ptr->update();
+                        ptr->x = static_cast<float>(e.motion.x) - ptr->w / 2.0f;
+                        ptr->y = static_cast<float>(e.motion.y) - ptr->h / 2.0f;
+                        ptr->update();
 
-                    dy = ptr->y - dy;
-                    dx = ptr->x - dx;
+                        dy = ptr->y - dy;
+                        dx = ptr->x - dx;
 
-                    ptr->inNode->y += dy;
-                    ptr->inNode->x += dx;
-                    ptr->inNode->update();
+                        ptr->inNode->y += dy;
+                        ptr->inNode->x += dx;
+                        ptr->inNode->update();
 
-                    ptr->outNode->y += dy;
-                    ptr->outNode->x += dx;
-                    ptr->outNode->update();
+                        ptr->outNode->y += dy;
+                        ptr->outNode->x += dx;
+                        ptr->outNode->update();
+                    }
+
                 });
             return sptr;
         }
@@ -101,6 +132,26 @@ namespace gui
             Rectangle::draw();
             inNode->draw();
             outNode->draw();
+
+            if (!outLine.hidden)
+            {
+                outLine.draw();
+            }
+        }
+
+        void handleMouse(const SDL_Event &e)
+        {
+            if (e.button.type == SDL_MOUSEBUTTONDOWN)
+            {
+                if (events::containsMouse(*outNode, e))
+                {
+                    outLine.hidden = false;
+                }
+            }
+            else if (e.button.type == SDL_MOUSEBUTTONUP)
+            {
+                outLine.hidden = true;
+            }
         }
 
         template <typename WK, typename D>
@@ -121,7 +172,25 @@ namespace gui
                                 auto kptr = std::get<std::shared_ptr<Kernel<K>>>(sk);
                                 kptr->y = std::max(dropzone->y, kptr->y);
                                 kptr->y = std::min(dropzone->y + dropzone->h - kptr->h, kptr->y);
-                                dropzone->kernels.emplace_back(kptr); // ADD DROPPED KERNEL FUNCTIONS HERE
+
+                                dropzone->kernels.emplace_back(kptr);
+
+                                kptr->eventManager.addCallback(
+                                    SDL_MOUSEBUTTONDOWN,
+                                    [wptr = kptr->weak_from_this(), &sk]([[maybe_unused]] const SDL_Event &ev)
+                                    {
+                                        auto cptr = wptr.lock();
+                                        sk.template emplace<std::shared_ptr<Kernel<K>>>(cptr);
+                                        cptr->eventManager.clearCallback(SDL_MOUSEBUTTONUP);
+                                        cptr->eventManager.addCallback(
+                                            SDL_MOUSEBUTTONUP,
+                                            [&sk]([[maybe_unused]] const SDL_Event &evv)
+                                            {
+                                                std::get<std::shared_ptr<Kernel<K>>>(sk).template reset<Kernel<K>>(nullptr);
+                                            }
+                                        );
+                                    }
+                                );
                             }
                             std::get<std::shared_ptr<Kernel<K>>>(sk).template reset<Kernel<K>>(nullptr);
                         });

@@ -32,7 +32,6 @@ namespace gui
 
         // TTF_Font *font = nullptr;
 
-        float angle;
 
         // void dragEvent(const SDL_Event &e);
         // void dragStopEvent(const SDL_Event &e);
@@ -68,6 +67,7 @@ namespace gui
 
         std::shared_ptr<Texture> texture;
 
+        float angle = 0.0f;
         float w, h, x, y;
 
         Rectangle();

@@ -65,16 +65,27 @@ namespace gui
                     ptr->y = yd;
                     ptr->update();
                 });
-            // rptr->eventManager.addCallback(
-            //     events::GUI_DROP, [wptr = rptr->weak_from_this()](const SDL_Event &e)
-            //     {
-            //         auto ptr = wptr.lock();
-
-            //         if (e.user.code == events::DROPEVENT_KERNEL)
-            //         {
-            //             ptr->kernels.emplace_back(*static_cast<std::shared_ptr<Kernel> *>(e.user.data1));
-            //         }
-            //     });
+            rptr->eventManager.addCallback(
+                SDL_MOUSEBUTTONDOWN, [wptr = rptr->weak_from_this()](const SDL_Event &e)
+                {
+                    auto ptr = wptr.lock();
+                    for (auto &kernel : ptr->kernels)
+                    {
+                        if (std::visit(
+                                [e](auto &&k)
+                                {
+                                    if (events::containsMouse(*k, e))
+                                    {
+                                        k->eventManager.process(e);
+                                        return true;
+                                    }
+                                    return false;
+                                }, kernel))
+                        {
+                            break;
+                        }
+                    }
+                });
             return rptr;
         }
     };

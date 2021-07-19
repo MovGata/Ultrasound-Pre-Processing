@@ -4,25 +4,27 @@
 #include <functional>
 #include <utility>
 
-#include "../Events/Concepts.hh"
-
 #include "Rectangle.hh"
 
-class Link
+#include "../Events/Concepts.hh"
+
+namespace gui
 {
-private:
 
-    gui::Rectangle box;
+    class Link
+    {
+    private:
+        Rectangle box;
 
-    std::vector<std::string> inputs;
-    std::vector<std::string> outputs;
+    public:
+        glm::vec4 start, end;
 
-public:
-    Link() = default;
-    ~Link() = default;
+        Link() = default;
+        ~Link() = default;
 
-    void render();
+        void draw();
+    };
 
-};
+} // namespace gui
 
 #endif

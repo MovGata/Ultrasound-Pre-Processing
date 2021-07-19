@@ -121,7 +121,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     auto toPolar = gui::Kernel<opencl::ToPolar>::buildButton<decltype(mainWindow.kernel), decltype(dropzone)>("To Polar", mainWindow.kernel, dropzone, polar);
 
     inputTree->addLeaf(std::move(mindray));
-    inputTree->addLeaf(std::move(toPolar));
+    dataTree->addLeaf(std::move(toPolar));
 
 
     mainWindow.addDrawable(std::shared_ptr(tree));
