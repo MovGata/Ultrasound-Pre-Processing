@@ -204,6 +204,8 @@ namespace gui
                     *inLink);
             }
 
+            kernel->execute();
+
             if (outLink)
             {
                 std::visit(
