@@ -14,8 +14,12 @@
 namespace data
 {
 
-    Volume::Volume(unsigned int d, unsigned int l, unsigned int w, const std::vector<uint8_t> &data) : depth(d), length(l), width(w)
+    Volume::Volume(unsigned int d, unsigned int l, unsigned int w, const std::vector<uint8_t> &data) : Volume()
     {
+        depth = d;
+        length = l;
+        width = w;
+        
         raw.reserve(width * depth * length);
         for (unsigned int z = 0; z < width; ++z)
         {
@@ -32,11 +36,15 @@ namespace data
             }
         }
 
-        lastview = glm::mat4(1.0f);
-        lastRotation = glm::vec3(0.0f, 0.0f, 0.0f);
 
         // eventManager.addCallback(SDL_MOUSEWHEEL, events::scaleEvent<Volume>, *this);
         // eventManager.addCallback(SDL_MOUSEMOTION, events::rotateEvent<Volume>, *this);
+    }
+
+    Volume::Volume()
+    {
+        lastview = glm::mat4(1.0f);
+        lastRotation = glm::vec3(0.0f, 0.0f, 0.0f);
     }
 
     Volume::~Volume()

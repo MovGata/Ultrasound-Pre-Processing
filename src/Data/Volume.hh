@@ -24,7 +24,7 @@ namespace data
         glm::vec3 lastRotation;
 
     protected:
-        Volume()=default;
+        Volume();
         
         std::vector<cl_uchar4> raw;
 
