@@ -58,12 +58,21 @@ namespace gui
                     std::pair<float, float> *oldSize = static_cast<std::pair<float, float> *>(e.user.data1);
                     std::pair<float, float> *newSize = static_cast<std::pair<float, float> *>(e.user.data2);
 
-                    auto xd = ptr->x * newSize->first / oldSize->first;
-                    auto yd = newSize->second / oldSize->second * (ptr->y + ptr->h) - ptr->h;
+                    // auto xd = ptr->x;
+                    auto yd = ptr->y;
                     ptr->w = ptr->w * newSize->first / oldSize->first;
-                    ptr->x = xd;
-                    ptr->y = yd;
+                    ptr->x = ptr->x * newSize->first / oldSize->first;
+                    ptr->y = newSize->second / oldSize->second * (ptr->y + ptr->h) - ptr->h;
+                    yd = ptr->y - yd;
                     ptr->update();
+
+                    for (auto &&kernel : ptr->kernels)
+                    {
+                        std::visit(
+                            [yd](auto &&k) {
+                                k->update(yd);
+                            }, kernel);
+                    }
                 });
             rptr->eventManager.addCallback(
                 SDL_MOUSEBUTTONDOWN, [wptr = rptr->weak_from_this()](const SDL_Event &e)
@@ -80,7 +89,8 @@ namespace gui
                                         return true;
                                     }
                                     return false;
-                                }, kernel))
+                                },
+                                kernel))
                         {
                             break;
                         }

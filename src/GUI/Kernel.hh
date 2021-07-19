@@ -48,14 +48,11 @@ namespace gui
 
         std::shared_ptr<K> kernel;
 
+    public:
         std::shared_ptr<Button<Rectangle>> inNode;
         std::shared_ptr<Button<Rectangle>> outNode;
-
-        std::shared_ptr<Kernel> outLink;
-        gui::Rectangle outLine;
-
-    public:
         events::EventManager eventManager;
+        gui::Rectangle outLine;
 
         bool link = false;
 
@@ -76,7 +73,7 @@ namespace gui
                     else if (events::containsMouse(std::as_const(*ptr->outNode), e))
                     {
                         ptr->link = true;
-                        ptr->outLine.hidden = false; 
+                        ptr->outLine.hidden = false;
                         ptr->outNode->eventManager.process(e);
                         return;
                     }
@@ -93,11 +90,11 @@ namespace gui
 
                     if (ptr->link)
                     {
-                        ptr->outLine.y = ptr->outNode->y + ptr->outNode->w/2.0f - ptr->outLine.h/2.0f;
-                        ptr->outLine.x = ptr->x+ptr->w;
+                        ptr->outLine.y = ptr->outNode->y + ptr->outNode->w / 2.0f - ptr->outLine.h / 2.0f;
+                        ptr->outLine.x = ptr->x + ptr->w;
                         ptr->outLine.angle = std::atan2(static_cast<float>(e.motion.y) - ptr->outLine.y, static_cast<float>(e.motion.x) - ptr->outLine.x);
                         ptr->outLine.h = 3.0f;
-                        ptr->outLine.w = std::sqrt((static_cast<float>(e.motion.y) - ptr->outLine.y)*(static_cast<float>(e.motion.y) - ptr->outLine.y) + (static_cast<float>(e.motion.x) - ptr->outLine.x)*(static_cast<float>(e.motion.x) - ptr->outLine.x));
+                        ptr->outLine.w = std::sqrt((static_cast<float>(e.motion.y) - ptr->outLine.y) * (static_cast<float>(e.motion.y) - ptr->outLine.y) + (static_cast<float>(e.motion.x) - ptr->outLine.x) * (static_cast<float>(e.motion.x) - ptr->outLine.x));
                         ptr->outLine.update();
                     }
                     else
@@ -107,7 +104,7 @@ namespace gui
 
                         ptr->x = static_cast<float>(e.motion.x) - ptr->w / 2.0f;
                         ptr->y = static_cast<float>(e.motion.y) - ptr->h / 2.0f;
-                        ptr->update();
+                        ptr->Rectangle::update();
 
                         dy = ptr->y - dy;
                         dx = ptr->x - dx;
@@ -120,7 +117,6 @@ namespace gui
                         ptr->outNode->x += dx;
                         ptr->outNode->update();
                     }
-
                 });
             return sptr;
         }
@@ -154,11 +150,24 @@ namespace gui
             }
         }
 
+        void update(float dy)
+        {
+            y += dy;
+            Rectangle::update();
+            inNode->y += dy;
+            outNode->y += dy;
+            outLine.y += dy;
+
+            inNode->update();
+            outNode->update();
+            outLine.update();
+        }
+
         template <typename WK, typename D>
         static std::shared_ptr<Button<Rectangle>> buildButton(const std::string &str, WK &wk, D &d, std::shared_ptr<K> &t)
         {
             auto button = Button<Rectangle>::build(str);
-            
+
             button->onPress(
                 [&sk = wk, &dropzone = d, k = t]() mutable
                 {
@@ -177,20 +186,68 @@ namespace gui
 
                                 kptr->eventManager.addCallback(
                                     SDL_MOUSEBUTTONDOWN,
-                                    [wptr = kptr->weak_from_this(), &sk]([[maybe_unused]] const SDL_Event &ev)
+                                    [wptr = kptr->weak_from_this(), &dropzone, &sk]([[maybe_unused]] const SDL_Event &ev)
                                     {
                                         auto cptr = wptr.lock();
                                         sk.template emplace<std::shared_ptr<Kernel<K>>>(cptr);
                                         cptr->eventManager.clearCallback(SDL_MOUSEBUTTONUP);
                                         cptr->eventManager.addCallback(
                                             SDL_MOUSEBUTTONUP,
+                                            [&dropzone, kptr = cptr->weak_from_this()](const SDL_Event &evv)
+                                            {
+                                                auto skptr = kptr.lock();
+                                                if (skptr->link)
+                                                {
+                                                    for (auto &kernel : dropzone->kernels)
+                                                    {
+                                                        if (std::visit(
+                                                                [&evv, wptr2 = skptr->weak_from_this()](auto &&krnl)
+                                                                {
+                                                                    auto sptr2 = wptr2.lock();
+                                                                    if constexpr (std::same_as<std::decay_t<decltype(krnl)>, std::shared_ptr<Kernel<K>>>)
+                                                                    {
+                                                                        if ((krnl.get() != sptr2.get()) && events::containsMouse(*krnl->inNode, evv))
+                                                                        {
+                                                                            
+                                                                            sptr2->outLine.hidden = false;
+                                                                            return true;
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            sptr2->link = false;
+                                                                            sptr2->outLine.hidden = true;
+                                                                        }
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        if (events::containsMouse(*krnl->inNode, evv))
+                                                                        {
+                                                                            std::cout << "LINK MADE" << std::endl;
+                                                                            sptr2->outLine.hidden = false;
+                                                                            return true;
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            sptr2->link = false;
+                                                                            sptr2->outLine.hidden = true;
+                                                                        }
+                                                                    }
+                                                                    return false;
+                                                                },
+                                                                kernel))
+                                                        {
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                            });
+                                        cptr->eventManager.addCallback(
+                                            SDL_MOUSEBUTTONUP,
                                             [&sk]([[maybe_unused]] const SDL_Event &evv)
                                             {
                                                 std::get<std::shared_ptr<Kernel<K>>>(sk).template reset<Kernel<K>>(nullptr);
-                                            }
-                                        );
-                                    }
-                                );
+                                            });
+                                    });
                             }
                             std::get<std::shared_ptr<Kernel<K>>>(sk).template reset<Kernel<K>>(nullptr);
                         });
