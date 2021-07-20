@@ -18,19 +18,20 @@ namespace gui
     class Renderer : public Drawable, public std::enable_shared_from_this<Renderer<Drawable, TF>>
     {
     private:
-        std::shared_ptr<TF> tf;
-
         Renderer(Drawable &&d, std::shared_ptr<TF> &&ptr) : Drawable(std::forward<Drawable>(d)), tf(std::forward<std::shared_ptr<TF>>(ptr))
         {
         }
 
     public:
         ~Renderer() = default;
+        
+        std::shared_ptr<TF> tf;
 
         events::EventManager eventManager;
 
         static std::shared_ptr<Renderer<Drawable, TF>> build(Drawable &&d, std::shared_ptr<TF> &&ptr)
         {
+            ptr->modified = true;
             auto rptr = std::shared_ptr<Renderer<Drawable, TF>>(new Renderer<Drawable, TF>(std::forward<Drawable>(d), std::forward<std::shared_ptr<TF>>(ptr)));
             rptr->eventManager.addCallback(
                 events::GUI_REDRAW, [wptr = rptr->weak_from_this()](const SDL_Event &e)

@@ -98,8 +98,6 @@ namespace data
         inv[9] = modelView[6];
         inv[10] = modelView[10];
         inv[11] = modelView[14];
-
-        modified = false;
     }
 
 } // namespace data

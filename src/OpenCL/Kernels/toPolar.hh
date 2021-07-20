@@ -67,6 +67,8 @@ namespace opencl
 
             kernel->global = cl::NDRange(depth, length, width);
             kernel->execute(queue);
+
+            modified = true;
         }
     };
 

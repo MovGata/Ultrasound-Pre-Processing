@@ -115,11 +115,6 @@ namespace events
             mx = e.motion.x;
             my = e.motion.y;
         }
-        else if (e.type == SDL_MOUSEWHEEL)
-        {
-            mx = e.wheel.x;
-            my = e.wheel.y;
-        }
         else
         {
             SDL_GetMouseState(&mx, &my);

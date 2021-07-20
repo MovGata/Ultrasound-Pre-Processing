@@ -19,6 +19,7 @@
 #include "Instance.hh"
 #include "Rectangle.hh"
 #include "Kernel.hh"
+#include "Renderer.hh"
 
 #include "../Events/Concepts.hh"
 #include "../Events/EventManager.hh"
@@ -71,6 +72,7 @@ namespace gui
 
     public:
         std::vector<std::variant<std::shared_ptr<Drawables>...>> drawables;
+        std::vector<std::variant<std::shared_ptr<Renderer<Rectangle, Kernels>>...>> renderers;
         std::variant<std::shared_ptr<Kernel<Kernels, Kernels...>>...> kernel;
 
         Window(unsigned int width = 640, unsigned int height = 480, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE) : Window(SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, flags) {}
@@ -116,6 +118,31 @@ namespace gui
             if (minimised)
             {
                 return;
+            }
+
+            unsigned int rs = static_cast<unsigned int>(std::sqrt(renderers.size() - 1)) + 1;
+            unsigned int rx = 0; // Move this stuff to time of addition at some point.
+            unsigned int ry = 0;
+            float rw = std::min(size.first, size.second) / static_cast<float>(rs);
+            float xOff = size.first > size.second ? (size.first - size.second) / 2.0f : 0.0f;
+            float yOff = size.second > size.first ? (size.second - size.first) / 2.0f : 0.0f;
+
+            for (auto &&renderer : renderers)
+            {
+                std::visit(
+                    [rx, ry, rw, xOff, yOff](auto &&r)
+                    {
+                        r->x = static_cast<float>(rx) * rw + xOff;
+                        r->y = static_cast<float>(ry) * rw + yOff;
+                        r->w = rw;
+                        r->h = rw;
+                        r->update();
+                        r->draw();
+                    },
+                    renderer);
+
+                rx = (rx + 1) % rs;
+                ry = rx ? ry : ry + 1;
             }
 
             for (auto &&drawable : drawables)
@@ -248,9 +275,33 @@ namespace gui
                         },
                         drawable) == true)
                 {
-                    break;
+                    return;
                 }
             }
+            for (auto &&renderer : renderers) // Reverse to interact with top drawn elements first.
+            {
+
+                if (std::visit(
+                        [&e = std::as_const(e)](auto &&r)
+                        {
+                            if constexpr (concepts::ProcessorType<decltype(*r)>)
+                            {
+                                if (events::containsMouse(std::as_const(*r), e))
+                                {
+                                    if (r->eventManager.process(e))
+                                    {
+                                        return true;
+                                    }
+                                }
+                            }
+                            return false;
+                        },
+                        renderer) == true)
+                {
+                    return;
+                }
+            }
+
         }
 
         template <concepts::DrawableType Drawable>

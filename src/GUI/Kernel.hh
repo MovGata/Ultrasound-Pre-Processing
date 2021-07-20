@@ -309,18 +309,18 @@ namespace gui
             return false;
         }
 
-        template <typename WK, typename D>
-        static std::shared_ptr<Button<Rectangle>> buildButton(const std::string &str, WK &wk, D &d, std::shared_ptr<K> &t)
+        template <typename WK, typename WR, typename D>
+        static std::shared_ptr<Button<Rectangle>> buildButton(const std::string &str, WK &wk, WR &wr, D &d, std::shared_ptr<K> &t)
         {
             auto button = Button<Rectangle>::build(str);
 
             button->onPress(
-                [&sk = wk, &dropzone = d, k = t, wptr = std::weak_ptr<Texture>(button->texture)]() mutable
+                [&sk = wk, &wr, &dropzone = d, k = t, wptr = std::weak_ptr<Texture>(button->texture)]() mutable
                 {
                     std::shared_ptr<Kernel<K, KS...>> ptr = Kernel<K, KS...>::build(std::shared_ptr(k), wptr.lock());
                     ptr->eventManager.addCallback(
                         SDL_MOUSEBUTTONUP,
-                        [&sk, &dropzone](const SDL_Event &e)
+                        [&sk, &wr, &dropzone](const SDL_Event &e)
                         {
                             if (events::containsMouse(*dropzone, e))
                             {
@@ -332,7 +332,7 @@ namespace gui
 
                                 kptr->eventManager.addCallback(
                                     SDL_MOUSEBUTTONDOWN,
-                                    [wptr = kptr->weak_from_this(), &dropzone, &sk]([[maybe_unused]] const SDL_Event &ev)
+                                    [wptr = kptr->weak_from_this(), &dropzone, &sk, &wr]([[maybe_unused]] const SDL_Event &ev)
                                     {
                                         auto cptr = wptr.lock();
                                         sk.template emplace<std::shared_ptr<Kernel<K, KS...>>>(cptr);
@@ -360,7 +360,7 @@ namespace gui
 
                                         if (ev.button.clicks == 2 && !events::containsMouse(*cptr->inNode, ev) && !events::containsMouse(*cptr->outNode, ev))
                                         {
-                                            std::cout << "renderer" << std::endl;
+                                            wr.emplace_back(cptr->buildRenderer());
                                         }
 
                                         cptr->eventManager.addCallback(
@@ -378,7 +378,7 @@ namespace gui
             return button;
         }
 
-        std::shared_ptr<Renderer<Rectangle, K>> &buildRenderer()
+        std::shared_ptr<Renderer<Rectangle, K>> buildRenderer()
         {
             return Renderer<Rectangle, K>::build({0.0f, 0.0f, 1.0f, 1.0f, std::make_shared<gui::Texture>(512, 512)}, std::shared_ptr(kernel));
         }

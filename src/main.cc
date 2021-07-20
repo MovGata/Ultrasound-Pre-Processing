@@ -61,11 +61,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     // RENDERER
 
 
-    std::shared_ptr<gui::Texture> t = std::make_shared<gui::Texture>(512, 512);
-    std::shared_ptr<data::Volume> volume = std::static_pointer_cast<data::Volume>(reader);
-    std::shared_ptr<Renderer> vRec = Renderer::build({(wWidth - std::max(wWidth, wHeight)) / 2.0f, (wHeight - std::max(wWidth, wHeight)) / 2.0f, std::max(wWidth, wHeight), std::max(wWidth, wHeight), std::move(t)}, std::shared_ptr(volume));
-    vRec->update();
-    mainWindow.addDrawable(std::shared_ptr(vRec));
+    std::shared_ptr<gui::Texture> t;// = std::make_shared<gui::Texture>(512, 512);
+    // std::shared_ptr<data::Volume> volume = std::static_pointer_cast<data::Volume>(reader);
+    // std::shared_ptr<Renderer> vRec = Renderer::build({(wWidth - std::max(wWidth, wHeight)) / 2.0f, (wHeight - std::max(wWidth, wHeight)) / 2.0f, std::max(wWidth, wHeight), std::max(wWidth, wHeight), std::move(t)}, std::shared_ptr(volume));
+    // vRec->update();
+    // mainWindow.addDrawable(std::shared_ptr(vRec));
 
     // DROP ZONE
 
@@ -109,8 +109,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     std::shared_ptr<opencl::ToPolar> polar = std::make_shared<opencl::ToPolar>(device.context, device.cQueue, device.programs.at("cartesian")->at("toSpherical"));
 
-    auto mindray = gui::Kernel<ultrasound::Mindray, opencl::ToPolar, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(dropzone)>("MINDRAY", mainWindow.kernel, dropzone, reader);
-    auto toPolar = gui::Kernel<opencl::ToPolar, opencl::ToPolar, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(dropzone)>("To Polar", mainWindow.kernel, dropzone, polar);
+    auto mindray = gui::Kernel<ultrasound::Mindray, opencl::ToPolar, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("MINDRAY", mainWindow.kernel, mainWindow.renderers, dropzone, reader);
+    auto toPolar = gui::Kernel<opencl::ToPolar, opencl::ToPolar, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("To Polar", mainWindow.kernel, mainWindow.renderers, dropzone, polar);
 
     inputTree->addLeaf(std::move(mindray));
     dataTree->addLeaf(std::move(toPolar));
@@ -192,12 +192,26 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
             glFlush();
 
             // Run OpenCL stuff
-            if (volume->modified)
+            for (auto &&renderer : mainWindow.renderers)
             {
-                volume->update();
-                device.render(*volume);
-                vRec->texture->update(device.pixelBuffer);
+                std::visit([&device](auto &&r){
+                    if (r->tf->modified)
+                    {
+                        r->tf->update();
+                        device.render(*r->tf);
+                        r->texture->update(device.pixelBuffer);
+                    }
+                }, renderer);
             }
+            
+            // Set volumes to finished processing
+            for (auto &&renderer : mainWindow.renderers)
+            {
+                std::visit([&device](auto &&r){
+                    r->tf->modified = false;
+                }, renderer);
+            }
+
 
             // Run OpenGL stuff
             mainWindow.update();
