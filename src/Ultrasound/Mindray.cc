@@ -330,7 +330,7 @@ namespace ultrasound
             int32_t vLength = std::abs(lineRange.at(0) - lineRange.at(1)) + 1;
             int32_t vDepth = std::abs(pointRange.at(0) - pointRange.at(1)) + 1;
             int32_t vWidth = frameCount.at(0);
-            float angleDelta = std::abs(angleRange.at(0) - angleRange.at(1)) / static_cast<float>(vLength);
+            float angleDelta = std::abs(angleRange.at(0) - angleRange.at(1));
 
             std::vector<uint8_t> headers;
             std::vector<uint8_t> data;
@@ -390,6 +390,7 @@ namespace ultrasound
         width = cpStore.fetch<int32_t>("Width", 0);
         delta = cpStore.fetch<float>("AngleDelta", 0);
         ratio = cpStore.fetch<float>("Ratio", 0);
+
         std::vector<uint8_t> &data = cpStore.fetch<uint8_t>("Data");
 
         raw.reserve(width * depth * length);
@@ -402,7 +403,7 @@ namespace ultrasound
                 for (unsigned int x = 0; x < depth; ++x)
                 {
                     cl_uchar bnw = data.at(x + yx + zyx);
-                    cl_uchar4 arr = {bnw, bnw, bnw, 0xFF};
+                    cl_uchar4 arr = {0xFF, 0xFF, 0xFF, bnw};
                     raw.push_back(arr);
                 }
             }

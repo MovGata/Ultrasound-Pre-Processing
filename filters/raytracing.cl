@@ -59,7 +59,7 @@ kernel void render(
         output[x + y * w_out] = 0;
         return;
     }
-    
+
     // Clamp nplane minimum to 0
     nPlane *= sign(nPlane);
 
@@ -68,20 +68,35 @@ kernel void render(
     float4 scale = (float4)(depth - 1, length - 1, width - 1, 1.0f);
 
     // Raymarch back to front
+    uint n = 1;
     for (uint i = 0; i < stepLim; ++i)
     {
         float4 pos = eyerayOrg + eyerayDir * t;
+        t -= td;
+
         pos = clamp((pos * 0.5f + 0.5f) * scale, 0.0f, scale);
         uint4 iPos = clamp(convert_uint4_sat(pos), 0, convert_uint4_sat(scale));
 
+
         uchar4 sample = data[iPos.x + iPos.y * depth + iPos.z * length * depth];
+        
+        if (sample.w == 0)
+        {
+            continue;
+        }
+
         float4 sampleF = clamp(native_divide(convert_float4(sample), 255), 0.0f, 1.0f);
 
-        acc = mix(acc, sampleF, 1.0f / (i + 1));
-        // acc.xyz = acc.xyz + (1 - acc.w)*sampleF.xyz;
+        // acc = mix(acc, sampleF, 1.0f / (i + 1));
+        acc = mix(acc, sampleF, 1.0f / n++);
+        // sampleF.rgb *= sampleF.a;
+        // acc = acc + (1.0f - acc.a)*sampleF;
         // acc.w = acc.w + (1 - acc.w)*sampleF.w;
+        
+        // acc = mix(acc, sampleF, sampleF.w);
+        
+        // acc = mix(acc, sampleF, sampleF.w); // Interesting solid approach
 
-        t -= td;
         if (t < nPlane)
         {
             break;
@@ -89,7 +104,6 @@ kernel void render(
     }
 
     // Write to output buffer
-    acc *= (float4)(1.0f-u*v, 1.0f-(v+u)/2.0f, 1.0f-(-u*v), 1.0f);
     uchar4 ut = convert_uchar4_sat(acc * 255.0f);
     output[(y * w_out) + x] = ((uint)(ut.x) << 24) | ((uint)(ut.y) << 16) | (((uint)(ut.z)) << 8) | (uint)(ut.w);
 }
