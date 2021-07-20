@@ -102,6 +102,10 @@ namespace gui
                     else
                     {
                         ptr->link = false;
+                        if (e.button.clicks == 2)
+                        {
+                            
+                        }
                     }
                 });
 

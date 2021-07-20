@@ -42,9 +42,6 @@ Device::Device(unsigned int w, unsigned int h) : width(w), height(h)
         //, "-g -cl-opt-disable -s \"D:\\Documents\\Programming\\Uni\\Thesis\\filters\\raytracing.cl\"");
     }
 
-    invMVTransposed = cl::Buffer(context, CL_MEM_READ_ONLY, 12 * sizeof(float));
-    programs.at("raytracing")->at("render")->setArg(7, invMVTransposed);
-
     std::vector<uint32_t> clr;
     clr.reserve(width * height);
     std::fill_n(std::back_inserter(clr), width * height, 0);
@@ -53,6 +50,22 @@ Device::Device(unsigned int w, unsigned int h) : width(w), height(h)
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pixelBuffer);
     glBufferData(GL_PIXEL_UNPACK_BUFFER, width * height * sizeof(GLubyte) * 4, clr.data(), GL_STREAM_DRAW);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+    try
+    {
+        outBuffer = (type == CL_DEVICE_TYPE_GPU ? cl::BufferGL(context, CL_MEM_WRITE_ONLY, pixelBuffer) : cl::Buffer(context, CL_MEM_WRITE_ONLY, w * h * sizeof(cl_uint)));
+        invMVTransposed = cl::Buffer(context, CL_MEM_READ_ONLY, 12 * sizeof(float));
+
+        programs.at("raytracing")->at("render")->setArg(0, width);
+        programs.at("raytracing")->at("render")->setArg(1, height);
+        programs.at("raytracing")->at("render")->setArg(2, outBuffer);
+        programs.at("raytracing")->at("render")->setArg(7, invMVTransposed);
+    }
+    catch (const cl::Error &e)
+    {
+        std::cerr << "Display, " << e.what() << " : " << e.err() << '\n';
+        std::terminate();
+    }
 
     GLenum err;
     if ((err = glGetError()))
@@ -117,23 +130,6 @@ void Device::render(float *inv)
     }
 }
 
-void Device::createDisplay(unsigned int w, unsigned int h)
-{
-
-    try
-    {
-        outBuffer = (type == CL_DEVICE_TYPE_GPU ? cl::BufferGL(context, CL_MEM_WRITE_ONLY, pixelBuffer) : cl::Buffer(context, CL_MEM_WRITE_ONLY, w * h * sizeof(cl_uint)));
-        programs.at("raytracing")->at("render")->setArg(0, w);
-        programs.at("raytracing")->at("render")->setArg(1, h);
-        programs.at("raytracing")->at("render")->setArg(2, outBuffer);
-    }
-    catch (const cl::Error &e)
-    {
-        std::cerr << "Display, " << e.what() << " : " << e.err() << '\n';
-        std::terminate();
-    }
-}
-
 void Device::prepareVolume(unsigned int d, unsigned int l, unsigned int w, const cl::Buffer &v)
 {
     if (v.getInfo<CL_MEM_SIZE>() != l * d * w * 4)
@@ -147,7 +143,6 @@ void Device::prepareVolume(unsigned int d, unsigned int l, unsigned int w, const
         programs.at("raytracing")->at("render")->setArg(3, d);
         programs.at("raytracing")->at("render")->setArg(4, l);
         programs.at("raytracing")->at("render")->setArg(5, w);
-        // programs.at("raytracing").at("render").setArg(6, angle);
         programs.at("raytracing")->at("render")->setArg(6, v);
     }
     catch (const cl::Error &e)

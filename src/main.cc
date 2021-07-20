@@ -136,8 +136,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     mainWindow.addDrawable(std::shared_ptr(hideButton));
 
-    device.createDisplay(512, 512);
-
     // volume->sendToCl(device.context);
     device.prepareVolume(volume->depth, volume->length, volume->width, volume->buffer);
 

@@ -19,7 +19,7 @@ class Device
 private:
     cl::Platform platform;
     cl::Device device;
-    cl::Buffer   outBuffer;
+    cl::Buffer outBuffer;
     cl::Buffer invMVTransposed;
 
     unsigned int width = 0;
