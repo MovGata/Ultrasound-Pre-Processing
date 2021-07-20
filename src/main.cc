@@ -34,7 +34,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     using Tree = gui::Tree<RButton, std::tuple<RButton>, std::tuple<RButton>>;
 
     using Instance = gui::Instance;
-    using Window = gui::Window<RButton, Dropzone, Renderer, Tree>;
+    using Window = gui::Window<std::tuple<RButton, Dropzone, Renderer, Tree>, std::tuple<opencl::ToPolar, ultrasound::Mindray>>;
 
     Instance init;
     Window mainWindow(1024, 768);
