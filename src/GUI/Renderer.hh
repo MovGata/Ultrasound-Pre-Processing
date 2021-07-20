@@ -8,6 +8,8 @@
 #include "../Events/EventManager.hh"
 #include "Rectangle.hh"
 
+#include "../OpenCL/Concepts.hh"
+
 namespace gui
 {
 

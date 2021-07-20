@@ -60,9 +60,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     // RENDERER
 
-    std::shared_ptr<data::Volume> volume = std::static_pointer_cast<data::Volume>(reader);
 
     std::shared_ptr<gui::Texture> t = std::make_shared<gui::Texture>(512, 512);
+    std::shared_ptr<data::Volume> volume = std::static_pointer_cast<data::Volume>(reader);
     std::shared_ptr<Renderer> vRec = Renderer::build({(wWidth - std::max(wWidth, wHeight)) / 2.0f, (wHeight - std::max(wWidth, wHeight)) / 2.0f, std::max(wWidth, wHeight), std::max(wWidth, wHeight), std::move(t)}, std::shared_ptr(volume));
     vRec->update();
     mainWindow.addDrawable(std::shared_ptr(vRec));

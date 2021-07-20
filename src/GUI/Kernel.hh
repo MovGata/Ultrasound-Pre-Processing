@@ -10,6 +10,8 @@
 
 #include "Rectangle.hh"
 #include "Button.hh"
+#include "Texture.hh"
+#include "Renderer.hh"
 
 #include "../OpenCL/Kernel.hh"
 #include "../events/EventManager.hh"
@@ -104,7 +106,6 @@ namespace gui
                         ptr->link = false;
                         if (e.button.clicks == 2)
                         {
-
                         }
                     }
                 });
@@ -336,6 +337,7 @@ namespace gui
                                         auto cptr = wptr.lock();
                                         sk.template emplace<std::shared_ptr<Kernel<K, KS...>>>(cptr);
                                         cptr->eventManager.clearCallback(SDL_MOUSEBUTTONUP);
+
                                         cptr->eventManager.addCallback(
                                             SDL_MOUSEBUTTONUP,
                                             [&dropzone, kptr = cptr->weak_from_this()](const SDL_Event &evv)
@@ -355,6 +357,12 @@ namespace gui
                                                     }
                                                 }
                                             });
+
+                                        if (ev.button.clicks == 2 && !events::containsMouse(*cptr->inNode, ev) && !events::containsMouse(*cptr->outNode, ev))
+                                        {
+                                            std::cout << "renderer" << std::endl;
+                                        }
+
                                         cptr->eventManager.addCallback(
                                             SDL_MOUSEBUTTONUP,
                                             [&sk]([[maybe_unused]] const SDL_Event &evv)
@@ -368,6 +376,11 @@ namespace gui
                     sk.template emplace<std::shared_ptr<Kernel<K, KS...>>>(std::move(ptr));
                 });
             return button;
+        }
+
+        std::shared_ptr<Renderer<Rectangle, K>> &buildRenderer()
+        {
+            return Renderer<Rectangle, K>::build({0.0f, 0.0f, 1.0f, 1.0f, std::make_shared<gui::Texture>(512, 512)}, std::shared_ptr(kernel));
         }
     };
 }

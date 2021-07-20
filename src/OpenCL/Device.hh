@@ -4,6 +4,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <gl/glew.h>
 #include <gl/gl.h>
