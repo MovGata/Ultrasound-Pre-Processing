@@ -4,14 +4,16 @@
 #include <memory>
 #include <string>
 
+#include <CL/cl2.hpp>
+
 #include "../Kernel.hh"
 #include "../Concepts.hh"
+#include "../../Data/Volume.hh"
 
-#include "CL/cl2.hpp"
 
 namespace opencl
 {
-    class ToPolar
+    class ToPolar : public data::Volume
     {
     private:
         std::shared_ptr<opencl::Kernel> kernel;
@@ -21,14 +23,6 @@ namespace opencl
         cl::Buffer inBuffer;
 
     public:
-        cl_float ratio;
-        cl_float delta;
-
-        cl_uint length;
-        cl_uint depth;
-        cl_uint width;
-        cl::Buffer buffer;
-
         cl::Context context;
         cl::CommandQueue queue;
 

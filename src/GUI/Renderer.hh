@@ -11,7 +11,8 @@
 namespace gui
 {
 
-    template <concepts::DrawableType Drawable, concepts::TransformableType TF>
+    template <concepts::DrawableType Drawable, concepts::VolumeType TF>
+    requires concepts::TranslatableType<TF>
     class Renderer : public Drawable, public std::enable_shared_from_this<Renderer<Drawable, TF>>
     {
     private:
@@ -57,7 +58,6 @@ namespace gui
                             SDL_MOUSEMOTION, [wptr](const SDL_Event &ev)
                             {
                                 auto ssptr = wptr.lock();
-                                // events::rotate(*ssptr->tf, {-ev.motion.yrel, ev.motion.xrel, 0.0f});
                                 ssptr->tf->lastview = glm::rotate(ssptr->tf->lastview, glm::radians(static_cast<float>(ev.motion.yrel)), {1.0f, 0.0f, 0.0f});
                                 ssptr->tf->lastview = glm::rotate(ssptr->tf->lastview, -glm::radians(static_cast<float>(ev.motion.xrel)), {0.0f, 1.0f, 0.0f});
                                 ssptr->tf->modified = true;

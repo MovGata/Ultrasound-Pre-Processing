@@ -136,9 +136,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     mainWindow.addDrawable(std::shared_ptr(hideButton));
 
-    // volume->sendToCl(device.context);
-    device.prepareVolume(volume->depth, volume->length, volume->width, volume->buffer);
-
     auto timeA = SDL_GetTicks();
     bool quit = false;
 
@@ -198,7 +195,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
             if (volume->modified)
             {
                 volume->update();
-                device.render(volume->invMVTransposed.data());
+                device.render(*volume);
                 vRec->texture->update(device.pixelBuffer);
             }
 

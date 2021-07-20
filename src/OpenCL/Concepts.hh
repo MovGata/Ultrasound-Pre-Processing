@@ -4,6 +4,7 @@
 #include <cstring>
 #include <ostream>
 
+#include <glm/glm.hpp>
 #include <CL/cl2.hpp>
 
 #include "../Concepts.hh"
@@ -52,6 +53,8 @@ namespace concepts
         {decay(t.buffer)} -> std::same_as<cl::Buffer>;
         {decay(t.ratio)} -> std::same_as<cl_float>;
         {decay(t.delta)} -> std::same_as<cl_float>;
+        {decay(t.lastview)} -> std::same_as<glm::mat4>;
+        {decay(t.inv)} -> std::same_as<std::array<float, 12>>;
     };
 
 } // namespace concepts

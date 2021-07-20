@@ -17,23 +17,15 @@ namespace data
 
     class Volume
     {
-    private:
-
-        // std::pair<float, float> offset = {0.0f, 0.0f};
-
-        glm::vec3 lastRotation;
-
     protected:
         Volume();
-        
         std::vector<cl_uchar4> raw;
 
     public:
         glm::mat4 lastview;
-        glm::vec3 scale = {1.0f, 1.0f, 1.0f};
         glm::vec3 translation = {0.0f, 0.0f, 5.0f};
-        glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
-        bool modified = false; // Render at least once
+
+        bool modified = false;
 
         cl_uint depth;
         cl_uint length;
@@ -42,7 +34,7 @@ namespace data
         cl_float ratio;
         cl_float delta;
 
-        std::array<float, 12> invMVTransposed = {0};
+        std::array<float, 12> inv = {0};
 
         Volume(const Volume &) = default;
         Volume(Volume &&) = default;
