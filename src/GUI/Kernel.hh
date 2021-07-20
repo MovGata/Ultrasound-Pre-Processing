@@ -104,7 +104,7 @@ namespace gui
                         ptr->link = false;
                         if (e.button.clicks == 2)
                         {
-                            
+
                         }
                     }
                 });
@@ -226,10 +226,12 @@ namespace gui
             inNode->y += dy;
             outNode->y += dy;
             outLine.y += dy;
+            title.y += dy;
 
             inNode->update();
             outNode->update();
             outLine.update();
+            title.update();
         }
 
         template <typename KT>
