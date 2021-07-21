@@ -23,8 +23,6 @@
 
 #include "../Events/Concepts.hh"
 #include "../Events/EventManager.hh"
-#include "../Ultrasound/Mindray.hh"
-#include "../OpenCL/Kernels/toPolar.hh"
 
 namespace gui
 {

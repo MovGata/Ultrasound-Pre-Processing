@@ -1,7 +1,6 @@
-#ifndef OPENCL_TOPOLAR_HH
-#define OPENCL_TOPOLAR_HH
+#ifndef OPENCL_KERNELS_THRESHOLD_HH
+#define OPENCL_KERNELS_THRESHOLD_HH
 
-#include <cmath>
 #include <memory>
 #include <string>
 
@@ -11,9 +10,10 @@
 #include "../Concepts.hh"
 #include "../../Data/Volume.hh"
 
+
 namespace opencl
 {
-    class ToPolar : public data::Volume
+    class Threshold : public data::Volume
     {
     private:
         std::shared_ptr<opencl::Kernel> kernel;
@@ -22,6 +22,8 @@ namespace opencl
         cl_uint indepth;
         cl::Buffer inBuffer;
 
+        cl_uchar threshold = 0xFF/8;
+
     public:
         cl::Context context;
         cl::CommandQueue queue;
@@ -29,13 +31,13 @@ namespace opencl
         const std::string in = "3D";
         const std::string out = "3D";
 
-        ToPolar(const cl::Context &c, const cl::CommandQueue &q, const std::shared_ptr<opencl::Kernel> &ptr) : kernel(ptr), context(c), queue(q)
+        Threshold(const cl::Context &c, const cl::CommandQueue &q, const std::shared_ptr<opencl::Kernel> &ptr) : kernel(ptr), context(c), queue(q)
         {
         }
+        
+        ~Threshold() = default;
 
-        ~ToPolar() = default;
-
-        template <concepts::VolumeType V>
+        template<concepts::VolumeType V>
         void input(const V &v)
         {
             inlength = v.length;
@@ -44,11 +46,10 @@ namespace opencl
             inBuffer = v.buffer;
             ratio = v.ratio;
             delta = v.delta;
-
-            depth = static_cast<cl_uint>(static_cast<float>(v.depth) + static_cast<float>(v.depth) * v.ratio + 1.0f);
-            length = static_cast<cl_uint>(2.0f * std::tan(v.delta / 2.0f) * static_cast<float>(depth) + 1.0f);
-            width = static_cast<cl_uint>(2.0f * std::tan(v.delta / 2.0f) * static_cast<float>(depth) + 1.0f);
-
+            
+            length = inlength;
+            width = inwidth;
+            depth = indepth;
             buffer = cl::Buffer(context, CL_MEM_READ_WRITE, length * depth * width * sizeof(cl_uint));
         }
 
@@ -58,12 +59,9 @@ namespace opencl
             kernel->setArg(1, inlength);
             kernel->setArg(2, inwidth);
             kernel->setArg(3, inBuffer);
-            kernel->setArg(4, depth);
-            kernel->setArg(5, length);
-            kernel->setArg(6, width);
-            kernel->setArg(7, buffer);
-            kernel->setArg(8, ratio);
-            kernel->setArg(9, delta);
+            kernel->setArg(4, buffer);
+            kernel->setArg(5, threshold);
+            
 
             kernel->global = cl::NDRange(depth, length, width);
             kernel->execute(queue);

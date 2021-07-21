@@ -1,5 +1,5 @@
-#define stepLim 500
-#define td 0.01f
+// #define stepLim 500
+// #define td 0.01f
 
 int rayHitBBox(float4 rayOrg, float4 rayDir, float4 bbMin, float4 bbMax, float *nPlane, float *fPlane)
 {
@@ -32,12 +32,6 @@ kernel void render(
     float u = (x / (float)w_out) * 2.0f - 1.0f;
     float v = (y / (float)l_out) * 2.0f - 1.0f;
 
-    // float maxEdge = convert_float(max(max(depth, length), max(depth, width));)
-
-    // float fDepth = convert_float(depth);
-    // float fLength = convert_float(length);
-    // float fWidth = convert_float(width);
-
     float4 bbMin = (float4)(-1.0f, -1.0f, -1.0f, 1.0f);
     float4 bbMax = (float4)(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -64,37 +58,40 @@ kernel void render(
     nPlane *= sign(nPlane);
 
     acc = (float4)(0.0f, 0.0f, 0.0f, 0.0f);
+    output[(y * w_out) + x] = 0;
+
     float t = fPlane;
-    float4 scale = (float4)(depth - 1, length - 1, width - 1, 1.0f);
+    float4 scale = (float4)(depth, length, width, 1.0f);
 
     // Raymarch back to front
     uint n = 1;
+    uint stepLim = convert_uint(native_sqrt(convert_float(depth * depth + length * length + width * width + 1)));
+    float td = (fPlane - nPlane) / stepLim;
     for (uint i = 0; i < stepLim; ++i)
     {
         float4 pos = eyerayOrg + eyerayDir * t;
         t -= td;
 
         pos = clamp((pos * 0.5f + 0.5f) * scale, 0.0f, scale);
-        uint4 iPos = clamp(convert_uint4_sat(pos), 0, convert_uint4_sat(scale));
-
+        uint4 iPos = clamp(convert_uint4_sat(pos), 0, convert_uint4_sat(scale - 1.0f));
 
         uchar4 sample = data[iPos.x + iPos.y * depth + iPos.z * length * depth];
-        
-        if (sample.w == 0)
+
+        if ((sample.x | sample.y | sample.z | sample.w) == 0)
         {
             continue;
         }
 
-        float4 sampleF = clamp(native_divide(convert_float4(sample), 255), 0.0f, 1.0f);
+        float4 sampleF = clamp(native_divide(convert_float4(sample), 255.0f), 0.0f, 1.0f);
 
         // acc = mix(acc, sampleF, 1.0f / (i + 1));
         acc = mix(acc, sampleF, 1.0f / n++);
         // sampleF.rgb *= sampleF.a;
         // acc = acc + (1.0f - acc.a)*sampleF;
         // acc.w = acc.w + (1 - acc.w)*sampleF.w;
-        
+
         // acc = mix(acc, sampleF, sampleF.w);
-        
+
         // acc = mix(acc, sampleF, sampleF.w); // Interesting solid approach
 
         if (t < nPlane)

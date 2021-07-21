@@ -15,7 +15,11 @@
 #include "OpenCL/Device.hh"
 #include "OpenCL/Kernel.hh"
 
-#include "OpenCL/Kernels/toPolar.hh"
+#include "OpenCL/Kernels/ToPolar.hh"
+#include "OpenCL/Kernels/Slice.hh"
+#include "OpenCL/Kernels/Invert.hh"
+#include "OpenCL/Kernels/Clamp.hh"
+#include "OpenCL/Kernels/Threshold.hh"
 
 #include "IO/InfoStore.hh"
 #include "Ultrasound/Mindray.hh"
@@ -24,17 +28,17 @@
 
 #include "glm/ext.hpp"
 
-int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
+int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 {
     std::ios::sync_with_stdio(false);
 
     using RButton = gui::Button<gui::Rectangle>;
-    using Dropzone = gui::Dropzone<gui::Rectangle, opencl::ToPolar, ultrasound::Mindray>;
+    using Dropzone = gui::Dropzone<gui::Rectangle, opencl::ToPolar, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, ultrasound::Mindray>;
     using Renderer = gui::Renderer<gui::Rectangle, data::Volume>;
     using Tree = gui::Tree<RButton, std::tuple<RButton>, std::tuple<RButton>>;
 
     using Instance = gui::Instance;
-    using Window = gui::Window<std::tuple<RButton, Dropzone, Renderer, Tree>, std::tuple<opencl::ToPolar, ultrasound::Mindray>>;
+    using Window = gui::Window<std::tuple<RButton, Dropzone, Renderer, Tree>, std::tuple<opencl::ToPolar, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, ultrasound::Mindray>>;
 
     Instance init;
     Window mainWindow(1024, 768);
@@ -58,14 +62,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     reader->load(device.context);
 
-    // RENDERER
-
-
-    std::shared_ptr<gui::Texture> t;// = std::make_shared<gui::Texture>(512, 512);
-    // std::shared_ptr<data::Volume> volume = std::static_pointer_cast<data::Volume>(reader);
-    // std::shared_ptr<Renderer> vRec = Renderer::build({(wWidth - std::max(wWidth, wHeight)) / 2.0f, (wHeight - std::max(wWidth, wHeight)) / 2.0f, std::max(wWidth, wHeight), std::max(wWidth, wHeight), std::move(t)}, std::shared_ptr(volume));
-    // vRec->update();
-    // mainWindow.addDrawable(std::shared_ptr(vRec));
+    std::shared_ptr<gui::Texture> t;
 
     // DROP ZONE
 
@@ -107,13 +104,25 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     tree->addBranch(std::shared_ptr(outputTree));
     tree->addBranch(std::shared_ptr(dataTree));
 
-    std::shared_ptr<opencl::ToPolar> polar = std::make_shared<opencl::ToPolar>(device.context, device.cQueue, device.programs.at("cartesian")->at("toSpherical"));
+    auto polar = std::make_shared<opencl::ToPolar>(device.context, device.cQueue, device.programs.at("cartesian")->at("toSpherical"));
+    auto slice = std::make_shared<opencl::Slice>(device.context, device.cQueue, device.programs.at("utility")->at("slice"));
+    auto threshold = std::make_shared<opencl::Threshold>(device.context, device.cQueue, device.programs.at("utility")->at("threshold"));
+    auto invert = std::make_shared<opencl::Invert>(device.context, device.cQueue, device.programs.at("utility")->at("invert"));
+    auto clamp = std::make_shared<opencl::Clamp>(device.context, device.cQueue, device.programs.at("utility")->at("clamping"));
 
-    auto mindray = gui::Kernel<ultrasound::Mindray, opencl::ToPolar, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("MINDRAY", mainWindow.kernel, mainWindow.renderers, dropzone, reader);
-    auto toPolar = gui::Kernel<opencl::ToPolar, opencl::ToPolar, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("To Polar", mainWindow.kernel, mainWindow.renderers, dropzone, polar);
+    auto mindray = gui::Kernel<ultrasound::Mindray, opencl::ToPolar, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("MINDRAY", mainWindow.kernel, mainWindow.renderers, dropzone, reader);
+    auto toPolar = gui::Kernel<opencl::ToPolar, opencl::ToPolar, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("To Polar", mainWindow.kernel, mainWindow.renderers, dropzone, polar);
+    auto sliceK = gui::Kernel<opencl::Slice, opencl::ToPolar, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("Slice", mainWindow.kernel, mainWindow.renderers, dropzone, slice);
+    auto threshK = gui::Kernel<opencl::Threshold, opencl::ToPolar, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("Threshold", mainWindow.kernel, mainWindow.renderers, dropzone, threshold);
+    auto invK = gui::Kernel<opencl::Invert, opencl::ToPolar, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("Invert", mainWindow.kernel, mainWindow.renderers, dropzone, invert);
+    auto clampK = gui::Kernel<opencl::Clamp, opencl::ToPolar, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("Clamp", mainWindow.kernel, mainWindow.renderers, dropzone, clamp);
 
     inputTree->addLeaf(std::move(mindray));
     dataTree->addLeaf(std::move(toPolar));
+    dataTree->addLeaf(std::move(sliceK));
+    dataTree->addLeaf(std::move(threshK));
+    dataTree->addLeaf(std::move(invK));
+    dataTree->addLeaf(std::move(clampK));
 
 
     mainWindow.addDrawable(std::shared_ptr(tree));
