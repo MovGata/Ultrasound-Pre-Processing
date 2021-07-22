@@ -47,7 +47,9 @@ namespace opencl
 
             depth = static_cast<cl_uint>(static_cast<float>(v.depth) + static_cast<float>(v.depth) * v.ratio + 1.0f);
             length = static_cast<cl_uint>(2.0f * std::tan(v.delta / 2.0f) * static_cast<float>(depth) + 1.0f);
-            width = static_cast<cl_uint>(2.0f * std::tan(v.delta / 2.0f) * static_cast<float>(depth) + 1.0f);
+            width = inwidth > 1 ? static_cast<cl_uint>(2.0f * std::tan(v.delta / 2.0f) * static_cast<float>(depth) + 1.0f) : inwidth;
+
+            std::cout << indepth << '=' << depth << '\n' << inlength << '=' << length << '\n' << inwidth << '=' << width << std::endl;
 
             buffer = cl::Buffer(context, CL_MEM_READ_WRITE, length * depth * width * sizeof(cl_uint));
         }

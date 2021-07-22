@@ -325,13 +325,13 @@ namespace ultrasound
             std::vector<uint16_t> pointRange = vmBinStore.fetch<uint16_t>("BDscPointRange");
             std::vector<int32_t> frameCount = vmBinStore.fetch<int32_t>("FrameCountPerVolume");
             std::vector<float> angleRange = vmBinStore.fetch<float>("BDispLineRange");
-            std::vector<float> bzoom = vmBinStore.fetch<float>("BZoomRatio");
+            std::vector<float> bzoom = vmBinStore.fetch<float>("BUploadPointGap");
 
             uint32_t vLength = std::abs(lineRange.at(0) - lineRange.at(1)) + 1;
             uint32_t vDepth = std::abs(pointRange.at(0) - pointRange.at(1)) + 1;
             uint32_t vWidth = frameCount.at(0);
             float angleDelta = std::abs(angleRange.at(0) - angleRange.at(1));
-            // float zoom = 1.0f - 1.0f / bzoom.at(0);
+            float zoom = 2*bzoom.at(0);
 
             std::vector<uint8_t> headers;
             std::vector<uint8_t> data;
@@ -349,14 +349,21 @@ namespace ultrasound
 
             uint32_t headerSize;
             uint32_t dataSize = vLength * vDepth;
+            uint32_t frameSize;
 
-            cpIs.seekg(116).read(reinterpret_cast<char *>(&headerSize), sizeof(headerSize)).seekg(0);
-
-            uint32_t frameSize = dataSize + headerSize;
+            cpIs.seekg(8).read(reinterpret_cast<char *>(&frameSize), sizeof(frameSize));
+            cpIs.sync();
+            cpIs.seekg(116).read(reinterpret_cast<char *>(&headerSize), sizeof(headerSize));
+            cpIs.sync();
+            cpIs.seekg(0);
 
             std::vector<char> buf;
             buf.reserve(frameSize);
+
             cpIs.sync();
+
+            vWidth = 0;
+
             while (cpIs.read(buf.data(), frameSize))
             {
                 headers.reserve(headers.size() + headerSize);
@@ -364,7 +371,10 @@ namespace ultrasound
 
                 std::copy(buf.data(), buf.data() + headerSize, std::back_inserter(headers));
                 std::copy(buf.data() + headerSize, buf.data() + headerSize + dataSize, std::back_inserter(data));
+
+                ++vWidth;
             }
+
 
             cpStore.load<uint8_t>("Headers", std::move(headers));
             cpStore.load<uint8_t>("Data", std::move(data));
@@ -376,7 +386,7 @@ namespace ultrasound
             cpStore.load<int32_t>("Depth", std::move(vDepth));
             cpStore.load<int32_t>("Width", std::move(vWidth));
             cpStore.load<float>("AngleDelta", std::move(angleDelta));
-            cpStore.load<float>("Ratio", 2.0f); // Need to find real value
+            cpStore.load<float>("Ratio", std::move(zoom));
         }
 
         return true;
