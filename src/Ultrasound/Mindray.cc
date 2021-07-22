@@ -320,64 +320,63 @@ namespace ultrasound
         {
             std::unique_ptr<SDL_RWops, decltype(&SDL_RWclose)> cpOps(nullptr, SDL_RWclose);
             io::RWOpsStream cpRWStream = io::RWOpsStream(cpOps.get());
-            std::istream cpIs(&cpRWStream);
 
             std::vector<int16_t> lineRange = vmBinStore.fetch<int16_t>("BDscLineRange");
             std::vector<uint16_t> pointRange = vmBinStore.fetch<uint16_t>("BDscPointRange");
             std::vector<int32_t> frameCount = vmBinStore.fetch<int32_t>("FrameCountPerVolume");
             std::vector<float> angleRange = vmBinStore.fetch<float>("BDispLineRange");
+            std::vector<float> bzoom = vmBinStore.fetch<float>("BZoomRatio");
 
-            int32_t vLength = std::abs(lineRange.at(0) - lineRange.at(1)) + 1;
-            int32_t vDepth = std::abs(pointRange.at(0) - pointRange.at(1)) + 1;
-            int32_t vWidth = frameCount.at(0);
+            uint32_t vLength = std::abs(lineRange.at(0) - lineRange.at(1)) + 1;
+            uint32_t vDepth = std::abs(pointRange.at(0) - pointRange.at(1)) + 1;
+            uint32_t vWidth = frameCount.at(0);
             float angleDelta = std::abs(angleRange.at(0) - angleRange.at(1));
+            // float zoom = 1.0f - 1.0f / bzoom.at(0);
 
             std::vector<uint8_t> headers;
             std::vector<uint8_t> data;
-            std::vector<uint8_t> other;
 
-            uint32_t vmOffset = vmTxtStore.fetch<vmTxtInfoStore>("CinePartition", 0).fetch<vmTxtInfoStore>("CinePartition0", 0).fetch<vmTxtInfoStore>("FeParam", 0).fetch<vmTxtInfoStore>("Version0", 0).fetch<vmTxtInfoStore>("param_content", 0).fetch<uint32_t>("OFFSET", 0);
+            // uint32_t vmOffset = vmTxtStore.fetch<vmTxtInfoStore>("CinePartition", 0).fetch<vmTxtInfoStore>("CinePartition0", 0).fetch<vmTxtInfoStore>("FeParam", 0).fetch<vmTxtInfoStore>("Version0", 0).fetch<vmTxtInfoStore>("param_content", 0).fetch<uint32_t>("OFFSET", 0);
 
-            std::size_t headerSize = 128;
-            std::size_t otherSize = vmOffset > 16 ? 304 : 0;
-            std::size_t dataSize = vLength * vDepth;
-            std::size_t frameSize = dataSize + headerSize + otherSize;
-
-            cpOps.reset(SDL_RWFromFile(cp.c_str(), "r"));
+            cpOps.reset(SDL_RWFromFile(cp.c_str(), "rb"));
             if (cpOps == nullptr)
             {
                 std::cout << "SDL2 failed to open Mindray cine partition file '" << cp << "', error: " << SDL_GetError();
                 return false;
             }
             cpRWStream = io::RWOpsStream(cpOps.get());
+            std::istream cpIs(&cpRWStream);
+
+            uint32_t headerSize;
+            uint32_t dataSize = vLength * vDepth;
+
+            cpIs.seekg(116).read(reinterpret_cast<char *>(&headerSize), sizeof(headerSize)).seekg(0);
+
+            uint32_t frameSize = dataSize + headerSize;
 
             std::vector<char> buf;
             buf.reserve(frameSize);
-
+            cpIs.sync();
             while (cpIs.read(buf.data(), frameSize))
             {
                 headers.reserve(headers.size() + headerSize);
-                other.reserve(other.size() + otherSize);
                 data.reserve(data.size() + dataSize);
 
                 std::copy(buf.data(), buf.data() + headerSize, std::back_inserter(headers));
-                std::copy(buf.data() + headerSize, buf.data() + headerSize + otherSize, std::back_inserter(other));
-                std::copy(buf.data() + headerSize + otherSize, buf.data() + headerSize + otherSize + dataSize, std::back_inserter(data));
+                std::copy(buf.data() + headerSize, buf.data() + headerSize + dataSize, std::back_inserter(data));
             }
 
             cpStore.load<uint8_t>("Headers", std::move(headers));
-            cpStore.load<uint8_t>("Other", std::move(other));
             cpStore.load<uint8_t>("Data", std::move(data));
 
             cpStore.load<std::size_t>("HeaderSize", std::move(headerSize));
-            cpStore.load<std::size_t>("OtherSize", std::move(otherSize));
             cpStore.load<std::size_t>("DataSize", std::move(dataSize));
 
             cpStore.load<int32_t>("Length", std::move(vLength));
             cpStore.load<int32_t>("Depth", std::move(vDepth));
             cpStore.load<int32_t>("Width", std::move(vWidth));
             cpStore.load<float>("AngleDelta", std::move(angleDelta));
-            cpStore.load<float>("Ratio", 0.2f);
+            cpStore.load<float>("Ratio", 2.0f); // Need to find real value
         }
 
         return true;

@@ -64,7 +64,7 @@ kernel void render(
     float4 scale = (float4)(depth, length, width, 1.0f);
 
     // Raymarch back to front
-    uint n = 1;
+    float n = 1.0f;
     uint stepLim = convert_uint(native_sqrt(convert_float(depth * depth + length * length + width * width + 1)));
     float td = (fPlane - nPlane) / stepLim;
     for (uint i = 0; i < stepLim; ++i)
@@ -72,7 +72,7 @@ kernel void render(
         float4 pos = eyerayOrg + eyerayDir * t;
         t -= td;
 
-        pos = clamp((pos * 0.5f + 0.5f) * scale, 0.0f, scale);
+        pos = (pos * 0.5f + 0.5f) * scale;
         uint4 iPos = clamp(convert_uint4_sat(pos), 0, convert_uint4_sat(scale - 1.0f));
 
         uchar4 sample = data[iPos.x + iPos.y * depth + iPos.z * length * depth];
@@ -82,13 +82,16 @@ kernel void render(
             continue;
         }
 
-        float4 sampleF = clamp(native_divide(convert_float4(sample), 255.0f), 0.0f, 1.0f);
+        float4 sampleF = native_divide(convert_float4(sample), 255.0f);
 
         // acc = mix(acc, sampleF, 1.0f / (i + 1));
-        acc = mix(acc, sampleF, 1.0f / n++);
+        acc = mix(acc, sampleF, 1.0f / n);
+        n += 1.0f;
         // sampleF.rgb *= sampleF.a;
-        // acc = acc + (1.0f - acc.a)*sampleF;
-        // acc.w = acc.w + (1 - acc.w)*sampleF.w;
+        // acc.xyz = acc.xyz*(1.0f - sampleF.w) + sampleF.xyz;
+        // acc.w = acc.w*(1.0f - sampleF.w) + sampleF.w;
+        
+        // n += 1.0f;
 
         // acc = mix(acc, sampleF, sampleF.w);
 
