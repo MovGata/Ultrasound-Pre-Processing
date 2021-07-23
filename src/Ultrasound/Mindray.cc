@@ -331,10 +331,11 @@ namespace ultrasound
             uint32_t vDepth = std::abs(pointRange.at(0) - pointRange.at(1)) + 1;
             uint32_t vWidth = frameCount.at(0);
             float angleDelta = std::abs(angleRange.at(0) - angleRange.at(1));
-            float zoom = 2*bzoom.at(0);
+            float zoom = 2 * bzoom.at(0);
 
             std::vector<uint8_t> headers;
             std::vector<uint8_t> data;
+            std::vector<uint8_t> pData;
 
             // uint32_t vmOffset = vmTxtStore.fetch<vmTxtInfoStore>("CinePartition", 0).fetch<vmTxtInfoStore>("CinePartition0", 0).fetch<vmTxtInfoStore>("FeParam", 0).fetch<vmTxtInfoStore>("Version0", 0).fetch<vmTxtInfoStore>("param_content", 0).fetch<uint32_t>("OFFSET", 0);
 
@@ -349,13 +350,21 @@ namespace ultrasound
 
             uint32_t headerSize;
             uint32_t dataSize = vLength * vDepth;
+            uint16_t pDepth;
+            uint16_t pLength;
             uint32_t frameSize;
 
             cpIs.seekg(8).read(reinterpret_cast<char *>(&frameSize), sizeof(frameSize));
             cpIs.sync();
+            cpIs.seekg(112).read(reinterpret_cast<char *>(&pLength), sizeof(pLength));
+            cpIs.sync();
+            cpIs.seekg(114).read(reinterpret_cast<char *>(&pDepth), sizeof(pDepth));
+            cpIs.sync();
             cpIs.seekg(116).read(reinterpret_cast<char *>(&headerSize), sizeof(headerSize));
             cpIs.sync();
             cpIs.seekg(0);
+
+            uint32_t pSize = pDepth * pLength * 3;
 
             std::vector<char> buf;
             buf.reserve(frameSize);
@@ -368,19 +377,25 @@ namespace ultrasound
             {
                 headers.reserve(headers.size() + headerSize);
                 data.reserve(data.size() + dataSize);
+                pData.reserve(pData.size() + pSize);
 
                 std::copy(buf.data(), buf.data() + headerSize, std::back_inserter(headers));
                 std::copy(buf.data() + headerSize, buf.data() + headerSize + dataSize, std::back_inserter(data));
+                std::copy(buf.data() + headerSize + dataSize, buf.data() + headerSize + dataSize + pSize, std::back_inserter(pData));
 
                 ++vWidth;
             }
 
-
             cpStore.load<uint8_t>("Headers", std::move(headers));
             cpStore.load<uint8_t>("Data", std::move(data));
+            cpStore.load<uint8_t>("Doppler", std::move(pData));
 
             cpStore.load<std::size_t>("HeaderSize", std::move(headerSize));
             cpStore.load<std::size_t>("DataSize", std::move(dataSize));
+            cpStore.load<std::size_t>("DopplerSize", std::move(pSize));
+
+            cpStore.load<uint16_t>("dLength", std::move(pLength));
+            cpStore.load<uint16_t>("dDepth", std::move(pDepth));
 
             cpStore.load<int32_t>("Length", std::move(vLength));
             cpStore.load<int32_t>("Depth", std::move(vDepth));
@@ -400,19 +415,58 @@ namespace ultrasound
         delta = cpStore.fetch<float>("AngleDelta", 0);
         ratio = cpStore.fetch<float>("Ratio", 0);
 
+        auto pLength = cpStore.fetch<uint16_t>("dLength", 0);
+        auto pDepth = cpStore.fetch<uint16_t>("dDepth", 0);
+
         std::vector<uint8_t> &data = cpStore.fetch<uint8_t>("Data");
+        std::vector<uint8_t> &doppler = cpStore.fetch<uint8_t>("Doppler");
+
+        std::vector<float> bGap = vmBinStore.fetch<float>("BDispPointRange");
+        std::vector<float> pGap = vmBinStore.fetch<float>("CDispPointRange");
+        std::vector<float> pAngle = vmBinStore.fetch<float>("CDispLineRange");
+
+        uint32_t t, b, l, r;
+
+        t = static_cast<uint32_t>(pGap.at(0) / (bGap.at(1) - bGap.at(0)) * static_cast<float>(depth));
+        b = static_cast<uint32_t>(pGap.at(1) / (bGap.at(1) - bGap.at(0)) * static_cast<float>(depth));
+        l = static_cast<uint32_t>((pAngle.at(0) / delta + 0.5f) * static_cast<float>(length));
+        r = static_cast<uint32_t>((pAngle.at(1) / delta + 0.5f) * static_cast<float>(length));
 
         raw.reserve(width * depth * length);
         for (unsigned int z = 0; z < width; ++z)
         {
             auto zyx = z * length * depth;
+            auto pz = z * pLength * pDepth * 3;
             for (unsigned int y = 0; y < length; ++y)
             {
                 auto yx = y * depth;
+                auto py = std::clamp(static_cast<unsigned int>(static_cast<float>((y - l) * pLength) / static_cast<float>(r-l)), static_cast<unsigned int>(0), static_cast<unsigned int>(pLength - 1)) * pDepth;
                 for (unsigned int x = 0; x < depth; ++x)
                 {
+                    auto px = std::clamp(static_cast<unsigned int>(static_cast<float>((x - t) * pDepth) / static_cast<float>(b-t)), static_cast<unsigned int>(0), static_cast<unsigned int>(pDepth - 1));
                     cl_uchar bnw = data.at(x + yx + zyx);
-                    cl_uchar4 arr = {0xFF, 0xFF, 0xFF, bnw};
+                    cl_uchar4 arr;
+                    if (doppler.size() > 0 && x >= t && x < b && y >= l && y < r)
+                    {
+                        int8_t dData = static_cast<int8_t>(doppler.at(px + py + pz));
+                        // std ::cout << px << ' ' << py << ' ' << dData << std::endl;
+                        if (dData < 0)
+                        {
+                            arr = {0x00, static_cast<cl_uchar>(static_cast<uint8_t>(static_cast<int8_t>(-1) * dData) * static_cast<uint8_t>(2)), 0xFF, 0xFF};
+                        }
+                        else if (dData > 0)
+                        {
+                            arr = {0xFF, static_cast<cl_uchar>(static_cast<uint8_t>(dData) * static_cast<uint8_t>(2)), 0x00, 0xFF};
+                        }
+                        else
+                        {
+                            arr = {0xFF, 0xFF, 0xFF, bnw};
+                        }
+                    }
+                    else
+                    {
+                        arr = {0xFF, 0xFF, 0xFF, bnw};
+                    }
                     raw.push_back(arr);
                 }
             }

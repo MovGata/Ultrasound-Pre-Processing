@@ -17,7 +17,7 @@ DEFS = -DWIN32_LEAN_AND_MEAN -DWINVER=0x0A00 -DCPP_SDL2_VK_WINDOW -DCPP_SDL2_USE
 # Windows FLAGS
 WIN = -mconsole -mwindows
 # G++ Flags
-GPP = -std=c++2a -O3 -fconcepts -Werror -Wextra -Wall -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align -Wwrite-strings -Wcast-qual -Wswitch-enum -Wconversion -Wno-unknown-pragmas -fconcepts-diagnostics-depth=2#-Wfatal-errors #-DDEBUG_Matrix #-DDEBUG_VECTOR3
+GPP = -std=c++2a -g -O3 -fconcepts -Werror -Wextra -Wall -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align -Wwrite-strings -Wcast-qual -Wswitch-enum -Wconversion -Wno-unknown-pragmas -fconcepts-diagnostics-depth=2#-Wfatal-errors #-DDEBUG_Matrix #-DDEBUG_VECTOR3
 # Linker flags
 LINK = -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_TTF -lglew32 -lopengl32 -lOpenCL
 # Dependency flags

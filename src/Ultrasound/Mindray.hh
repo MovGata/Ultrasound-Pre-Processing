@@ -36,7 +36,7 @@ namespace ultrasound
 
         using vmBinInfoStore = io::InfoStore<bool, int8_t, int16_t, int32_t, uint8_t, uint16_t, uint32_t, float, double>;
         using vmTxtInfoStore = io::InfoStore<uint32_t, double, std::string>;
-        using cpInfoStore = io::InfoStore<uint8_t, int32_t, float, std::size_t>;
+        using cpInfoStore = io::InfoStore<uint8_t, int32_t, uint16_t, float, std::size_t>;
 
         vmBinInfoStore vmBinStore;
         vmTxtInfoStore vmTxtStore;

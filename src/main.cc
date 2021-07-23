@@ -47,7 +47,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     mainWindow.redraw();
 
     std::shared_ptr<ultrasound::Mindray> reader = std::make_shared<ultrasound::Mindray>();
-    if (!reader->load("tests/data/1"))
+    if (!reader->load("tests/data/4"))
     {
         std::terminate();
     }
