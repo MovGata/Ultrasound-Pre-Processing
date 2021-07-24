@@ -333,7 +333,6 @@ namespace ultrasound
             float angleDelta = std::abs(angleRange.at(0) - angleRange.at(1));
             float zoom = 2 * bzoom.at(0);
 
-            std::vector<uint8_t> headers;
             std::vector<uint8_t> data;
             std::vector<uint8_t> pData;
 
@@ -348,51 +347,53 @@ namespace ultrasound
             cpRWStream = io::RWOpsStream(cpOps.get());
             std::istream cpIs(&cpRWStream);
 
-            uint32_t headerSize;
-            uint32_t dataSize = vLength * vDepth;
+            uint32_t dataOffset;
+            uint32_t dataSize;
+            uint32_t dopplerOffset;
+            uint32_t dopplerSize;
             uint16_t pDepth;
             uint16_t pLength;
             uint32_t frameSize;
 
             cpIs.seekg(8).read(reinterpret_cast<char *>(&frameSize), sizeof(frameSize));
             cpIs.sync();
+            cpIs.seekg(104).read(reinterpret_cast<char *>(&dopplerOffset), sizeof(dopplerOffset));
+            cpIs.sync();
             cpIs.seekg(112).read(reinterpret_cast<char *>(&pLength), sizeof(pLength));
             cpIs.sync();
             cpIs.seekg(114).read(reinterpret_cast<char *>(&pDepth), sizeof(pDepth));
             cpIs.sync();
-            cpIs.seekg(116).read(reinterpret_cast<char *>(&headerSize), sizeof(headerSize));
+            cpIs.seekg(116).read(reinterpret_cast<char *>(&dataOffset), sizeof(dataOffset));
             cpIs.sync();
             cpIs.seekg(0);
+            cpIs.sync();
 
-            uint32_t pSize = pDepth * pLength * 3;
+            dataSize = vDepth * vLength;
+            dopplerSize = frameSize - dopplerOffset;
 
             std::vector<char> buf;
             buf.reserve(frameSize);
 
-            cpIs.sync();
 
             vWidth = 0;
 
             while (cpIs.read(buf.data(), frameSize))
             {
-                headers.reserve(headers.size() + headerSize);
                 data.reserve(data.size() + dataSize);
-                pData.reserve(pData.size() + pSize);
+                pData.reserve(pData.size() + dopplerSize);
 
-                std::copy(buf.data(), buf.data() + headerSize, std::back_inserter(headers));
-                std::copy(buf.data() + headerSize, buf.data() + headerSize + dataSize, std::back_inserter(data));
-                std::copy(buf.data() + headerSize + dataSize, buf.data() + headerSize + dataSize + pSize, std::back_inserter(pData));
+                std::copy(buf.data() + dataOffset, buf.data() + dataOffset + dataSize, std::back_inserter(data));
+                std::copy(buf.data() + dopplerOffset, buf.data() + dopplerOffset + dopplerSize, std::back_inserter(pData));
 
                 ++vWidth;
             }
 
-            cpStore.load<uint8_t>("Headers", std::move(headers));
             cpStore.load<uint8_t>("Data", std::move(data));
             cpStore.load<uint8_t>("Doppler", std::move(pData));
 
-            cpStore.load<std::size_t>("HeaderSize", std::move(headerSize));
+            cpStore.load<std::size_t>("dataOffset", std::move(dataOffset));
             cpStore.load<std::size_t>("DataSize", std::move(dataSize));
-            cpStore.load<std::size_t>("DopplerSize", std::move(pSize));
+            cpStore.load<std::size_t>("DopplerSize", std::move(dopplerSize));
 
             cpStore.load<uint16_t>("dLength", std::move(pLength));
             cpStore.load<uint16_t>("dDepth", std::move(pDepth));
@@ -427,10 +428,11 @@ namespace ultrasound
 
         uint32_t t, b, l, r;
 
-        t = static_cast<uint32_t>(pGap.at(0) / (bGap.at(1) - bGap.at(0)) * static_cast<float>(depth));
-        b = static_cast<uint32_t>(pGap.at(1) / (bGap.at(1) - bGap.at(0)) * static_cast<float>(depth));
+        t = static_cast<uint32_t>((pGap.at(0) - bGap.at(0)) / (bGap.at(1) - bGap.at(0)) * static_cast<float>(depth));
+        b = static_cast<uint32_t>((pGap.at(1) - bGap.at(0)) / (bGap.at(1) - bGap.at(0)) * static_cast<float>(depth));
         l = static_cast<uint32_t>((pAngle.at(0) / delta + 0.5f) * static_cast<float>(length));
         r = static_cast<uint32_t>((pAngle.at(1) / delta + 0.5f) * static_cast<float>(length));
+
 
         raw.reserve(width * depth * length);
         for (unsigned int z = 0; z < width; ++z)
