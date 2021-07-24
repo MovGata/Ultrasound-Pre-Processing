@@ -40,6 +40,8 @@ namespace opencl
         template<concepts::VolumeType V>
         void input(const V &v)
         {
+            min = v.min;
+            max = v.max;
             inlength = v.length;
             inwidth = v.width;
             indepth = v.depth;

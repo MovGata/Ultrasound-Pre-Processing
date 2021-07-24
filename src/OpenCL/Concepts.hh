@@ -47,6 +47,8 @@ namespace concepts
     template<typename T>
     concept VolumeType = requires(T t)
     {
+        {decay(t.max)} -> std::same_as<cl_uchar>;
+        {decay(t.min)} -> std::same_as<cl_uchar>;
         {decay(t.depth)} -> std::same_as<cl_uint>;
         {decay(t.length)} -> std::same_as<cl_uint>;
         {decay(t.width)} -> std::same_as<cl_uint>;

@@ -92,3 +92,19 @@ kernel void invert(
     output[offset].z = 0xFF - output[offset].z;
     output[offset].w = 0xFF - output[offset].w;
 }
+
+kernel void contrast(
+    uint depth, uint length, uint width, global uchar4 *input, global uchar4 *output, uchar minim, uchar maxim)
+{
+    uint x = get_global_id(0);
+    uint y = get_global_id(1);
+    uint z = get_global_id(2);
+
+    uint offset = x + y * depth + z * length * depth;
+
+    float mdiff = convert_float(maxim - minim);
+    float vdiff = convert_float(input[offset].w - minim);
+
+    output[offset] = input[offset];
+    output[offset].w = convert_uchar(clamp(vdiff / mdiff * 255.0f, 0.0f, 255.0f));
+}

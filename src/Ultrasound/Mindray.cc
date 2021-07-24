@@ -433,7 +433,6 @@ namespace ultrasound
         l = static_cast<uint32_t>((pAngle.at(0) / delta + 0.5f) * static_cast<float>(length));
         r = static_cast<uint32_t>((pAngle.at(1) / delta + 0.5f) * static_cast<float>(length));
 
-
         raw.reserve(width * depth * length);
         for (unsigned int z = 0; z < width; ++z)
         {
@@ -447,11 +446,12 @@ namespace ultrasound
                 {
                     auto px = std::clamp(static_cast<unsigned int>(static_cast<float>((x - t) * pDepth) / static_cast<float>(b-t)), static_cast<unsigned int>(0), static_cast<unsigned int>(pDepth - 1));
                     cl_uchar bnw = data.at(x + yx + zyx);
+                    max = std::max(max, bnw);
+                    min = std::min(min, bnw);
                     cl_uchar4 arr;
                     if (doppler.size() > 0 && x >= t && x < b && y >= l && y < r)
                     {
                         int8_t dData = static_cast<int8_t>(doppler.at(px + py + pz));
-                        // std ::cout << px << ' ' << py << ' ' << dData << std::endl;
                         if (dData < 0)
                         {
                             arr = {0x00, static_cast<cl_uchar>(static_cast<uint8_t>(static_cast<int8_t>(-1) * dData) * static_cast<uint8_t>(2)), 0xFF, 0xFF};

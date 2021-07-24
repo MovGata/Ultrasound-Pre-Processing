@@ -27,6 +27,9 @@ namespace data
 
         bool modified = false;
 
+        cl_uchar max = 0;
+        cl_uchar min = 0xFF;
+
         cl_uint depth;
         cl_uint length;
         cl_uint width;
