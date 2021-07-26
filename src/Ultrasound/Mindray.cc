@@ -369,7 +369,7 @@ namespace ultrasound
             cpIs.sync();
 
             dataSize = vDepth * vLength;
-            dopplerSize = frameSize - dopplerOffset;
+            dopplerSize = pDepth * pLength;
 
             std::vector<char> buf;
             buf.reserve(frameSize);

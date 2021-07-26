@@ -1,6 +1,7 @@
 #ifndef GUI_OPENCL_DEVICE
 #define GUI_OPENCL_DEVICE
 
+#include <chrono>
 #include <map>
 #include <memory>
 #include <string>
@@ -11,6 +12,8 @@
 #include <gl/glext.h>
 
 #include <CL/cl2.hpp>
+
+#include <SDL2/SDL_timer.h>
 
 #include "Program.hh"
 #include "Concepts.hh"
@@ -83,6 +86,7 @@ namespace opencl
                 }
 
                 err = cQueue.finish();
+
                 if (err != CL_SUCCESS)
                 {
                     std::cerr << "clFinish Error: " << err << '\n';
