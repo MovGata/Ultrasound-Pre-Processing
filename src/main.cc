@@ -49,7 +49,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     mainWindow.redraw();
 
     std::shared_ptr<ultrasound::Mindray> reader = std::make_shared<ultrasound::Mindray>();
-    if (!reader->load("tests/data/1"))
+    if (!reader->load("tests/data/5"))
     {
         std::terminate();
     }
@@ -107,7 +107,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     tree->addBranch(std::shared_ptr(dataTree));
 
     auto polar = std::make_shared<opencl::ToPolar>(device.context, device.cQueue, device.programs.at("cartesian")->at("toSpherical"));
-    auto cartesian = std::make_shared<opencl::ToCartesian>(device.context, device.cQueue, device.programs.at("cartesian")->at("toSpherical"));
+    auto cartesian = std::make_shared<opencl::ToCartesian>(device.context, device.cQueue, device.programs.at("cartesian")->at("toCartesian"));
     auto slice = std::make_shared<opencl::Slice>(device.context, device.cQueue, device.programs.at("utility")->at("slice"));
     auto threshold = std::make_shared<opencl::Threshold>(device.context, device.cQueue, device.programs.at("utility")->at("threshold"));
     auto invert = std::make_shared<opencl::Invert>(device.context, device.cQueue, device.programs.at("utility")->at("invert"));
