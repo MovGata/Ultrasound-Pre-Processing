@@ -94,7 +94,7 @@ kernel void render(
         }
         else
         {
-            sampleF.rgb *= sampleF.a;
+            sampleF.xyz *= sampleF.w;
             acc.xyz = acc.xyz*(1.0f - sampleF.w) + sampleF.xyz;
             acc.w = acc.w*(1.0f - sampleF.w) + sampleF.w;
         }

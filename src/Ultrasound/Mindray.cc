@@ -454,11 +454,11 @@ namespace ultrasound
                         int8_t dData = static_cast<int8_t>(doppler.at(px + py + pz));
                         if (dData < 0)
                         {
-                            arr = {0x00, static_cast<cl_uchar>(static_cast<uint8_t>(static_cast<int8_t>(-1) * dData) * static_cast<uint8_t>(2)), 0xFF, 0xFF};
+                            arr = {0x00, static_cast<cl_uchar>(static_cast<uint8_t>(static_cast<int8_t>(-1) * dData) * static_cast<uint8_t>(2)), 0xFF, bnw};
                         }
                         else if (dData > 0)
                         {
-                            arr = {0xFF, static_cast<cl_uchar>(static_cast<uint8_t>(dData) * static_cast<uint8_t>(2)), 0x00, 0xFF};
+                            arr = {0xFF, static_cast<cl_uchar>(static_cast<uint8_t>(dData) * static_cast<uint8_t>(2)), 0x00, bnw};
                         }
                         else
                         {
