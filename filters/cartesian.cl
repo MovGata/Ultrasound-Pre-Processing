@@ -50,11 +50,15 @@ kernel void toCartesian(
     float angleY = pos.y / convert_float(outLength / 2) * angleDelta / 2.0f;
     float angleZ = pos.z / convert_float(outLength / 2) * angleDelta / 2.0f;
 
-    float r = convert_float(inDepth) / (1.0f + ratio) * ratio;
+    float r = convert_float(inDepth) * (ratio / (1.0f + ratio));
 
-    float d = r + (pos.x) / convert_float(outDepth) * convert_float(inDepth - r);
+    pos.x *= convert_float(inDepth - r) / convert_float(outDepth);
+    pos.y *= convert_float(inLength) / convert_float(outLength);
+    pos.z *= convert_float(inWidth) / convert_float(outWidth);
 
-    uint x_in = clamp(d + r, 0.0f, inDepth - 1.0f);
+    float d = r + length(pos);
+
+    uint x_in = clamp(d * cos(angleY), 0.0f, inDepth - 1.0f);
     uint y_in = clamp(d * sin(angleY), 0.0f, inLength - 1.0f);
     uint z_in = clamp(d * sin(angleZ), 0.0f, inWidth - 1.0f);
 

@@ -163,7 +163,8 @@ namespace gui
 
                 // glEnable(GL_TEXTURE_2D);
                 glDisable(GL_DEPTH_TEST);
-                glClearColor(0.117f, 0.117f, 0.117f, 1.0f);
+                // glClearColor(0.117f, 0.117f, 0.117f, 1.0f);
+                glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             });
     }
 

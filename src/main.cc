@@ -20,6 +20,10 @@
 #include "OpenCL/Kernels/Slice.hh"
 #include "OpenCL/Kernels/Invert.hh"
 #include "OpenCL/Kernels/Contrast.hh"
+#include "OpenCL/Kernels/Log2.hh"
+#include "OpenCL/Kernels/Shrink.hh"
+#include "OpenCL/Kernels/Fade.hh"
+#include "OpenCL/Kernels/Sqrt.hh"
 #include "OpenCL/Kernels/Clamp.hh"
 #include "OpenCL/Kernels/Threshold.hh"
 
@@ -35,12 +39,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     std::ios::sync_with_stdio(false);
 
     using RButton = gui::Button<gui::Rectangle>;
-    using Dropzone = gui::Dropzone<gui::Rectangle, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, ultrasound::Mindray>;
+    using Dropzone = gui::Dropzone<gui::Rectangle, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, opencl::Log2, opencl::Shrink, opencl::Fade, opencl::Sqrt, ultrasound::Mindray>;
     using Renderer = gui::Renderer<gui::Rectangle, data::Volume>;
     using Tree = gui::Tree<RButton, std::tuple<RButton>, std::tuple<RButton>>;
 
     using Instance = gui::Instance;
-    using Window = gui::Window<std::tuple<RButton, Dropzone, Renderer, Tree>, std::tuple<opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, ultrasound::Mindray>>;
+    using Window = gui::Window<std::tuple<RButton, Dropzone, Renderer, Tree>, std::tuple<opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, opencl::Log2, opencl::Shrink, opencl::Fade, opencl::Sqrt, ultrasound::Mindray>>;
 
     Instance init;
     Window mainWindow(1024, 768);
@@ -112,16 +116,24 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     auto threshold = std::make_shared<opencl::Threshold>(device.context, device.cQueue, device.programs.at("utility")->at("threshold"));
     auto invert = std::make_shared<opencl::Invert>(device.context, device.cQueue, device.programs.at("utility")->at("invert"));
     auto contrast = std::make_shared<opencl::Contrast>(device.context, device.cQueue, device.programs.at("utility")->at("contrast"));
+    auto log = std::make_shared<opencl::Log2>(device.context, device.cQueue, device.programs.at("utility")->at("logTwo"));
+    auto shrink = std::make_shared<opencl::Shrink>(device.context, device.cQueue, device.programs.at("utility")->at("shrink"));
+    auto fade = std::make_shared<opencl::Fade>(device.context, device.cQueue, device.programs.at("utility")->at("fade"));
+    auto sqrt = std::make_shared<opencl::Sqrt>(device.context, device.cQueue, device.programs.at("utility")->at("square"));
     auto clamp = std::make_shared<opencl::Clamp>(device.context, device.cQueue, device.programs.at("utility")->at("clamping"));
 
-    auto mindray = gui::Kernel<ultrasound::Mindray, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("MINDRAY", mainWindow.kernel, mainWindow.renderers, dropzone, reader);
-    auto toPolar = gui::Kernel<opencl::ToPolar, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("To Polar", mainWindow.kernel, mainWindow.renderers, dropzone, polar);
-    auto toCartesian = gui::Kernel<opencl::ToCartesian, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("To Cartesian", mainWindow.kernel, mainWindow.renderers, dropzone, cartesian);
-    auto sliceK = gui::Kernel<opencl::Slice, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("Slice", mainWindow.kernel, mainWindow.renderers, dropzone, slice);
-    auto threshK = gui::Kernel<opencl::Threshold, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("Threshold", mainWindow.kernel, mainWindow.renderers, dropzone, threshold);
-    auto invK = gui::Kernel<opencl::Invert, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("Invert", mainWindow.kernel, mainWindow.renderers, dropzone, invert);
-    auto clampK = gui::Kernel<opencl::Clamp, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("Clamp", mainWindow.kernel, mainWindow.renderers, dropzone, clamp);
-    auto conK = gui::Kernel<opencl::Contrast, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("Contrast", mainWindow.kernel, mainWindow.renderers, dropzone, contrast);
+    auto mindray = gui::Kernel<ultrasound::Mindray, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, opencl::Log2, opencl::Shrink, opencl::Fade, opencl::Sqrt, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("MINDRAY", mainWindow.kernel, mainWindow.renderers, dropzone, reader);
+    auto toPolar = gui::Kernel<opencl::ToPolar, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, opencl::Log2, opencl::Shrink, opencl::Fade, opencl::Sqrt, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("To Polar", mainWindow.kernel, mainWindow.renderers, dropzone, polar);
+    auto toCartesian = gui::Kernel<opencl::ToCartesian, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, opencl::Log2, opencl::Shrink, opencl::Fade, opencl::Sqrt, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("To Cartesian", mainWindow.kernel, mainWindow.renderers, dropzone, cartesian);
+    auto sliceK = gui::Kernel<opencl::Slice, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, opencl::Log2, opencl::Shrink, opencl::Fade, opencl::Sqrt, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("Slice", mainWindow.kernel, mainWindow.renderers, dropzone, slice);
+    auto threshK = gui::Kernel<opencl::Threshold, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, opencl::Log2, opencl::Shrink, opencl::Fade, opencl::Sqrt, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("Threshold", mainWindow.kernel, mainWindow.renderers, dropzone, threshold);
+    auto invK = gui::Kernel<opencl::Invert, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, opencl::Log2, opencl::Shrink, opencl::Fade, opencl::Sqrt, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("Invert", mainWindow.kernel, mainWindow.renderers, dropzone, invert);
+    auto clampK = gui::Kernel<opencl::Clamp, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, opencl::Log2, opencl::Shrink, opencl::Fade, opencl::Sqrt, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("Clamp", mainWindow.kernel, mainWindow.renderers, dropzone, clamp);
+    auto conK = gui::Kernel<opencl::Contrast, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, opencl::Log2, opencl::Shrink, opencl::Fade, opencl::Sqrt, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("Contrast", mainWindow.kernel, mainWindow.renderers, dropzone, contrast);
+    auto logK = gui::Kernel<opencl::Log2, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, opencl::Log2, opencl::Shrink, opencl::Fade, opencl::Sqrt, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("Log2", mainWindow.kernel, mainWindow.renderers, dropzone, log);
+    auto shrinkK = gui::Kernel<opencl::Shrink, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, opencl::Log2, opencl::Shrink, opencl::Fade, opencl::Sqrt, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("Shrink", mainWindow.kernel, mainWindow.renderers, dropzone, shrink);
+    auto fadeK = gui::Kernel<opencl::Fade, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, opencl::Log2, opencl::Shrink, opencl::Fade, opencl::Sqrt, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("Fade", mainWindow.kernel, mainWindow.renderers, dropzone, fade);
+    auto sqrtK = gui::Kernel<opencl::Sqrt, opencl::ToPolar, opencl::ToCartesian, opencl::Slice, opencl::Threshold, opencl::Invert, opencl::Clamp, opencl::Contrast, opencl::Log2, opencl::Shrink, opencl::Fade, opencl::Sqrt, ultrasound::Mindray>::buildButton<decltype(mainWindow.kernel), decltype(mainWindow.renderers), decltype(dropzone)>("Sqrt", mainWindow.kernel, mainWindow.renderers, dropzone, sqrt);
 
     inputTree->addLeaf(std::move(mindray));
     dataTree->addLeaf(std::move(toPolar));
@@ -131,6 +143,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     dataTree->addLeaf(std::move(invK));
     dataTree->addLeaf(std::move(clampK));
     dataTree->addLeaf(std::move(conK));
+    dataTree->addLeaf(std::move(logK));
+    dataTree->addLeaf(std::move(shrinkK));
+    dataTree->addLeaf(std::move(fadeK));
+    dataTree->addLeaf(std::move(sqrtK));
 
     mainWindow.addDrawable(std::shared_ptr(tree));
 

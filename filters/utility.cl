@@ -108,3 +108,76 @@ kernel void contrast(
     output[offset] = input[offset];
     output[offset].w = convert_uchar(clamp(vdiff / mdiff * 255.0f, 0.0f, 255.0f));
 }
+
+kernel void logTwo(
+    uint depth, uint length, uint width, global uchar4 *input, global uchar4 *output)
+{
+    uint x = get_global_id(0);
+    uint y = get_global_id(1);
+    uint z = get_global_id(2);
+
+    uint offset = x + y * depth + z * length * depth;
+
+    output[offset] = input[offset];
+    output[offset].w = convert_uchar(native_log2(1.0f + convert_float(input[offset].w) / 255.0f) * 255.0f);
+}
+
+kernel void square(
+    uint depth, uint length, uint width, global uchar4 *input, global uchar4 *output)
+{
+    uint x = get_global_id(0);
+    uint y = get_global_id(1);
+    uint z = get_global_id(2);
+
+    uint offset = x + y * depth + z * length * depth;
+
+    output[offset] = input[offset];
+    output[offset].w = convert_uchar(native_sqrt(convert_float(input[offset].w) / 255.0f) * 255.0f);
+}
+
+kernel void shrink(
+    uint depth, uint length, uint width, global uchar4 *input, global uchar4 *output)
+{
+    uint x = get_global_id(0);
+    uint y = get_global_id(1);
+    uint z = get_global_id(2);
+
+    uint lOff = y * depth;
+    uint wOff = z * depth * length;
+    uint offset = x + lOff + wOff;
+
+    uint dlim = depth - 1;
+    uint llim = (length - 1) * depth;
+    uint wlim = (width - 1) * (length * depth);
+
+    output[offset] = input[offset];
+
+    if (
+        input[clamp(offset - 1, (uint)(0), dlim)].w == 0x00 ||
+        input[clamp(offset + 1, (uint)(0), dlim)].w == 0x00 ||
+        input[clamp(offset - lOff, (uint)(0), llim)].w == 0x00 ||
+        input[clamp(offset + lOff, (uint)(0), llim)].w == 0x00 ||
+        input[clamp(offset - wOff, (uint)(0), wlim)].w == 0x00 ||
+        input[clamp(offset + wOff, (uint)(0), wlim)].w == 0x00)
+    {
+        output[offset].w = 0x00;
+    }
+}
+
+kernel void fade(
+    uint depth, uint length, uint width, global uchar4 *input, global uchar4 *output)
+{
+    uint x = get_global_id(0);
+    uint y = get_global_id(1);
+    uint z = get_global_id(2);
+
+    uint offset = x + y * depth + z * depth * length;
+
+    output[offset] = input[offset];
+
+    if (output[offset].x == output[offset].y && output[offset].x == output[offset].z) // Not Doppler data
+    {
+        output[offset].w = input[offset].w / 2;
+    }
+
+}

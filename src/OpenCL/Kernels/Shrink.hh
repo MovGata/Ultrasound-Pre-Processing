@@ -1,7 +1,6 @@
-#ifndef OPENCL_TOCARTESIAN_HH
-#define OPENCL_TOCARTESIAN_HH
+#ifndef OPENCL_KERNELS_SHRINK_HH
+#define OPENCL_KERNELS_SHRINK_HH
 
-#include <cmath>
 #include <memory>
 #include <string>
 
@@ -11,9 +10,10 @@
 #include "../Concepts.hh"
 #include "../../Data/Volume.hh"
 
+
 namespace opencl
 {
-    class ToCartesian : public data::Volume
+    class Shrink : public data::Volume
     {
     private:
         std::shared_ptr<opencl::Kernel> kernel;
@@ -29,13 +29,13 @@ namespace opencl
         const std::string in = "3D";
         const std::string out = "3D";
 
-        ToCartesian(const cl::Context &c, const cl::CommandQueue &q, const std::shared_ptr<opencl::Kernel> &ptr) : kernel(ptr), context(c), queue(q)
+        Shrink(const cl::Context &c, const cl::CommandQueue &q, const std::shared_ptr<opencl::Kernel> &ptr) : kernel(ptr), context(c), queue(q)
         {
         }
+        
+        ~Shrink() = default;
 
-        ~ToCartesian() = default;
-
-        template <concepts::VolumeType V>
+        template<concepts::VolumeType V>
         void input(const V &v)
         {
             min = v.min;
@@ -46,19 +46,10 @@ namespace opencl
             inBuffer = v.buffer;
             ratio = v.ratio;
             delta = v.delta;
-
-            // depth = static_cast<cl_uint>(static_cast<float>(v.depth) - static_cast<float>(v.depth) * v.ratio / (v.ratio + 1.0f));
-            // length = static_cast<cl_uint>((static_cast<float>(v.length) - 1.0f) / (2.0f * std::tan(v.delta / 2.0f) * static_cast<float>(v.depth)));
-            // width = inwidth > 1 ? static_cast<cl_uint>((static_cast<float>(v.width) - 1.0f) / (2.0f * std::tan(v.delta / 2.0f) * static_cast<float>(v.depth))) : inwidth;
-
-            depth = indepth;
-            width = inwidth;
+            
             length = inlength;
-
-            // std::cout << indepth << '=' << v.delta << '\n'
-            //           << inlength << '=' << length << '\n'
-            //           << inwidth << '=' << width << std::endl;
-
+            width = inwidth;
+            depth = indepth;
             buffer = cl::Buffer(context, CL_MEM_READ_WRITE, length * depth * width * sizeof(cl_uint));
         }
 
@@ -68,13 +59,8 @@ namespace opencl
             kernel->setArg(1, inlength);
             kernel->setArg(2, inwidth);
             kernel->setArg(3, inBuffer);
-            kernel->setArg(4, depth);
-            kernel->setArg(5, length);
-            kernel->setArg(6, width);
-            kernel->setArg(7, buffer);
-            kernel->setArg(8, ratio);
-            kernel->setArg(9, delta);
-
+            kernel->setArg(4, buffer);
+            
             kernel->global = cl::NDRange(depth, length, width);
             kernel->execute(queue);
 
