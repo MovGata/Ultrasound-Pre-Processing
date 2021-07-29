@@ -10,8 +10,8 @@ kernel void slice(
 
     for (uint i = 0; i < dNum; ++i)
     {
-        uint dSlice = convert_uint(slices[i] * convert_float(depth));
-        if (x == dSlice)
+        float dSlice = slices[i] * convert_float(depth);
+        if (fabs(convert_float(x) - dSlice) < 3.0f)
         {
             output[x + y * depth + z * depth * length] = input[x + y * depth + z * depth * length];
             return;
@@ -20,8 +20,8 @@ kernel void slice(
 
     for (uint i = 0; i < lNum; ++i)
     {
-        uint lSlice = convert_uint(slices[dNum + i] * convert_float(length));
-        if (y == lSlice)
+        float lSlice = slices[dNum + i] * convert_float(length);
+        if (fabs(convert_float(y) - lSlice) < 3.0f)
         {
             output[x + y * depth + z * depth * length] = input[x + y * depth + z * depth * length];
             return;
@@ -30,8 +30,8 @@ kernel void slice(
 
     for (uint i = 0; i < wNum; ++i)
     {
-        uint wSlice = convert_uint(slices[dNum + lNum + i] * convert_float(width));
-        if (z == wSlice)
+        float wSlice = slices[dNum + lNum + i] * convert_float(width);
+        if (fabs(convert_float(z) - wSlice) < 3.0f)
         {
             output[x + y * depth + z * depth * length] = input[x + y * depth + z * depth * length];
             return;
@@ -68,13 +68,18 @@ kernel void threshold(
     uint z = get_global_id(2);
 
     uint offset = x + y * depth + z * length * depth;
-    if (input[offset].w > val)
+    if (input[offset].w > 0xA0)
     {
         output[offset] = input[offset];
+        output[offset].w = 0xFF;
+    }
+    else if (input[offset].w > 0x00)
+    {
+        output[offset] = (uchar4)(0x00, 0x00, 0x00, 0xFF);
     }
     else
     {
-        output[offset] = (uchar4)(0, 0, 0, 0);
+        output[offset] = (uchar4)(0x00, 0x00, 0x00, 0x00);
     }
 }
 

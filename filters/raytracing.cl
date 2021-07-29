@@ -57,7 +57,7 @@ kernel void render(
     // Clamp nplane minimum to 0
     nPlane *= sign(nPlane);
 
-    acc = (float4)(0.0f, 0.0f, 0.0f, 0.0f);
+    acc = (float4)(1.0f, 1.0f, 1.0f, 0.0f);
     output[(y * w_out) + x] = 0;
 
     float t = fPlane;
@@ -65,7 +65,7 @@ kernel void render(
 
     // Raymarch back to front
     float n = 1.0f;
-    uint stepLim = convert_uint(native_sqrt(convert_float(depth * depth + length * length + width * width + 1)));
+    uint stepLim = convert_uint(native_sqrt(convert_float(depth * depth + length * length + width * width + 1)))/4;
     float td = (fPlane - nPlane) / stepLim;
     for (uint i = 0; i < stepLim; ++i)
     {
@@ -85,11 +85,20 @@ kernel void render(
         float4 sampleF = native_divide(convert_float4(sample), 255.0f);
 
         // acc = mix(acc, sampleF, 1.0f / (i + 1));
-        acc = mix(acc, sampleF, 1.0f / n);
-        n += 1.0f;
-        // sampleF.rgb *= sampleF.a;
-        // acc.xyz = acc.xyz*(1.0f - sampleF.w) + sampleF.xyz;
-        // acc.w = acc.w*(1.0f - sampleF.w) + sampleF.w;
+        
+
+        if (sample.x == sample.y && sample.x == sample.z)
+        {
+            acc.w = mix(acc.w, sampleF.w, 1.0f / n);
+            n += 1.0f;
+        }
+        else
+        {
+            sampleF.rgb *= sampleF.a;
+            acc.xyz = acc.xyz*(1.0f - sampleF.w) + sampleF.xyz;
+            acc.w = acc.w*(1.0f - sampleF.w) + sampleF.w;
+        }
+
         
         // n += 1.0f;
 

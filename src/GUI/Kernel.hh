@@ -17,13 +17,43 @@
 #include "../events/EventManager.hh"
 #include "../OpenCL/Concepts.hh"
 
+#include "../OpenCL/Kernels/ToPolar.hh"
+#include "../OpenCL/Kernels/ToCartesian.hh"
+#include "../OpenCL/Kernels/Slice.hh"
+#include "../OpenCL/Kernels/Invert.hh"
+#include "../OpenCL/Kernels/Contrast.hh"
+#include "../OpenCL/Kernels/Log2.hh"
+#include "../OpenCL/Kernels/Shrink.hh"
+#include "../OpenCL/Kernels/Fade.hh"
+#include "../OpenCL/Kernels/Sqrt.hh"
+#include "../OpenCL/Kernels/Clamp.hh"
+#include "../OpenCL/Kernels/Threshold.hh"
+
+#include "../Ultrasound/Mindray.hh"
+
+
+namespace
+{
+    using namespace opencl;
+    using namespace ultrasound;
+}
+
 namespace gui
 {
+    template <typename K>
+    class Kernel;
 
-    template <typename K, typename... KS>
-    class Kernel : public Rectangle, public std::enable_shared_from_this<Kernel<K, KS...>>
+    template <typename KK>
+    using sk = std::shared_ptr<Kernel<KK>>;
+    
+    using varType = std::variant<sk<ToPolar>, sk<ToCartesian>, sk<Slice>, sk<Threshold>, sk<Invert>, sk<Clamp>, sk<Contrast>, sk<Log2>, sk<Shrink>, sk<Fade>, sk<Sqrt>, sk<Mindray>>;
+
+    template <typename K>
+    class Kernel : public Rectangle, public std::enable_shared_from_this<Kernel<K>>
     {
     private:
+
+
         Kernel(std::shared_ptr<K> &&k, std::shared_ptr<Texture> &&tptr) : Rectangle(0.0f, 0.0f, 40.0f, 40.0f), kernel(std::forward<std::shared_ptr<K>>(k)), outLine({0.0f, 0.0f, 1.0f, 1.0f}), title(0.0f, 0.0f, static_cast<float>(tptr->textureW), static_cast<float>(tptr->textureH), std::forward<std::shared_ptr<Texture>>(tptr))
         {
             texture->fill({0x5C, 0x5C, 0x5C, 0xFF});
@@ -58,16 +88,16 @@ namespace gui
         gui::Rectangle outLine;
         gui::Rectangle title;
 
-        std::shared_ptr<std::variant<std::shared_ptr<Kernel<KS, KS...>>...>> inLink;
-        std::shared_ptr<std::variant<std::shared_ptr<Kernel<KS, KS...>>...>> outLink;
+        std::shared_ptr<varType> inLink;
+        std::shared_ptr<varType> outLink;
 
         events::EventManager eventManager;
 
         bool link = false;
 
-        static std::shared_ptr<Kernel<K, KS...>> build(std::shared_ptr<K> &&k, std::shared_ptr<Texture> &&tptr)
+        static std::shared_ptr<Kernel<K>> build(std::shared_ptr<K> &&k, std::shared_ptr<Texture> &&tptr)
         {
-            auto sptr = std::shared_ptr<Kernel<K, KS...>>(new Kernel<K, KS...>(std::forward<std::shared_ptr<K>>(k), std::forward<std::shared_ptr<Texture>>(tptr)));
+            auto sptr = std::shared_ptr<Kernel<K>>(new Kernel<K>(std::forward<std::shared_ptr<K>>(k), std::forward<std::shared_ptr<Texture>>(tptr)));
             sptr->eventManager.addCallback(
                 SDL_MOUSEBUTTONDOWN,
                 [wptr = sptr->weak_from_this()](const SDL_Event &e)
@@ -236,10 +266,10 @@ namespace gui
         }
 
         template <typename KT>
-        static bool endLink(const SDL_Event &e, std::weak_ptr<Kernel<K, KS...>> wptr, std::shared_ptr<KT> &k)
+        static bool endLink(const SDL_Event &e, std::weak_ptr<Kernel<K>> wptr, std::shared_ptr<KT> &k)
         {
             auto ptr = wptr.lock();
-            if constexpr (std::same_as<std::decay_t<decltype(k)>, std::shared_ptr<Kernel<K, KS...>>>)
+            if constexpr (std::same_as<std::decay_t<decltype(k)>, std::shared_ptr<Kernel<K>>>)
             {
                 if ((k.get() != ptr.get()) && ptr->kernel->out == k->kernel->in && events::containsMouse(*k->inNode, e))
                 {
@@ -262,8 +292,8 @@ namespace gui
                     ptr->outLine.w = std::sqrt((oy - ptr->outLine.y) * (oy - ptr->outLine.y) + (ox - ptr->outLine.x) * (ox - ptr->outLine.x));
                     ptr->outLine.update();
 
-                    ptr->outLink = std::make_shared<std::variant<std::shared_ptr<Kernel<KS, KS...>>...>>(k);
-                    k->inLink = std::make_shared<std::variant<std::shared_ptr<Kernel<KS, KS...>>...>>(ptr);
+                    ptr->outLink = std::make_shared<varType>(k);
+                    k->inLink = std::make_shared<varType>(ptr);
                     ptr->outLine.hidden = false;
                     return true;
                 }
@@ -295,8 +325,8 @@ namespace gui
                     ptr->outLine.h = 3.0f;
                     ptr->outLine.w = std::sqrt((oy - ptr->outLine.y) * (oy - ptr->outLine.y) + (ox - ptr->outLine.x) * (ox - ptr->outLine.x));
                     ptr->outLine.update();
-                    ptr->outLink = std::make_shared<std::variant<std::shared_ptr<Kernel<KS, KS...>>...>>(k);
-                    k->inLink = std::make_shared<std::variant<std::shared_ptr<Kernel<KS, KS...>>...>>(ptr);
+                    ptr->outLink = std::make_shared<varType>(k);
+                    k->inLink = std::make_shared<varType>(ptr);
                     ptr->outLine.hidden = false;
                     return true;
                 }
@@ -317,25 +347,25 @@ namespace gui
             button->onPress(
                 [&sk = wk, &wr, &dropzone = d, k = t, wptr = std::weak_ptr<Texture>(button->texture)]() mutable
                 {
-                    std::shared_ptr<Kernel<K, KS...>> ptr = Kernel<K, KS...>::build(std::shared_ptr(k), wptr.lock());
+                    std::shared_ptr<Kernel<K>> ptr = Kernel<K>::build(std::shared_ptr(k), wptr.lock());
                     ptr->eventManager.addCallback(
                         SDL_MOUSEBUTTONUP,
                         [&sk, &wr, &dropzone](const SDL_Event &e)
                         {
                             if (events::containsMouse(*dropzone, e))
                             {
-                                auto kptr = std::get<std::shared_ptr<Kernel<K, KS...>>>(sk);
+                                auto kptr = std::get<std::shared_ptr<Kernel<K>>>(sk);
                                 kptr->y = std::max(dropzone->y, kptr->y);
                                 kptr->y = std::min(dropzone->y + dropzone->h - kptr->h, kptr->y);
 
-                                dropzone->kernels.emplace_back(std::make_shared<std::variant<std::shared_ptr<Kernel<KS, KS...>>...>>(kptr));
+                                dropzone->kernels.emplace_back(std::make_shared<varType>(kptr));
 
                                 kptr->eventManager.addCallback(
                                     SDL_MOUSEBUTTONDOWN,
                                     [wptr = kptr->weak_from_this(), &dropzone, &sk, &wr]([[maybe_unused]] const SDL_Event &ev)
                                     {
                                         auto cptr = wptr.lock();
-                                        sk.template emplace<std::shared_ptr<Kernel<K, KS...>>>(cptr);
+                                        sk.template emplace<std::shared_ptr<Kernel<K>>>(cptr);
                                         cptr->eventManager.clearCallback(SDL_MOUSEBUTTONUP);
 
                                         cptr->eventManager.addCallback(
@@ -367,13 +397,13 @@ namespace gui
                                             SDL_MOUSEBUTTONUP,
                                             [&sk]([[maybe_unused]] const SDL_Event &evv)
                                             {
-                                                std::get<std::shared_ptr<Kernel<K, KS...>>>(sk).template reset<Kernel<K, KS...>>(nullptr);
+                                                std::get<std::shared_ptr<Kernel<K>>>(sk).template reset<Kernel<K>>(nullptr);
                                             });
                                     });
                             }
-                            std::get<std::shared_ptr<Kernel<K, KS...>>>(sk).template reset<Kernel<K, KS...>>(nullptr);
+                            std::get<std::shared_ptr<Kernel<K>>>(sk).template reset<Kernel<K>>(nullptr);
                         });
-                    sk.template emplace<std::shared_ptr<Kernel<K, KS...>>>(std::move(ptr));
+                    sk.template emplace<std::shared_ptr<Kernel<K>>>(std::move(ptr));
                 });
             return button;
         }

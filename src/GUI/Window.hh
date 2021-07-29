@@ -71,7 +71,7 @@ namespace gui
     public:
         std::vector<std::variant<std::shared_ptr<Drawables>...>> drawables;
         std::vector<std::variant<std::shared_ptr<Renderer<Rectangle, Kernels>>...>> renderers;
-        std::variant<std::shared_ptr<Kernel<Kernels, Kernels...>>...> kernel;
+        varType kernel;
 
         Window(unsigned int width = 640, unsigned int height = 480, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE) : Window(SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, flags) {}
         Window(unsigned int xPos, unsigned int yPos, unsigned int width, unsigned int height, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE) : window(nullptr, SDL_DestroyWindow), projection(1.0f), size(static_cast<float>(width), static_cast<float>(height))
