@@ -462,12 +462,12 @@ namespace ultrasound
                         }
                         else
                         {
-                            arr = {0xFF, 0xFF, 0xFF, bnw};
+                            arr = {bnw, bnw, bnw, bnw};
                         }
                     }
                     else
                     {
-                        arr = {0xFF, 0xFF, 0xFF, bnw};
+                        arr = {bnw, bnw, bnw, bnw};
                     }
                     raw.push_back(arr);
                 }

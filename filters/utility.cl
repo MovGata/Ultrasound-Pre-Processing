@@ -71,7 +71,7 @@ kernel void threshold(
     if (input[offset].w > 0xA0)
     {
         output[offset] = input[offset];
-        output[offset].w = 0xFF;
+        // output[offset].w = 0xFF;
     }
     else if (input[offset].w > 0x00)
     {

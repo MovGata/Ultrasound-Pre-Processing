@@ -7,19 +7,25 @@ kernel void toSpherical(
     uint y = get_global_id(1); // Length
     uint z = get_global_id(2); // Width
 
-    float3 centrepoint = (float3)(0.0f, convert_float(outLength) / 2, convert_float(outWidth) / 2);
-    float3 pos = (float3)(convert_float(x), convert_float(y), convert_float(z));
-    pos = pos - centrepoint;
 
     float r = convert_float(inDepth) * ratio;
+
+    float halfAngle = angleDelta / 2.0f;
+    float voff =  r + convert_float(inDepth) - convert_float(outDepth);
+
+    if (x == 0 && y == 0 && z == 0)
+    {
+        printf("%f\n", voff);
+    }
+
+    float3 centrepoint = (float3)(0.0f, convert_float(outLength) / 2, convert_float(outWidth) / 2);
+    float3 pos = (float3)(convert_float(x)+voff, convert_float(y), convert_float(z));
+    pos = pos - centrepoint;
 
     float lAngle = atan2(pos.y, pos.x);
     float wAngle = atan2(pos.z, pos.x);
 
-    float3 pos_sqrd = pos * pos;
-    float R = native_sqrt(pos_sqrd.x + pos_sqrd.y + pos_sqrd.z);
-
-    float halfAngle = angleDelta / 2.0f;
+    float R = length(pos);
 
     if (R < r || R > r + inDepth - 1 || fabs(lAngle) > halfAngle || fabs(wAngle) > halfAngle)
     {

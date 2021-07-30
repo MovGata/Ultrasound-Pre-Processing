@@ -87,17 +87,17 @@ kernel void render(
         // acc = mix(acc, sampleF, 1.0f / (i + 1));
         
 
-        if (sample.x == sample.y && sample.x == sample.z)
-        {
-            acc.w = mix(acc.w, sampleF.w, 1.0f / n);
-            n += 1.0f;
-        }
-        else
-        {
+        // if (sample.x == sample.y && sample.x == sample.z)
+        // {
+        //     acc.w = mix(acc.w, sampleF.w, 1.0f / n);
+        //     n += 1.0f;
+        // }
+        // else
+        // {
             sampleF.xyz *= sampleF.w;
             acc.xyz = acc.xyz*(1.0f - sampleF.w) + sampleF.xyz;
             acc.w = acc.w*(1.0f - sampleF.w) + sampleF.w;
-        }
+        // }
 
         
         // n += 1.0f;
