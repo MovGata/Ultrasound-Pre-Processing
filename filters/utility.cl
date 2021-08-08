@@ -75,7 +75,7 @@ kernel void threshold(
     }
     else if (input[offset].w > 0x00)
     {
-        output[offset] = (uchar4)(0x00, 0x00, 0x00, 0xFF);
+        output[offset] = (uchar4)(0x00, 0x00, 0x00, 0x00);
     }
     else
     {
@@ -95,7 +95,7 @@ kernel void invert(
     output[offset].x = 0xFF - output[offset].x;
     output[offset].y = 0xFF - output[offset].y;
     output[offset].z = 0xFF - output[offset].z;
-    output[offset].w = 0xFF - output[offset].w;
+    output[offset].w = clamp(0xFF - output[offset].w, 0x01, 0xFF);
 }
 
 kernel void contrast(
@@ -157,16 +157,21 @@ kernel void shrink(
 
     output[offset] = input[offset];
 
-    if (
-        input[clamp(offset - 1, (uint)(0), dlim)].w == 0x00 ||
-        input[clamp(offset + 1, (uint)(0), dlim)].w == 0x00 ||
-        input[clamp(offset - lOff, (uint)(0), llim)].w == 0x00 ||
-        input[clamp(offset + lOff, (uint)(0), llim)].w == 0x00 ||
-        input[clamp(offset - wOff, (uint)(0), wlim)].w == 0x00 ||
-        input[clamp(offset + wOff, (uint)(0), wlim)].w == 0x00)
+    for (int i = 1; i <= 3; ++i)
     {
-        output[offset].w = 0x00;
+        if (
+            input[clamp(offset - i, (uint)(0), dlim)].w == 0x00 ||
+            input[clamp(offset + i, (uint)(0), dlim)].w == 0x00 ||
+            input[clamp(offset - depth*i, (uint)(0), llim)].w == 0x00 ||
+            input[clamp(offset + depth*i, (uint)(0), llim)].w == 0x00 ||
+            input[clamp(offset - depth*length*i, (uint)(0), wlim)].w == 0x00 ||
+            input[clamp(offset + depth*length*i, (uint)(0), wlim)].w == 0x00)
+        {
+            output[offset].w = 0x00;
+            break;
+        }
     }
+
 }
 
 kernel void fade(

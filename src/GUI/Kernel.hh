@@ -31,7 +31,6 @@
 
 #include "../Ultrasound/Mindray.hh"
 
-
 namespace
 {
     using namespace opencl;
@@ -45,15 +44,13 @@ namespace gui
 
     template <typename KK>
     using sk = std::shared_ptr<Kernel<KK>>;
-    
+
     using varType = std::variant<sk<ToPolar>, sk<ToCartesian>, sk<Slice>, sk<Threshold>, sk<Invert>, sk<Clamp>, sk<Contrast>, sk<Log2>, sk<Shrink>, sk<Fade>, sk<Sqrt>, sk<Mindray>>;
 
     template <typename K>
     class Kernel : public Rectangle, public std::enable_shared_from_this<Kernel<K>>
     {
     private:
-
-
         Kernel(std::shared_ptr<K> &&k, std::shared_ptr<Texture> &&tptr) : Rectangle(0.0f, 0.0f, 40.0f, 40.0f), kernel(std::forward<std::shared_ptr<K>>(k)), outLine({0.0f, 0.0f, 1.0f, 1.0f}), title(0.0f, 0.0f, static_cast<float>(tptr->textureW), static_cast<float>(tptr->textureH), std::forward<std::shared_ptr<Texture>>(tptr))
         {
             texture->fill({0x5C, 0x5C, 0x5C, 0xFF});
@@ -119,13 +116,7 @@ namespace gui
                                        *ptr->outLink);
                         }
 
-                        ptr->outLine.y = ptr->outNode->y + ptr->outNode->h / 2.0f - ptr->outLine.h / 2.0f;
-                        ptr->outLine.x = ptr->x + ptr->w;
-                        ptr->outLine.angle = std::atan2(static_cast<float>(e.motion.y) - ptr->outLine.y, static_cast<float>(e.motion.x) - ptr->outLine.x);
-                        ptr->outLine.h = 3.0f;
-                        ptr->outLine.w = std::sqrt((static_cast<float>(e.motion.y) - ptr->outLine.y) * (static_cast<float>(e.motion.y) - ptr->outLine.y) + (static_cast<float>(e.motion.x) - ptr->outLine.x) * (static_cast<float>(e.motion.x) - ptr->outLine.x));
-                        ptr->outLine.update();
-
+                        ptr->updateLine(static_cast<float>(e.motion.x), static_cast<float>(e.motion.y));
                         ptr->outLine.hidden = false;
                         ptr->link = true;
                         ptr->outNode->eventManager.process(e);
@@ -148,12 +139,7 @@ namespace gui
 
                     if (ptr->link)
                     {
-                        ptr->outLine.y = ptr->outNode->y + ptr->outNode->h / 2.0f - ptr->outLine.h / 2.0f;
-                        ptr->outLine.x = ptr->x + ptr->w;
-                        ptr->outLine.angle = std::atan2(static_cast<float>(e.motion.y) - ptr->outLine.y, static_cast<float>(e.motion.x) - ptr->outLine.x);
-                        ptr->outLine.h = 3.0f;
-                        ptr->outLine.w = std::sqrt((static_cast<float>(e.motion.y) - ptr->outLine.y) * (static_cast<float>(e.motion.y) - ptr->outLine.y) + (static_cast<float>(e.motion.x) - ptr->outLine.x) * (static_cast<float>(e.motion.x) - ptr->outLine.x));
-                        ptr->outLine.update();
+                        ptr->updateLine(static_cast<float>(e.motion.x), static_cast<float>(e.motion.y));
                     }
                     else
                     {
@@ -188,12 +174,7 @@ namespace gui
                                                   { return l->inNode->x; },
                                                   *ptr->outLink);
 
-                            ptr->outLine.y = ptr->outNode->y + ptr->outNode->h / 2.0f - ptr->outLine.h / 2.0f;
-                            ptr->outLine.x = ptr->x + ptr->w;
-                            ptr->outLine.angle = std::atan2(oy - ptr->outLine.y, ox - ptr->outLine.x);
-                            ptr->outLine.h = 3.0f;
-                            ptr->outLine.w = std::sqrt((oy - ptr->outLine.y) * (oy - ptr->outLine.y) + (ox - ptr->outLine.x) * (ox - ptr->outLine.x));
-                            ptr->outLine.update();
+                            ptr->updateLine(ox, oy);
                         }
 
                         if (ptr->inLink)
@@ -227,6 +208,16 @@ namespace gui
             {
                 outLine.draw();
             }
+        }
+
+        void updateLine(float ox, float oy)
+        {
+            outLine.y = outNode->y + outNode->h / 2.0f - outLine.h / 2.0f;
+            outLine.x = x + w;
+            outLine.angle = std::atan2(oy - outLine.y, ox - outLine.x);
+            outLine.h = 3.0f;
+            outLine.w = std::sqrt((oy - outLine.y) * (oy - outLine.y) + (ox - outLine.x) * (ox - outLine.x));
+            outLine.update();
         }
 
         void execute()
@@ -271,70 +262,36 @@ namespace gui
             auto ptr = wptr.lock();
             if constexpr (std::same_as<std::decay_t<decltype(k)>, std::shared_ptr<Kernel<K>>>)
             {
-                if ((k.get() != ptr.get()) && ptr->kernel->out == k->kernel->in && events::containsMouse(*k->inNode, e))
-                {
-                    if (k->inLink)
-                    {
-                        std::visit([](auto &&krnl)
-                                   {
-                                       krnl->outLink.reset();
-                                       krnl->outLine.hidden = true;
-                                   },
-                                   *k->inLink);
-                    }
-
-                    float oy = k->inNode->y + k->inNode->h / 2.0f;
-                    float ox = k->inNode->x;
-                    ptr->outLine.y = ptr->outNode->y + ptr->outNode->h / 2.0f - ptr->outLine.h / 2.0f;
-                    ptr->outLine.x = ptr->x + ptr->w;
-                    ptr->outLine.angle = std::atan2(oy - ptr->outLine.y, ox - ptr->outLine.x);
-                    ptr->outLine.h = 3.0f;
-                    ptr->outLine.w = std::sqrt((oy - ptr->outLine.y) * (oy - ptr->outLine.y) + (ox - ptr->outLine.x) * (ox - ptr->outLine.x));
-                    ptr->outLine.update();
-
-                    ptr->outLink = std::make_shared<varType>(k);
-                    k->inLink = std::make_shared<varType>(ptr);
-                    ptr->outLine.hidden = false;
-                    return true;
-                }
-                else
+                if (k.get() == ptr.get())
                 {
                     ptr->link = false;
                     ptr->outLine.hidden = true;
+                    return false;
                 }
+            }
+
+            if (ptr->kernel->out == k->kernel->in && events::containsMouse(*k, e))
+            {
+                if (k->inLink)
+                {
+                    std::visit([](auto &&krnl)
+                               {
+                                   krnl->outLink.reset();
+                                   krnl->outLine.hidden = true;
+                               },
+                               *k->inLink);
+                }
+
+                ptr->updateLine(k->inNode->x, k->inNode->y + k->inNode->h / 2.0f);
+                ptr->outLink = std::make_shared<varType>(k);
+                k->inLink = std::make_shared<varType>(ptr);
+                ptr->outLine.hidden = false;
+                return true;
             }
             else
             {
-                if (ptr->kernel->out == k->kernel->in && events::containsMouse(*k->inNode, e))
-                {
-                    if (k->inLink)
-                    {
-                        std::visit([](auto &&krnl)
-                                   {
-                                       krnl->outLink.reset();
-                                       krnl->outLine.hidden = true;
-                                   },
-                                   *k->inLink);
-                    }
-
-                    float oy = k->inNode->y + k->inNode->h / 2.0f;
-                    float ox = k->inNode->x;
-                    ptr->outLine.y = ptr->outNode->y + ptr->outNode->h / 2.0f - ptr->outLine.h / 2.0f;
-                    ptr->outLine.x = ptr->x + ptr->w;
-                    ptr->outLine.angle = std::atan2(oy - ptr->outLine.y, ox - ptr->outLine.x);
-                    ptr->outLine.h = 3.0f;
-                    ptr->outLine.w = std::sqrt((oy - ptr->outLine.y) * (oy - ptr->outLine.y) + (ox - ptr->outLine.x) * (ox - ptr->outLine.x));
-                    ptr->outLine.update();
-                    ptr->outLink = std::make_shared<varType>(k);
-                    k->inLink = std::make_shared<varType>(ptr);
-                    ptr->outLine.hidden = false;
-                    return true;
-                }
-                else
-                {
-                    ptr->link = false;
-                    ptr->outLine.hidden = true;
-                }
+                ptr->link = false;
+                ptr->outLine.hidden = true;
             }
             return false;
         }

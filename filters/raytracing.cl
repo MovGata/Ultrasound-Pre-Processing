@@ -84,16 +84,22 @@ kernel void render(
 
         float4 sampleF = native_divide(convert_float4(sample), 255.0f);
 
-        // acc = mix(acc, sampleF, 1.0f / (i + 1));
+
+        // if (sample.w != 0)
+        // {
+        //     acc = mix(acc, sampleF, 1.0f / n);
+        //     n += 1.0f;
+        // }
         
 
         // if (sample.x == sample.y && sample.x == sample.z)
         // {
-        //     acc.w = mix(acc.w, sampleF.w, 1.0f / n);
-        //     n += 1.0f;
+            acc.w = mix(acc.w, sampleF.w, 1.0f / n);
+            n += 1.0f;
         // }
         // else
         // {
+            sampleF.w = 1-native_sqrt(1-sampleF.w);
             sampleF.xyz *= sampleF.w;
             acc.xyz = acc.xyz*(1.0f - sampleF.w) + sampleF.xyz;
             acc.w = acc.w*(1.0f - sampleF.w) + sampleF.w;
