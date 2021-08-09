@@ -48,6 +48,44 @@ namespace gui
             }
         }
 
+        template <typename K>
+        void erase(std::weak_ptr<Kernel<K>> wptr)
+        {
+            auto sptr = wptr.lock();
+            for (auto itr = kernels.begin(); itr != kernels.end(); itr = std::next(itr))
+            {
+                if (std::visit(
+                        [&sptr](auto &&krnl)
+                        {
+                            if constexpr (std::same_as<std::decay_t<decltype(krnl)>, std::shared_ptr<Kernel<K>>>)
+                            {
+                                return sptr == krnl;
+                            }
+
+                            return false;
+                        },
+                        **itr))
+                {
+                    std::visit(
+                        [](auto &&krnl)
+                        {
+                            if (krnl->inLink)
+                            {
+                                std::visit([](auto &&krnl2)
+                                           {
+                                               krnl2->outLink.reset();
+                                               krnl2->outLine.hidden = true;
+                                           },
+                                           *krnl->inLink);
+                            }
+                        },
+                        **itr);
+                    kernels.erase(itr);
+                    break;
+                }
+            }
+        }
+
         static std::shared_ptr<Dropzone<Drawable>> build(Drawable &&d)
         {
             auto rptr = std::shared_ptr<Dropzone<Drawable>>(new Dropzone<Drawable>(std::forward<Drawable>(d)));
@@ -70,9 +108,11 @@ namespace gui
                     for (auto &&kernel : ptr->kernels)
                     {
                         std::visit(
-                            [yd](auto &&k) {
+                            [yd](auto &&k)
+                            {
                                 k->update(yd);
-                            }, *kernel);
+                            },
+                            *kernel);
                     }
                 });
             rptr->eventManager.addCallback(

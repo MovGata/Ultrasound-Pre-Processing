@@ -31,6 +31,8 @@
 
 #include "../Ultrasound/Mindray.hh"
 
+#define KERNELBUTTON(K) template std::shared_ptr<Button<Rectangle>> Kernel<K>::buildButton<gui::varType, std::vector<gui::renType>, std::shared_ptr<gui::Dropzone<gui::Rectangle>>>(const std::string &str, gui::varType &wk, std::vector<gui::renType> &wr, std::shared_ptr<gui::Dropzone<gui::Rectangle>> &d, std::shared_ptr<K> &t)
+
 namespace
 {
     using namespace opencl;
@@ -39,6 +41,10 @@ namespace
 
 namespace gui
 {
+
+    template <concepts::HidableType Drawable>
+    class Dropzone;
+
     template <typename K>
     class Kernel;
 
@@ -62,8 +68,15 @@ namespace gui
             w = std::max(w, title.w);
             h = title.h * 3.0f;
 
+            int mx, my;
+            SDL_GetMouseState(&mx, &my);
+
+            x = static_cast<float>(mx) - w / 2.0f;
+            y = static_cast<float>(my) - h / 2.0f;
+
             title.x = x + w / 2.0f - title.w / 2.0f;
             title.y = y;
+            title.update();
 
             inNode->y = y + h / 2.0f;
             inNode->x = x + 2.0f;
@@ -75,6 +88,8 @@ namespace gui
 
             outLine.hidden = true;
             outLine.texture->fill({0xD3, 0xD3, 0xD3, 0xFF});
+
+            Rectangle::update();
         }
 
     public:
@@ -180,14 +195,7 @@ namespace gui
                         if (ptr->inLink)
                         {
                             std::visit([oy = ptr->inNode->y + ptr->inNode->h / 2.0f, ox = ptr->inNode->x + ptr->inNode->w](auto &&l)
-                                       {
-                                           l->outLine.y = l->outNode->y + l->outNode->h / 2.0f - l->outLine.h / 2.0f;
-                                           l->outLine.x = l->x + l->w;
-                                           l->outLine.angle = std::atan2(oy - l->outLine.y, ox - l->outLine.x);
-                                           l->outLine.h = 3.0f;
-                                           l->outLine.w = std::sqrt((oy - l->outLine.y) * (oy - l->outLine.y) + (ox - l->outLine.x) * (ox - l->outLine.x));
-                                           l->outLine.update();
-                                       },
+                                       { l->updateLine(ox, oy); },
                                        *ptr->inLink);
                         }
                     }
@@ -256,6 +264,9 @@ namespace gui
             title.update();
         }
 
+
+
+
         template <typename KT>
         static bool endLink(const SDL_Event &e, std::weak_ptr<Kernel<K>> wptr, std::shared_ptr<KT> &k)
         {
@@ -297,78 +308,39 @@ namespace gui
         }
 
         template <typename WK, typename WR, typename D>
-        static std::shared_ptr<Button<Rectangle>> buildButton(const std::string &str, WK &wk, WR &wr, D &d, std::shared_ptr<K> &t)
-        {
-            auto button = Button<Rectangle>::build(str);
-
-            button->onPress(
-                [&sk = wk, &wr, &dropzone = d, k = t, wptr = std::weak_ptr<Texture>(button->texture)]() mutable
-                {
-                    std::shared_ptr<Kernel<K>> ptr = Kernel<K>::build(std::shared_ptr(k), wptr.lock());
-                    ptr->eventManager.addCallback(
-                        SDL_MOUSEBUTTONUP,
-                        [&sk, &wr, &dropzone](const SDL_Event &e)
-                        {
-                            if (events::containsMouse(*dropzone, e))
-                            {
-                                auto kptr = std::get<std::shared_ptr<Kernel<K>>>(sk);
-                                kptr->y = std::max(dropzone->y, kptr->y);
-                                kptr->y = std::min(dropzone->y + dropzone->h - kptr->h, kptr->y);
-
-                                dropzone->kernels.emplace_back(std::make_shared<varType>(kptr));
-
-                                kptr->eventManager.addCallback(
-                                    SDL_MOUSEBUTTONDOWN,
-                                    [wptr = kptr->weak_from_this(), &dropzone, &sk, &wr]([[maybe_unused]] const SDL_Event &ev)
-                                    {
-                                        auto cptr = wptr.lock();
-                                        sk.template emplace<std::shared_ptr<Kernel<K>>>(cptr);
-                                        cptr->eventManager.clearCallback(SDL_MOUSEBUTTONUP);
-
-                                        cptr->eventManager.addCallback(
-                                            SDL_MOUSEBUTTONUP,
-                                            [&dropzone, kptr = cptr->weak_from_this()](const SDL_Event &evv)
-                                            {
-                                                auto skptr = kptr.lock();
-                                                if (skptr->link)
-                                                {
-                                                    for (auto &kernel : dropzone->kernels)
-                                                    {
-                                                        if (std::visit(
-                                                                [&evv, wptr2 = skptr->weak_from_this()](auto &&krnl)
-                                                                { return endLink(evv, wptr2, krnl); },
-                                                                *kernel))
-                                                        {
-                                                            break;
-                                                        }
-                                                    }
-                                                }
-                                            });
-
-                                        if (ev.button.clicks == 2 && !events::containsMouse(*cptr->inNode, ev) && !events::containsMouse(*cptr->outNode, ev))
-                                        {
-                                            wr.emplace_back(cptr->buildRenderer());
-                                        }
-
-                                        cptr->eventManager.addCallback(
-                                            SDL_MOUSEBUTTONUP,
-                                            [&sk]([[maybe_unused]] const SDL_Event &evv)
-                                            {
-                                                std::get<std::shared_ptr<Kernel<K>>>(sk).template reset<Kernel<K>>(nullptr);
-                                            });
-                                    });
-                            }
-                            std::get<std::shared_ptr<Kernel<K>>>(sk).template reset<Kernel<K>>(nullptr);
-                        });
-                    sk.template emplace<std::shared_ptr<Kernel<K>>>(std::move(ptr));
-                });
-            return button;
-        }
+        static std::shared_ptr<Button<Rectangle>> buildButton(const std::string &str, WK &wk, WR &wr, D &d, std::shared_ptr<K> &t);
 
         std::shared_ptr<Renderer<Rectangle, K>> buildRenderer()
         {
             return Renderer<Rectangle, K>::build({0.0f, 0.0f, 1.0f, 1.0f, std::make_shared<gui::Texture>(512, 512)}, std::shared_ptr(kernel));
         }
     };
+
+    extern template class Kernel<opencl::ToPolar>;
+    extern template class Kernel<opencl::ToCartesian>;
+    extern template class Kernel<opencl::Clamp>;
+    extern template class Kernel<opencl::Contrast>;
+    extern template class Kernel<opencl::Fade>;
+    extern template class Kernel<opencl::Invert>;
+    extern template class Kernel<opencl::Log2>;
+    extern template class Kernel<opencl::Shrink>;
+    extern template class Kernel<opencl::Slice>;
+    extern template class Kernel<opencl::Sqrt>;
+    extern template class Kernel<opencl::Threshold>;
+    extern template class Kernel<ultrasound::Mindray>;
+
+    extern KERNELBUTTON(ToPolar);
+    extern KERNELBUTTON(ToCartesian);
+    extern KERNELBUTTON(Slice);
+    extern KERNELBUTTON(Threshold);
+    extern KERNELBUTTON(Invert);
+    extern KERNELBUTTON(Clamp);
+    extern KERNELBUTTON(Contrast);
+    extern KERNELBUTTON(Log2);
+    extern KERNELBUTTON(Shrink);
+    extern KERNELBUTTON(Fade);
+    extern KERNELBUTTON(Sqrt);
+    extern KERNELBUTTON(Mindray);
+
 }
 #endif

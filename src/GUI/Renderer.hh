@@ -3,15 +3,43 @@
 
 #include <memory>
 
+#include "Rectangle.hh"
+
 #include "../Data/Volume.hh"
+
 #include "../Events/Concepts.hh"
 #include "../Events/EventManager.hh"
-#include "Rectangle.hh"
 
 #include "../OpenCL/Concepts.hh"
 
+#include "../OpenCL/Kernels/ToPolar.hh"
+#include "../OpenCL/Kernels/ToCartesian.hh"
+#include "../OpenCL/Kernels/Slice.hh"
+#include "../OpenCL/Kernels/Invert.hh"
+#include "../OpenCL/Kernels/Contrast.hh"
+#include "../OpenCL/Kernels/Log2.hh"
+#include "../OpenCL/Kernels/Shrink.hh"
+#include "../OpenCL/Kernels/Fade.hh"
+#include "../OpenCL/Kernels/Sqrt.hh"
+#include "../OpenCL/Kernels/Clamp.hh"
+#include "../OpenCL/Kernels/Threshold.hh"
+
+#include "../Ultrasound/Mindray.hh"
+
 namespace gui
 {
+    template <concepts::DrawableType Drawable, concepts::VolumeType TF>
+    requires concepts::TranslatableType<TF>
+    class Renderer;
+    
+    using namespace opencl;
+    using ultrasound::Mindray;
+
+    template <concepts::VolumeType R>
+    using rk = std::shared_ptr<Renderer<Rectangle, R>>;
+
+    using renType = std::variant<rk<ToPolar>, rk<ToCartesian>, rk<Slice>, rk<Threshold>, rk<Invert>, rk<Clamp>, rk<Contrast>, rk<Log2>, rk<Shrink>, rk<Fade>, rk<Sqrt>, rk<Mindray>>;
+
 
     template <concepts::DrawableType Drawable, concepts::VolumeType TF>
     requires concepts::TranslatableType<TF>

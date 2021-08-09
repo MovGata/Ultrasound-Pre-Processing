@@ -26,11 +26,8 @@
 
 namespace gui
 {
-    template <typename Drawables, typename Kernels>
-    class Window;
-
-    template <concepts::DrawableType... Drawables, typename... Kernels>
-    class Window<std::tuple<Drawables...>, std::tuple<Kernels...>>
+    template <concepts::DrawableType... Drawables>
+    class Window
     {
     private:
         events::EventManager eventManager;
@@ -70,7 +67,7 @@ namespace gui
 
     public:
         std::vector<std::variant<std::shared_ptr<Drawables>...>> drawables;
-        std::vector<std::variant<std::shared_ptr<Renderer<Rectangle, Kernels>>...>> renderers;
+        std::vector<gui::renType> renderers;
         varType kernel;
 
         Window(unsigned int width = 640, unsigned int height = 480, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE) : Window(SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, flags) {}
