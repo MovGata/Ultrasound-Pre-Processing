@@ -1,8 +1,9 @@
 #ifndef GUI_BUTTON_HH
 #define GUI_BUTTON_HH
 
-#include "../Events/Concepts.hh"
+#include "Rectangle.hh"
 
+#include "../Events/Concepts.hh"
 #include "../Events/EventManager.hh"
 
 namespace gui
@@ -26,7 +27,7 @@ namespace gui
             TTF_SizeText(Texture::lastFont, str.c_str(), &w, &h);
             auto t = std::make_shared<gui::Texture>(w + 2, h + 2);
             t->addText(Texture::lastFont, str.c_str());
-            return build({0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), std::move(t)});
+            return build(Rectangle(0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), std::move(t)));
         }
 
         static std::shared_ptr<Button<Drawable>> build(Drawable &&d)

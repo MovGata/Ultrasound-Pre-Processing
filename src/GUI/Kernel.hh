@@ -65,7 +65,9 @@ namespace gui
 
             outNode = (Button<Rectangle>::build(kernel->out));
 
-            w = std::max(w, title.w);
+            renderButton = (Button<Rectangle>::build("+"));
+
+            w = std::max(w, title.w + renderButton->w + 2.0f);
             h = title.h * 3.0f;
 
             int mx, my;
@@ -74,9 +76,13 @@ namespace gui
             x = static_cast<float>(mx) - w / 2.0f;
             y = static_cast<float>(my) - h / 2.0f;
 
-            title.x = x + w / 2.0f - title.w / 2.0f;
+            title.x = x + w / 2.0f - title.w / 2.0f - renderButton->w / 2.0f - 1.0f;
             title.y = y;
             title.update();
+
+            renderButton->x = title.x + title.w + 2.0f;
+            renderButton->y = title.y;
+            renderButton->update();
 
             inNode->y = y + h / 2.0f;
             inNode->x = x + 2.0f;
@@ -96,6 +102,7 @@ namespace gui
         std::shared_ptr<K> kernel;
         std::shared_ptr<Button<Rectangle>> inNode;
         std::shared_ptr<Button<Rectangle>> outNode;
+        std::shared_ptr<Button<Rectangle>> renderButton;
 
         gui::Rectangle outLine;
         gui::Rectangle title;
@@ -147,6 +154,20 @@ namespace gui
                 });
 
             sptr->eventManager.addCallback(
+                SDL_MOUSEBUTTONUP,
+                [wptr = sptr->weak_from_this()](const SDL_Event &e)
+                {
+                    auto ptr = wptr.lock();
+                    if (!ptr)
+                        return;
+                    if (events::containsMouse(std::as_const(*ptr->renderButton), e))
+                    {
+                        ptr->renderButton->eventManager.process(e);
+                        return;
+                    }
+                });
+
+            sptr->eventManager.addCallback(
                 SDL_MOUSEMOTION,
                 [wptr = sptr->weak_from_this()](const SDL_Event &e)
                 {
@@ -180,6 +201,10 @@ namespace gui
                         ptr->title.x += dx;
                         ptr->title.update();
 
+                        ptr->renderButton->y += dy;
+                        ptr->renderButton->x += dx;
+                        ptr->renderButton->update();
+
                         if (ptr->outLink)
                         {
                             float oy = std::visit([](auto &&l)
@@ -209,6 +234,7 @@ namespace gui
         {
             Rectangle::draw();
             title.draw();
+            renderButton->draw();
             inNode->draw();
             outNode->draw();
 
@@ -257,15 +283,14 @@ namespace gui
             outNode->y += dy;
             outLine.y += dy;
             title.y += dy;
+            renderButton->y += dy;
 
             inNode->update();
             outNode->update();
             outLine.update();
             title.update();
+            renderButton->update();
         }
-
-
-
 
         template <typename KT>
         static bool endLink(const SDL_Event &e, std::weak_ptr<Kernel<K>> wptr, std::shared_ptr<KT> &k)

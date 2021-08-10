@@ -25,6 +25,7 @@ namespace gui
                     [&sk, &wr, &dropzone, kwptr = ptr->weak_from_this()](const SDL_Event &e)
                     {
                         auto skptr = kwptr.lock();
+                        
                         if (skptr->link)
                         {
                             for (auto &kernel : dropzone->kernels)
@@ -52,12 +53,17 @@ namespace gui
 
                 ptr->eventManager.addCallback(
                     SDL_MOUSEBUTTONDOWN,
-                    [kwptr = ptr->weak_from_this(), &dropzone, &sk, &wr](const SDL_Event &ev)
-                    {
+                    [&sk, kwptr = ptr->weak_from_this()]([[maybe_unused]] const SDL_Event &e) {
                         auto cptr = kwptr.lock();
                         sk.template emplace<std::shared_ptr<Kernel<K>>>(cptr);
+                    });
 
-                        if (ev.button.clicks == 2 && !events::containsMouse(*cptr->inNode, ev) && !events::containsMouse(*cptr->outNode, ev))
+                ptr->renderButton->onRelease(
+                    [kwptr = ptr->weak_from_this(), &sk, &wr](const SDL_Event &ev)
+                    {
+                        auto cptr = kwptr.lock();
+
+                        if (!events::containsMouse(*cptr->inNode, ev) && !events::containsMouse(*cptr->outNode, ev))
                         {
                             wr.emplace_back(cptr->buildRenderer());
                         }
