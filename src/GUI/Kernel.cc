@@ -1,11 +1,6 @@
 #include "Kernel.hh"
 #include "Dropzone.hh"
 
-namespace
-{
-
-} // namespace
-
 namespace gui
 {
     template <typename K>
@@ -65,7 +60,7 @@ namespace gui
 
                         if (!events::containsMouse(*cptr->inNode, ev) && !events::containsMouse(*cptr->outNode, ev))
                         {
-                            wr.emplace_back(cptr->buildRenderer());
+                            wr.emplace_back(cptr->buildRenderer(wr));
                         }
                     });
                 sk.template emplace<std::shared_ptr<Kernel<K>>>(std::move(ptr));

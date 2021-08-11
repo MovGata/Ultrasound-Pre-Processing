@@ -127,11 +127,7 @@ namespace gui
                 std::visit(
                     [rx, ry, rw, xOff, yOff](auto &&r)
                     {
-                        r->x = static_cast<float>(rx) * rw + xOff;
-                        r->y = static_cast<float>(ry) * rw + yOff;
-                        r->w = rw;
-                        r->h = rw;
-                        r->update();
+                        r->update(static_cast<float>(rx) * rw + xOff, static_cast<float>(ry) * rw + yOff, rw, rw);
                         r->draw();
                     },
                     renderer);

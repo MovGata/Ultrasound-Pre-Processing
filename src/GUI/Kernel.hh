@@ -98,6 +98,8 @@ namespace gui
             Rectangle::update();
         }
 
+        std::function>void(void)> arm, fire;
+
     public:
         std::shared_ptr<K> kernel;
         std::shared_ptr<Button<Rectangle>> inNode;
@@ -335,9 +337,9 @@ namespace gui
         template <typename WK, typename WR, typename D>
         static std::shared_ptr<Button<Rectangle>> buildButton(const std::string &str, WK &wk, WR &wr, D &d, std::shared_ptr<K> &t);
 
-        std::shared_ptr<Renderer<Rectangle, K>> buildRenderer()
+        std::shared_ptr<Renderer<Rectangle, K>> buildRenderer(std::vector<gui::renType> &wr)
         {
-            return Renderer<Rectangle, K>::build({0.0f, 0.0f, 1.0f, 1.0f, std::make_shared<gui::Texture>(512, 512)}, std::shared_ptr(kernel));
+            return Renderer<Rectangle, K>::build(wr, {0.0f, 0.0f, 1.0f, 1.0f, std::make_shared<gui::Texture>(512, 512)}, std::shared_ptr(kernel));
         }
     };
 

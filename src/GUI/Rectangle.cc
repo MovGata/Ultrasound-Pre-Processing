@@ -85,6 +85,20 @@ namespace gui
         modelview = glm::translate(id, {x, y, 0.0}) * modelview;
     }
 
+    void Rectangle::update(float xx, float yy)
+    {
+        x = xx;
+        y = yy;
+        update();
+    }
+
+    void Rectangle::update(float xx, float yy, float ww, float hh)
+    {
+        w = ww;
+        h = hh;
+        update(xx, yy);
+    }
+
     void Rectangle::drawChildren() const
     {
         if (!hidden)

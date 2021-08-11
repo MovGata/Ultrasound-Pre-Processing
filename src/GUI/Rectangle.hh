@@ -89,6 +89,8 @@ namespace gui
         void drawLinks();
 
         void update();
+        void update(float x, float y);
+        void update(float x, float y, float w, float h);
 
         // bool contains(float x, float y) const;
         // bool containsTF(float x, float y) const;
