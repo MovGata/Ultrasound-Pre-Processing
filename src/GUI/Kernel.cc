@@ -3,6 +3,35 @@
 
 namespace gui
 {
+
+    KernelBase::KernelBase(std::shared_ptr<Texture> &&tptr) : Rectangle(0.0f, 0.0f, 40.0f, 40.0f), outLine({0.0f, 0.0f, 1.0f, 1.0f}), title(0.0f, 0.0f, static_cast<float>(tptr->textureW), static_cast<float>(tptr->textureH), std::forward<std::shared_ptr<Texture>>(tptr))
+    {
+    }
+
+    void KernelBase::updateLine(float ox, float oy)
+    {
+        outLine.y = outNode->y + outNode->h / 2.0f - outLine.h / 2.0f;
+        outLine.x = x + w;
+        outLine.angle = std::atan2(oy - outLine.y, ox - outLine.x);
+        outLine.h = 3.0f;
+        outLine.w = std::sqrt((oy - outLine.y) * (oy - outLine.y) + (ox - outLine.x) * (ox - outLine.x));
+        outLine.update();
+    }
+
+    void KernelBase::draw()
+    {
+        Rectangle::draw();
+        title.draw();
+        renderButton->draw();
+        inNode->draw();
+        outNode->draw();
+
+        if (!outLine.hidden)
+        {
+            outLine.draw();
+        }
+    }
+
     template <typename K>
     template <typename WK, typename WR, typename D>
     std::shared_ptr<Button<Rectangle>> Kernel<K>::buildButton(const std::string &str, WK &wk, WR &wr, D &d, std::shared_ptr<K> &t)
@@ -20,7 +49,7 @@ namespace gui
                     [&sk, &wr, &dropzone, kwptr = ptr->weak_from_this()](const SDL_Event &e)
                     {
                         auto skptr = kwptr.lock();
-                        
+
                         if (skptr->link)
                         {
                             for (auto &kernel : dropzone->kernels)
@@ -48,7 +77,8 @@ namespace gui
 
                 ptr->eventManager.addCallback(
                     SDL_MOUSEBUTTONDOWN,
-                    [&sk, kwptr = ptr->weak_from_this()]([[maybe_unused]] const SDL_Event &e) {
+                    [&sk, kwptr = ptr->weak_from_this()]([[maybe_unused]] const SDL_Event &e)
+                    {
                         auto cptr = kwptr.lock();
                         sk.template emplace<std::shared_ptr<Kernel<K>>>(cptr);
                     });

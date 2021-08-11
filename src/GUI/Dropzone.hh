@@ -71,12 +71,8 @@ namespace gui
                         {
                             if (krnl->inLink)
                             {
-                                std::visit([](auto &&krnl2)
-                                           {
-                                               krnl2->outLink.reset();
-                                               krnl2->outLine.hidden = true;
-                                           },
-                                           *krnl->inLink);
+                                krnl->inLink->outLink.reset();
+                                krnl->inLink->outLine.hidden = true;
                             }
                         },
                         **itr);

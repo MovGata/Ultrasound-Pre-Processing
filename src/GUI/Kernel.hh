@@ -1,6 +1,7 @@
 #ifndef GUI_KERNEL_HH
 #define GUI_KERNEL_HH
 
+#include <functional>
 #include <string>
 #include <memory>
 #include <variant>
@@ -42,6 +43,27 @@ namespace
 namespace gui
 {
 
+    class KernelBase : public Rectangle
+    {
+    public:
+        std::shared_ptr<Button<Rectangle>> inNode;
+        std::shared_ptr<Button<Rectangle>> outNode;
+        std::shared_ptr<Button<Rectangle>> renderButton;
+
+        gui::Rectangle outLine;
+        gui::Rectangle title;
+
+        std::shared_ptr<KernelBase> inLink;
+        std::shared_ptr<KernelBase> outLink;
+
+        void updateLine(float ox, float oy);
+        void draw();
+
+    protected:
+        KernelBase(std::shared_ptr<Texture> &&tptr);
+        ~KernelBase() = default;
+    };
+
     template <concepts::HidableType Drawable>
     class Dropzone;
 
@@ -54,10 +76,10 @@ namespace gui
     using varType = std::variant<sk<ToPolar>, sk<ToCartesian>, sk<Slice>, sk<Threshold>, sk<Invert>, sk<Clamp>, sk<Contrast>, sk<Log2>, sk<Shrink>, sk<Fade>, sk<Sqrt>, sk<Mindray>>;
 
     template <typename K>
-    class Kernel : public Rectangle, public std::enable_shared_from_this<Kernel<K>>
+    class Kernel : public KernelBase, public std::enable_shared_from_this<Kernel<K>>
     {
     private:
-        Kernel(std::shared_ptr<K> &&k, std::shared_ptr<Texture> &&tptr) : Rectangle(0.0f, 0.0f, 40.0f, 40.0f), kernel(std::forward<std::shared_ptr<K>>(k)), outLine({0.0f, 0.0f, 1.0f, 1.0f}), title(0.0f, 0.0f, static_cast<float>(tptr->textureW), static_cast<float>(tptr->textureH), std::forward<std::shared_ptr<Texture>>(tptr))
+        Kernel(std::shared_ptr<K> &&k, std::shared_ptr<Texture> &&tptr) : KernelBase(std::forward<std::shared_ptr<Texture>>(tptr)), kernel(std::forward<std::shared_ptr<K>>(k))
         {
             texture->fill({0x5C, 0x5C, 0x5C, 0xFF});
 
@@ -76,21 +98,10 @@ namespace gui
             x = static_cast<float>(mx) - w / 2.0f;
             y = static_cast<float>(my) - h / 2.0f;
 
-            title.x = x + w / 2.0f - title.w / 2.0f - renderButton->w / 2.0f - 1.0f;
-            title.y = y;
-            title.update();
-
-            renderButton->x = title.x + title.w + 2.0f;
-            renderButton->y = title.y;
-            renderButton->update();
-
-            inNode->y = y + h / 2.0f;
-            inNode->x = x + 2.0f;
-            inNode->update();
-
-            outNode->y = y + h / 2.0f;
-            outNode->x = x + w - 2.0f - outNode->w;
-            outNode->update();
+            title.update(x + w / 2.0f - title.w / 2.0f - renderButton->w / 2.0f - 1.0f, y);
+            renderButton->update(title.x + title.w + 2.0f, title.y);
+            inNode->update(x + 2.0f, y + h / 2.0f);
+            outNode->update(x + w - 2.0f - outNode->w, y + h / 2.0f);
 
             outLine.hidden = true;
             outLine.texture->fill({0xD3, 0xD3, 0xD3, 0xFF});
@@ -98,19 +109,10 @@ namespace gui
             Rectangle::update();
         }
 
-        std::function>void(void)> arm, fire;
 
     public:
         std::shared_ptr<K> kernel;
-        std::shared_ptr<Button<Rectangle>> inNode;
-        std::shared_ptr<Button<Rectangle>> outNode;
-        std::shared_ptr<Button<Rectangle>> renderButton;
-
-        gui::Rectangle outLine;
-        gui::Rectangle title;
-
-        std::shared_ptr<varType> inLink;
-        std::shared_ptr<varType> outLink;
+        std::function<void(void)> arm, fire;
 
         events::EventManager eventManager;
 
@@ -135,9 +137,7 @@ namespace gui
                     {
                         if (ptr->outLink)
                         {
-                            std::visit([](auto &&krnl)
-                                       { krnl->inLink.reset(); },
-                                       *ptr->outLink);
+                            ptr->outLink->inLink.reset();
                         }
 
                         ptr->updateLine(static_cast<float>(e.motion.x), static_cast<float>(e.motion.y));
@@ -209,21 +209,15 @@ namespace gui
 
                         if (ptr->outLink)
                         {
-                            float oy = std::visit([](auto &&l)
-                                                  { return l->inNode->y + l->inNode->h / 2.0f; },
-                                                  *ptr->outLink);
-                            float ox = std::visit([](auto &&l)
-                                                  { return l->inNode->x; },
-                                                  *ptr->outLink);
+                            float oy = ptr->outLink->inNode->y + ptr->outLink->inNode->h / 2.0f;
+                            float ox = ptr->outLink->inNode->x;
 
                             ptr->updateLine(ox, oy);
                         }
 
                         if (ptr->inLink)
                         {
-                            std::visit([oy = ptr->inNode->y + ptr->inNode->h / 2.0f, ox = ptr->inNode->x + ptr->inNode->w](auto &&l)
-                                       { l->updateLine(ox, oy); },
-                                       *ptr->inLink);
+                            ptr->inLink->updateLine(ptr->inNode->x + ptr->inNode->w, ptr->inNode->y + ptr->inNode->h / 2.0f);
                         }
                     }
                 });
@@ -232,48 +226,18 @@ namespace gui
 
         ~Kernel() = default;
 
-        void draw()
-        {
-            Rectangle::draw();
-            title.draw();
-            renderButton->draw();
-            inNode->draw();
-            outNode->draw();
-
-            if (!outLine.hidden)
-            {
-                outLine.draw();
-            }
-        }
-
-        void updateLine(float ox, float oy)
-        {
-            outLine.y = outNode->y + outNode->h / 2.0f - outLine.h / 2.0f;
-            outLine.x = x + w;
-            outLine.angle = std::atan2(oy - outLine.y, ox - outLine.x);
-            outLine.h = 3.0f;
-            outLine.w = std::sqrt((oy - outLine.y) * (oy - outLine.y) + (ox - outLine.x) * (ox - outLine.x));
-            outLine.update();
-        }
-
         void execute()
         {
             if (inLink)
             {
-                std::visit(
-                    [this](auto &&k)
-                    { kernel->template input<std::decay_t<decltype(*k->kernel)>>(*k->kernel); },
-                    *inLink);
+                arm();
             }
 
             kernel->execute();
 
             if (outLink)
             {
-                std::visit(
-                    [](auto &&k)
-                    { k->execute(); },
-                    *outLink);
+                fire();
             }
         }
 
@@ -295,7 +259,7 @@ namespace gui
         }
 
         template <typename KT>
-        static bool endLink(const SDL_Event &e, std::weak_ptr<Kernel<K>> wptr, std::shared_ptr<KT> &k)
+        static bool endLink(const SDL_Event &e, std::weak_ptr<Kernel<K>> wptr, std::shared_ptr<Kernel<KT>> &k)
         {
             auto ptr = wptr.lock();
             if constexpr (std::same_as<std::decay_t<decltype(k)>, std::shared_ptr<Kernel<K>>>)
@@ -312,17 +276,20 @@ namespace gui
             {
                 if (k->inLink)
                 {
-                    std::visit([](auto &&krnl)
-                               {
-                                   krnl->outLink.reset();
-                                   krnl->outLine.hidden = true;
-                               },
-                               *k->inLink);
+                    k->inLink->outLink.reset();
+                    k->inLink->outLine.hidden = true;
                 }
 
                 ptr->updateLine(k->inNode->x, k->inNode->y + k->inNode->h / 2.0f);
-                ptr->outLink = std::make_shared<varType>(k);
-                k->inLink = std::make_shared<varType>(ptr);
+
+                // ptr->outLink = std::make_shared<varType>(k);
+                ptr->outLink = std::static_pointer_cast<KernelBase>(k);
+                // k->inLink = std::make_shared<varType>(ptr);
+                k->inLink = std::static_pointer_cast<KernelBase>(ptr);
+
+                ptr->fire = std::bind(Kernel<KT>::execute, k.get());
+                k->arm = std::bind(KT::template input<K>, k->kernel.get(), *ptr->kernel);
+
                 ptr->outLine.hidden = false;
                 return true;
             }
