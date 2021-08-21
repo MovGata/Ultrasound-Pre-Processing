@@ -11,7 +11,6 @@
 #include "../Concepts.hh"
 #include "../../Data/Volume.hh"
 
-
 namespace opencl
 {
     class Clamp : public data::Volume
@@ -35,18 +34,22 @@ namespace opencl
         Clamp(const cl::Context &c, const cl::CommandQueue &q, const std::shared_ptr<opencl::Kernel> &ptr);
         ~Clamp() = default;
 
-        template<concepts::VolumeType V>
-        void input(const V &v)
+        template <concepts::VolumeType V>
+        void input(const std::weak_ptr<V> &wv)
         {
-            min = v.min;
-            max = v.max;
-            inlength = v.length;
-            inwidth = v.width;
-            indepth = v.depth;
-            inBuffer = v.buffer;
-            ratio = v.ratio;
-            delta = v.delta;
-            
+            auto v = wv.lock();
+            if (!v)
+                return;
+
+            min = v->min;
+            max = v->max;
+            inlength = v->length;
+            inwidth = v->width;
+            indepth = v->depth;
+            inBuffer = v->buffer;
+            ratio = v->ratio;
+            delta = v->delta;
+
             length = inlength;
             width = inwidth;
             depth = indepth;

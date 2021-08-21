@@ -54,7 +54,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     mainWindow.redraw();
 
     std::shared_ptr<ultrasound::Mindray> reader = std::make_shared<ultrasound::Mindray>();
-    if (!reader->load("tests/data/1"))
+    if (!reader->load("tests/data/4"))
     {
         std::terminate();
     }
@@ -107,9 +107,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     auto outputTree = Tree::build("OUTPUTS");
     auto dataTree = Tree::build("DATA");
 
-    tree->addBranch(std::shared_ptr(inputTree));
-    tree->addBranch(std::shared_ptr(outputTree));
-    tree->addBranch(std::shared_ptr(dataTree));
+    tree->addBranch(std::shared_ptr(inputTree), 4.0f);
+    tree->addBranch(std::shared_ptr(outputTree), 4.0f);
+    tree->addBranch(std::shared_ptr(dataTree), 4.0f);
 
     auto polar = std::make_shared<opencl::ToPolar>(device.context, device.cQueue, device.programs.at("cartesian")->at("toSpherical"));
     auto cartesian = std::make_shared<opencl::ToCartesian>(device.context, device.cQueue, device.programs.at("cartesian")->at("toCartesian"));
@@ -136,18 +136,18 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     auto fadeK = gui::Kernel<opencl::Fade>::buildButton<gui::varType, std::vector<gui::renType>, std::shared_ptr<Dropzone>>("Fade", mainWindow.kernel, mainWindow.renderers, dropzone, fade);
     auto sqrtK = gui::Kernel<opencl::Sqrt>::buildButton<gui::varType, std::vector<gui::renType>, std::shared_ptr<Dropzone>>("Sqrt", mainWindow.kernel, mainWindow.renderers, dropzone, sqrt);
 
-    inputTree->addLeaf(std::move(mindray));
-    dataTree->addLeaf(std::move(toPolar));
-    dataTree->addLeaf(std::move(toCartesian));
-    dataTree->addLeaf(std::move(sliceK));
-    dataTree->addLeaf(std::move(threshK));
-    dataTree->addLeaf(std::move(invK));
-    dataTree->addLeaf(std::move(clampK));
-    dataTree->addLeaf(std::move(conK));
-    dataTree->addLeaf(std::move(logK));
-    dataTree->addLeaf(std::move(shrinkK));
-    dataTree->addLeaf(std::move(fadeK));
-    dataTree->addLeaf(std::move(sqrtK));
+    inputTree->addLeaf(std::move(mindray), 4.0f);
+    dataTree->addLeaf(std::move(toPolar), 4.0f);
+    dataTree->addLeaf(std::move(toCartesian), 4.0f);
+    dataTree->addLeaf(std::move(sliceK), 4.0f);
+    dataTree->addLeaf(std::move(threshK), 4.0f);
+    dataTree->addLeaf(std::move(invK), 4.0f);
+    dataTree->addLeaf(std::move(clampK), 4.0f);
+    dataTree->addLeaf(std::move(conK), 4.0f);
+    dataTree->addLeaf(std::move(logK), 4.0f);
+    dataTree->addLeaf(std::move(shrinkK), 4.0f);
+    dataTree->addLeaf(std::move(fadeK), 4.0f);
+    dataTree->addLeaf(std::move(sqrtK), 4.0f);
 
     mainWindow.addDrawable(std::shared_ptr(tree));
 

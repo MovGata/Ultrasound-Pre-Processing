@@ -13,6 +13,8 @@
 #include "Button.hh"
 #include "Texture.hh"
 #include "Renderer.hh"
+#include "Tree.hh"
+#include "Slider.hh"
 
 #include "../OpenCL/Kernel.hh"
 #include "../events/EventManager.hh"
@@ -38,6 +40,8 @@ namespace
 {
     using namespace opencl;
     using namespace ultrasound;
+
+    using TreeType = gui::Tree<gui::Button<gui::Rectangle>, std::tuple<gui::Button<gui::Rectangle>>, std::tuple<gui::Slider>>;
 }
 
 namespace gui
@@ -55,6 +59,8 @@ namespace gui
 
         std::shared_ptr<KernelBase> inLink;
         std::shared_ptr<KernelBase> outLink;
+
+        std::shared_ptr<TreeType> options;
 
         void updateLine(float ox, float oy);
         void draw();
@@ -84,9 +90,7 @@ namespace gui
             texture->fill({0x5C, 0x5C, 0x5C, 0xFF});
 
             inNode = (Button<Rectangle>::build(kernel->in));
-
             outNode = (Button<Rectangle>::build(kernel->out));
-
             renderButton = (Button<Rectangle>::build("+"));
 
             w = std::max(w, title.w + renderButton->w + 2.0f);
@@ -106,9 +110,18 @@ namespace gui
             outLine.hidden = true;
             outLine.texture->fill({0xD3, 0xD3, 0xD3, 0xFF});
 
+            options = TreeType::build("OPTIONS");
+            options->update(x, y+h);
+
+            auto test = Slider::build(0.0f, 0.0f, w, 5.0f);
+            options->addLeaf(std::move(test));
+
+            h = h + options->h;
+
             Rectangle::update();
         }
 
+        bool move = true;
 
     public:
         std::shared_ptr<K> kernel;
@@ -146,9 +159,17 @@ namespace gui
                         ptr->outNode->eventManager.process(e);
                         return;
                     }
+                    else if (events::containsMouse(std::as_const(*ptr->options), e))
+                    {
+                        ptr->h = ptr->h - ptr->options->h;
+                        ptr->options->eventManager.process(e);
+                        ptr->h = ptr->h + ptr->options->h;
+                        ptr->Rectangle::update();
+                    }
                     else
                     {
                         ptr->link = false;
+                        ptr->move = true;
                         if (e.button.clicks == 2)
                         {
                         }
@@ -160,6 +181,7 @@ namespace gui
                 [wptr = sptr->weak_from_this()](const SDL_Event &e)
                 {
                     auto ptr = wptr.lock();
+                    ptr->move = false;
                     if (!ptr)
                         return;
                     if (events::containsMouse(std::as_const(*ptr->renderButton), e))
@@ -179,7 +201,7 @@ namespace gui
                     {
                         ptr->updateLine(static_cast<float>(e.motion.x), static_cast<float>(e.motion.y));
                     }
-                    else
+                    else if (ptr->move)
                     {
                         auto dy = ptr->y;
                         auto dx = ptr->x;
@@ -206,6 +228,8 @@ namespace gui
                         ptr->renderButton->y += dy;
                         ptr->renderButton->x += dx;
                         ptr->renderButton->update();
+
+                        ptr->options->update(dx, dy);
 
                         if (ptr->outLink)
                         {
@@ -250,12 +274,14 @@ namespace gui
             outLine.y += dy;
             title.y += dy;
             renderButton->y += dy;
+            options->y += dy;
 
             inNode->update();
             outNode->update();
             outLine.update();
             title.update();
             renderButton->update();
+            options->update();
         }
 
         template <typename KT>
@@ -288,7 +314,7 @@ namespace gui
                 k->inLink = std::static_pointer_cast<KernelBase>(ptr);
 
                 ptr->fire = std::bind(Kernel<KT>::execute, k.get());
-                k->arm = std::bind(KT::template input<K>, k->kernel.get(), *ptr->kernel);
+                k->arm = std::bind(KT::template input<K>, k->kernel.get(), std::weak_ptr(ptr->kernel));
 
                 ptr->outLine.hidden = false;
                 return true;

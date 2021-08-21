@@ -25,6 +25,7 @@ namespace gui
         renderButton->draw();
         inNode->draw();
         outNode->draw();
+        options->draw();
 
         if (!outLine.hidden)
         {

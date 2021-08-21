@@ -47,7 +47,7 @@ namespace ultrasound
         void load(const cl::Context &context);
 
         template<concepts::VolumeType V>
-        void input([[maybe_unused]] const V &v){}
+        void input([[maybe_unused]] const std::weak_ptr<V> &wv){}
         void execute();
 
         void sendToCl(const cl::Context &context);

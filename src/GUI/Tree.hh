@@ -57,11 +57,11 @@ namespace gui
 
         template <concepts::PositionableType U>
         requires concepts::ProcessorType<U> && concepts::TranslatableType<U>
-        void addBranch(std::shared_ptr<U> &&u);
+        void addBranch(std::shared_ptr<U> &&u, float offset = 0.0f);
 
         template <concepts::PositionableType U>
         requires concepts::ProcessorType<U> && concepts::TranslatableType<U>
-        void addLeaf(std::shared_ptr<U> &&u);
+        void addLeaf(std::shared_ptr<U> &&u, float offset = 0.0f);
     };
 
     template <concepts::PositionableType Trunk, concepts::PositionableType... Branches, concepts::PositionableType... Leaves>
@@ -531,9 +531,9 @@ namespace gui
     requires concepts::ProcessorType<Trunk> && concepts::TranslatableType<Trunk> &&(concepts::ProcessorType<Branches> &&...) && (concepts::TranslatableType<Branches> && ...) && (concepts::ProcessorType<Leaves> && ...) && (concepts::TranslatableType<Leaves> && ...) //
         template <concepts::PositionableType U>
     requires concepts::ProcessorType<U> && concepts::TranslatableType<U>
-    void Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::addBranch(std::shared_ptr<U> &&u)
+    void Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::addBranch(std::shared_ptr<U> &&u, float offset)
     {
-        u->x = x + 4.0f;
+        u->x = x + offset;
         if (branches.empty())
         {
             u->y = trunk.y + trunk.h;
@@ -574,10 +574,10 @@ namespace gui
     requires concepts::ProcessorType<Trunk> && concepts::TranslatableType<Trunk> &&(concepts::ProcessorType<Branches> &&...) && (concepts::TranslatableType<Branches> && ...) && (concepts::ProcessorType<Leaves> && ...) && (concepts::TranslatableType<Leaves> && ...) //
         template <concepts::PositionableType U>
     requires concepts::ProcessorType<U> && concepts::TranslatableType<U>
-    void Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::addLeaf(std::shared_ptr<U> &&u)
+    void Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::addLeaf(std::shared_ptr<U> &&u, float offset)
     {
 
-        u->x = x + 4.0f;
+        u->x = x + offset;
 
         if (branches.empty() && leaves.empty())
         {

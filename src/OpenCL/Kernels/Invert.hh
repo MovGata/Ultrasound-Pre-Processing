@@ -36,16 +36,20 @@ namespace opencl
         ~Invert() = default;
 
         template<concepts::VolumeType V>
-        void input(const V &v)
+        void input(const std::weak_ptr<V> &wv)
         {
-            min = 0xFF - v.max;
-            max = 0xFF - v.min;
-            inlength = v.length;
-            inwidth = v.width;
-            indepth = v.depth;
-            inBuffer = v.buffer;
-            ratio = v.ratio;
-            delta = v.delta;
+            auto v = wv.lock();
+            if (!v)
+                return;
+                
+            min = 0xFF - v->max;
+            max = 0xFF - v->min;
+            inlength = v->length;
+            inwidth = v->width;
+            indepth = v->depth;
+            inBuffer = v->buffer;
+            ratio = v->ratio;
+            delta = v->delta;
             
             length = inlength;
             width = inwidth;

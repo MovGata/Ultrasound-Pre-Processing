@@ -36,21 +36,25 @@ namespace opencl
         ~ToPolar() = default;
 
         template <concepts::VolumeType V>
-        void input(const V &v)
+        void input(const std::weak_ptr<V> &wv)
         {
-            min = v.min;
-            max = v.max;
-            inlength = v.length;
-            inwidth = v.width;
-            indepth = v.depth;
-            inBuffer = v.buffer;
-            ratio = v.ratio;
-            delta = v.delta;
+            auto v = wv.lock();
+            if (!v)
+                return;
+                
+            min = v->min;
+            max = v->max;
+            inlength = v->length;
+            inwidth = v->width;
+            indepth = v->depth;
+            inBuffer = v->buffer;
+            ratio = v->ratio;
+            delta = v->delta;
 
-            depth = static_cast<cl_uint>(static_cast<float>(v.depth) + (static_cast<float>(v.depth) * v.ratio) + 1.0f);
-            length = static_cast<cl_uint>(2.0f * std::tan(v.delta / 2.0f) * static_cast<float>(depth) + 1.0f);
-            width = inwidth > 1 ? static_cast<cl_uint>(2.0f * std::tan(v.delta / 2.0f) * static_cast<float>(depth) + 1.0f) : inwidth;
-            depth -= static_cast<cl_uint>(static_cast<float>(v.depth) * v.ratio * std::cos(std::asin(std::sqrt(std::pow(std::sin(v.delta / 2.0f) * (static_cast<float>(v.depth) * v.ratio), 2) + std::pow(std::sin(v.delta / 2.0f) * (static_cast<float>(v.depth) * v.ratio), 2)) / (static_cast<float>(v.depth) * v.ratio))));
+            depth = static_cast<cl_uint>(static_cast<float>(v->depth) + (static_cast<float>(v->depth) * v->ratio) + 1.0f);
+            length = static_cast<cl_uint>(2.0f * std::tan(v->delta / 2.0f) * static_cast<float>(depth) + 1.0f);
+            width = inwidth > 1 ? static_cast<cl_uint>(2.0f * std::tan(v->delta / 2.0f) * static_cast<float>(depth) + 1.0f) : inwidth;
+            depth -= static_cast<cl_uint>(static_cast<float>(v->depth) * v->ratio * std::cos(std::asin(std::sqrt(std::pow(std::sin(v->delta / 2.0f) * (static_cast<float>(v->depth) * v->ratio), 2) + std::pow(std::sin(v->delta / 2.0f) * (static_cast<float>(v->depth) * v->ratio), 2)) / (static_cast<float>(v->depth) * v->ratio))));
 
             std::cout << indepth << '=' << depth << '\n'
                       << inlength << '=' << length << '\n'

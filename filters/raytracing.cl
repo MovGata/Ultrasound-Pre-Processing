@@ -92,18 +92,18 @@ kernel void render(
         // }
         
 
-        // if (sample.x == sample.y && sample.x == sample.z)
-        // {
+        if (sample.x == sample.y && sample.x == sample.z)
+        {
             acc.w = mix(acc.w, sampleF.w, 1.0f / n);
             n += 1.0f;
-        // }
-        // else
-        // {
+        }
+        else
+        {
             sampleF.w = 1-native_sqrt(1-sampleF.w);
             sampleF.xyz *= sampleF.w;
             acc.xyz = acc.xyz*(1.0f - sampleF.w) + sampleF.xyz;
             acc.w = acc.w*(1.0f - sampleF.w) + sampleF.w;
-        // }
+        }
 
         
         // n += 1.0f;
