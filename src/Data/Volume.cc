@@ -37,8 +37,8 @@ namespace data
         }
 
 
-        // eventManager.addCallback(SDL_MOUSEWHEEL, events::scaleEvent<Volume>, *this);
-        // eventManager.addCallback(SDL_MOUSEMOTION, events::rotateEvent<Volume>, *this);
+        // eventManager->addCallback(SDL_MOUSEWHEEL, events::scaleEvent<Volume>, *this);
+        // eventManager->addCallback(SDL_MOUSEMOTION, events::rotateEvent<Volume>, *this);
     }
 
     Volume::Volume()

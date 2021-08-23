@@ -14,7 +14,7 @@ namespace gui
     class Button : public Drawable, public std::enable_shared_from_this<Button<Drawable>>
     {
     private:
-        Button(Drawable &&d) : Drawable(std::forward<Drawable>(d))
+        Button(Drawable &&d) : Drawable(std::forward<Drawable>(d)), eventManager(std::make_shared<events::EventManager>())
         {
         }
 
@@ -33,7 +33,7 @@ namespace gui
         static std::shared_ptr<Button<Drawable>> build(Drawable &&d)
         {
             auto rptr = std::shared_ptr<Button<Drawable>>(new Button<Drawable>(std::forward<Drawable>(d)));
-            rptr->eventManager.addCallback(
+            rptr->eventManager->addCallback(
                 events::GUI_REDRAW, [wptr = rptr->weak_from_this()](const SDL_Event &e)
                 {
                     auto ptr = wptr.lock();
@@ -54,13 +54,13 @@ namespace gui
             return rptr;
         }
 
-        events::EventManager eventManager;
+        std::shared_ptr<events::EventManager> eventManager;
 
         template <typename F, typename... Args>
         requires std::invocable<F, const SDL_Event &, Args &...>
         void onPress(F f, Args &&...args)
         {
-            eventManager.addCallback(SDL_MOUSEBUTTONDOWN, f, std::forward<Args>(args)...);
+            eventManager->addCallback(SDL_MOUSEBUTTONDOWN, f, std::forward<Args>(args)...);
         }
 
         template <typename F, typename... Args>
@@ -75,7 +75,7 @@ namespace gui
         requires std::invocable<F, const SDL_Event &, Args &...>
         void onRelease(F f, Args &&...args)
         {
-            eventManager.addCallback(SDL_MOUSEBUTTONUP, f, std::forward<Args>(args)...);
+            eventManager->addCallback(SDL_MOUSEBUTTONUP, f, std::forward<Args>(args)...);
         }
 
         template <typename F, typename... Args>

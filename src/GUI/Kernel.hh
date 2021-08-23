@@ -85,7 +85,7 @@ namespace gui
     class Kernel : public KernelBase, public std::enable_shared_from_this<Kernel<K>>
     {
     private:
-        Kernel(std::shared_ptr<K> &&k, std::shared_ptr<Texture> &&tptr) : KernelBase(std::forward<std::shared_ptr<Texture>>(tptr)), kernel(std::forward<std::shared_ptr<K>>(k))
+        Kernel(std::shared_ptr<K> &&k, std::shared_ptr<Texture> &&tptr) : KernelBase(std::forward<std::shared_ptr<Texture>>(tptr)), kernel(std::forward<std::shared_ptr<K>>(k)), eventManager(std::make_shared<events::EventManager>())
         {
             texture->fill({0x5C, 0x5C, 0x5C, 0xFF});
 
@@ -122,19 +122,20 @@ namespace gui
         }
 
         bool move = true;
+        std::weak_ptr<events::EventManager> optionEvent;
 
     public:
         std::shared_ptr<K> kernel;
         std::function<void(void)> arm, fire;
 
-        events::EventManager eventManager;
+        std::shared_ptr<events::EventManager> eventManager;
 
         bool link = false;
 
         static std::shared_ptr<Kernel<K>> build(std::shared_ptr<K> &&k, std::shared_ptr<Texture> &&tptr)
         {
             auto sptr = std::shared_ptr<Kernel<K>>(new Kernel<K>(std::forward<std::shared_ptr<K>>(k), std::forward<std::shared_ptr<Texture>>(tptr)));
-            sptr->eventManager.addCallback(
+            sptr->eventManager->addCallback(
                 SDL_MOUSEBUTTONDOWN,
                 [wptr = sptr->weak_from_this()](const SDL_Event &e)
                 {
@@ -156,13 +157,14 @@ namespace gui
                         ptr->updateLine(static_cast<float>(e.motion.x), static_cast<float>(e.motion.y));
                         ptr->outLine.hidden = false;
                         ptr->link = true;
-                        ptr->outNode->eventManager.process(e);
+                        ptr->outNode->eventManager->process(e);
                         return;
                     }
                     else if (events::containsMouse(std::as_const(*ptr->options), e))
                     {
                         ptr->h = ptr->h - ptr->options->h;
-                        ptr->options->eventManager.process(e);
+                        ptr->options->eventManager->process(e);
+                        ptr->optionEvent = ptr->options->eventManager;
                         ptr->h = ptr->h + ptr->options->h;
                         ptr->Rectangle::update();
                     }
@@ -176,7 +178,7 @@ namespace gui
                     }
                 });
 
-            sptr->eventManager.addCallback(
+            sptr->eventManager->addCallback(
                 SDL_MOUSEBUTTONUP,
                 [wptr = sptr->weak_from_this()](const SDL_Event &e)
                 {
@@ -184,22 +186,34 @@ namespace gui
                     ptr->move = false;
                     if (!ptr)
                         return;
-                    if (events::containsMouse(std::as_const(*ptr->renderButton), e))
+
+                    auto optr = ptr->optionEvent.lock();
+                    if (optr)
                     {
-                        ptr->renderButton->eventManager.process(e);
+                        optr->process(e);
+                        ptr->optionEvent.reset();
+                    }
+                    else if (events::containsMouse(std::as_const(*ptr->renderButton), e))
+                    {
+                        ptr->renderButton->eventManager->process(e);
                         return;
                     }
                 });
 
-            sptr->eventManager.addCallback(
+            sptr->eventManager->addCallback(
                 SDL_MOUSEMOTION,
                 [wptr = sptr->weak_from_this()](const SDL_Event &e)
                 {
                     auto ptr = wptr.lock();
+                    auto optr = ptr->optionEvent.lock();
 
                     if (ptr->link)
                     {
                         ptr->updateLine(static_cast<float>(e.motion.x), static_cast<float>(e.motion.y));
+                    }
+                    else if (optr)
+                    {
+                        optr->process(e);
                     }
                     else if (ptr->move)
                     {

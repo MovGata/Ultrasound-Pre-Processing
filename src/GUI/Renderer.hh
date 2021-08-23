@@ -48,7 +48,7 @@ namespace gui
     private:
         std::shared_ptr<Button<Rectangle>> closeButton;
 
-        Renderer(Drawable &&d, std::shared_ptr<TF> &&ptr) : Drawable(std::forward<Drawable>(d)), tf(std::forward<std::shared_ptr<TF>>(ptr))
+        Renderer(Drawable &&d, std::shared_ptr<TF> &&ptr) : Drawable(std::forward<Drawable>(d)), tf(std::forward<std::shared_ptr<TF>>(ptr)), eventManager(std::make_shared<events::EventManager>())
         {
             closeButton = Button<Rectangle>::build("x");
             closeButton->x = Drawable::x + Drawable::w - closeButton->w;
@@ -60,7 +60,7 @@ namespace gui
 
         std::shared_ptr<TF> tf;
 
-        events::EventManager eventManager;
+        std::shared_ptr<events::EventManager> eventManager;
 
         template <typename WR>
         static std::shared_ptr<Renderer<Drawable, TF>> build(WR &wr, Drawable &&d, std::shared_ptr<TF> &&ptr)
@@ -91,7 +91,7 @@ namespace gui
                                            }
                                        });
 
-            rptr->eventManager.addCallback(
+            rptr->eventManager->addCallback(
                 events::GUI_REDRAW, [wptr = rptr->weak_from_this()](const SDL_Event &e)
                 {
                     auto sptr = wptr.lock();
@@ -112,7 +112,7 @@ namespace gui
                     sptr->closeButton->y = sptr->y;
                     sptr->closeButton->update();
                 });
-            rptr->eventManager.addCallback(
+            rptr->eventManager->addCallback(
                 SDL_MOUSEBUTTONDOWN,
                 [wptr = rptr->weak_from_this()](const SDL_Event &e)
                 {
@@ -121,11 +121,11 @@ namespace gui
                     {
                         if (events::containsMouse(std::as_const(*sptr->closeButton), e))
                         {
-                            sptr->closeButton->eventManager.process(e);
+                            sptr->closeButton->eventManager->process(e);
                             return;
                         }
 
-                        sptr->eventManager.addCallback(
+                        sptr->eventManager->addCallback(
                             SDL_MOUSEMOTION, [wptr](const SDL_Event &ev)
                             {
                                 auto ssptr = wptr.lock();
@@ -136,23 +136,23 @@ namespace gui
                     }
                     else if (e.button.button == SDL_BUTTON_RIGHT)
                     {
-                        sptr->eventManager.addCallback(
+                        sptr->eventManager->addCallback(
                             SDL_MOUSEMOTION, [wptr](const SDL_Event &ev)
                             {
                                 auto ssptr = wptr.lock();
                                 events::translate(*ssptr->tf, {-static_cast<float>(4 * ev.motion.xrel) / ssptr->w, -static_cast<float>(4 * ev.motion.yrel) / ssptr->h, 0.0f});
                             });
-                        // sptr->eventManager.addCallback(SDL_MOUSEMOTION, events::translateEvent<TF>, *sptr->tf);
+                        // sptr->eventManager->addCallback(SDL_MOUSEMOTION, events::translateEvent<TF>, *sptr->tf);
                     }
                 });
-            rptr->eventManager.addCallback(
+            rptr->eventManager->addCallback(
                 SDL_MOUSEBUTTONUP,
                 [wptr = rptr->weak_from_this()]([[maybe_unused]] const SDL_Event &)
                 {
                     auto sptr = wptr.lock();
-                    sptr->eventManager.clearCallback(SDL_MOUSEMOTION);
+                    sptr->eventManager->clearCallback(SDL_MOUSEMOTION);
                 });
-            rptr->eventManager.addCallback(
+            rptr->eventManager->addCallback(
                 SDL_MOUSEWHEEL,
                 [wptr = rptr->weak_from_this()](const SDL_Event &e)
                 {

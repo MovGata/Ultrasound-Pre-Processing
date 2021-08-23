@@ -5,7 +5,7 @@
 namespace gui
 {
 
-    Slider::Slider(Rectangle &&rec) : Rectangle(std::forward<Rectangle>(rec)), bg(x + 1.0f, y + 1.0f, w - 2.0f, h - 2.0f), fg(x + 1.0f, y + 1.0f, 0.0f, 0.0f)
+    Slider::Slider(Rectangle &&rec) : Rectangle(std::forward<Rectangle>(rec)), bg(x + 1.0f, y + 1.0f, w - 2.0f, h - 2.0f), fg(x + 1.0f, y + 1.0f, 0.0f, 0.0f), eventManager(std::make_shared<events::EventManager>())
     {
         bg.texture->fill({0x60, 0x60, 0x60, 0xFF});
         fg.texture->fill({0x80, 0x80, 0x80, 0xFF});
@@ -16,15 +16,15 @@ namespace gui
         auto rptr = std::shared_ptr<Slider>(new Slider({x, y, w, h}));
         rptr->texture->fill({0x40, 0X40, 0X40, 0XFF});
 
-        rptr->eventManager.addCallback(
+        rptr->eventManager->addCallback(
             SDL_MOUSEBUTTONDOWN, [wptr = rptr->weak_from_this()]([[maybe_unused]]const SDL_Event &)
             {
                 auto ptr = wptr.lock();
-                ptr->eventManager.addCallback(SDL_MOUSEMOTION, 
+                ptr->eventManager->addCallback(SDL_MOUSEMOTION, 
                                                   [wptr](const SDL_Event &e)
                                               {
                                                   auto pptr = wptr.lock();
-                                                  
+                                                    std::cout << "MOVE" << std::endl;
                                                   pptr->fg.w = std::clamp(static_cast<float>(e.motion.x), pptr->fg.x, pptr->bg.w - 1.0f);
                                                   pptr->fg.update();
 
@@ -32,11 +32,12 @@ namespace gui
                                               });
             });
 
-        rptr->eventManager.addCallback(
+        rptr->eventManager->addCallback(
             SDL_MOUSEBUTTONUP, [wptr = rptr->weak_from_this()]([[maybe_unused]]const SDL_Event &)
             {
                 auto ptr = wptr.lock();
-                ptr->eventManager.clearCallback(SDL_MOUSEMOTION);
+                std::cout << "UP" << std::endl;
+                ptr->eventManager->clearCallback(SDL_MOUSEMOTION);
             });
 
         return rptr;

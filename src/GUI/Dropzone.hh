@@ -23,7 +23,7 @@ namespace gui
     class Dropzone : public Drawable, public std::enable_shared_from_this<Dropzone<Drawable>>
     {
     private:
-        Dropzone(Drawable &&d) : Drawable(std::forward<Drawable>(d))
+        Dropzone(Drawable &&d) : Drawable(std::forward<Drawable>(d)), eventManager(std::make_shared<events::EventManager>())
         {
         }
 
@@ -31,7 +31,7 @@ namespace gui
         ~Dropzone() = default;
         std::vector<std::shared_ptr<varType>> kernels;
 
-        events::EventManager eventManager;
+        std::shared_ptr<events::EventManager> eventManager;
 
         void draw() const
         {
@@ -85,7 +85,7 @@ namespace gui
         static std::shared_ptr<Dropzone<Drawable>> build(Drawable &&d)
         {
             auto rptr = std::shared_ptr<Dropzone<Drawable>>(new Dropzone<Drawable>(std::forward<Drawable>(d)));
-            rptr->eventManager.addCallback(
+            rptr->eventManager->addCallback(
                 events::GUI_REDRAW, [wptr = rptr->weak_from_this()](const SDL_Event &e)
                 {
                     auto ptr = wptr.lock();
@@ -111,7 +111,7 @@ namespace gui
                             *kernel);
                     }
                 });
-            rptr->eventManager.addCallback(
+            rptr->eventManager->addCallback(
                 SDL_MOUSEBUTTONDOWN, [wptr = rptr->weak_from_this()](const SDL_Event &e)
                 {
                     auto ptr = wptr.lock();
@@ -122,7 +122,7 @@ namespace gui
                                 {
                                     if (events::containsMouse(*k, e))
                                     {
-                                        k->eventManager.process(e);
+                                        k->eventManager->process(e);
                                         return true;
                                     }
                                     return false;

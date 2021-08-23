@@ -24,7 +24,7 @@ namespace concepts
     template <typename T>
     concept ProcessorType = requires(T t, SDL_Event e)
     {
-        {decay(t.eventManager)} -> std::same_as<events::EventManager>;
+        {decay(t.eventManager)} -> std::same_as<std::shared_ptr<events::EventManager>>;
     };
 
     template <typename T>

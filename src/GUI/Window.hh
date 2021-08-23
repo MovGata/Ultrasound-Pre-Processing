@@ -30,7 +30,7 @@ namespace gui
     class Window
     {
     private:
-        events::EventManager eventManager;
+        std::shared_ptr<events::EventManager> eventManager;
 
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window;
 
@@ -71,7 +71,7 @@ namespace gui
         varType kernel;
 
         Window(unsigned int width = 640, unsigned int height = 480, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE) : Window(SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, flags) {}
-        Window(unsigned int xPos, unsigned int yPos, unsigned int width, unsigned int height, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE) : window(nullptr, SDL_DestroyWindow), projection(1.0f), size(static_cast<float>(width), static_cast<float>(height))
+        Window(unsigned int xPos, unsigned int yPos, unsigned int width, unsigned int height, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE) : eventManager(std::make_shared<events::EventManager>()), window(nullptr, SDL_DestroyWindow), projection(1.0f), size(static_cast<float>(width), static_cast<float>(height))
         {
             window.reset(SDL_CreateWindow("Ultrasound Pre-Processor", xPos, yPos, width, height, flags));
             if (window == nullptr)
@@ -88,7 +88,7 @@ namespace gui
                 return;
             }
 
-            eventManager.addCallback(SDL_WINDOWEVENT, std::bind(windowEvent, this, std::placeholders::_1));
+            eventManager->addCallback(SDL_WINDOWEVENT, std::bind(windowEvent, this, std::placeholders::_1));
         }
 
         ~Window()
@@ -189,7 +189,7 @@ namespace gui
                     {
                         if constexpr (concepts::ProcessorType<decltype(*d)>)
                         {
-                            d->eventManager.process(ev);
+                            d->eventManager->process(ev);
                         }
                     },
                     drawable);
@@ -237,7 +237,7 @@ namespace gui
 
         void process(const SDL_Event &e)
         {
-            eventManager.process(e);
+            eventManager->process(e);
             for (auto &&drawable : std::ranges::reverse_view(drawables)) // Reverse to interact with top drawn elements first.
             {
 
@@ -256,7 +256,7 @@ namespace gui
 
                                 if (events::containsMouse(std::as_const(*d), e))
                                 {
-                                    if (d->eventManager.process(e))
+                                    if (d->eventManager->process(e))
                                     {
                                         return true;
                                     }
@@ -279,7 +279,7 @@ namespace gui
                             {
                                 if (events::containsMouse(std::as_const(*r), e))
                                 {
-                                    if (r->eventManager.process(e))
+                                    if (r->eventManager->process(e))
                                     {
                                         return true;
                                     }

@@ -23,7 +23,7 @@ namespace gui
         void draw();
 
         float value = 0.0f;
-        events::EventManager eventManager;
+        std::shared_ptr<events::EventManager> eventManager;
         
         static std::shared_ptr<Slider> build(float x, float y, float w, float h);
 

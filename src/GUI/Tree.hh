@@ -39,7 +39,7 @@ namespace gui
         Tree(Trunk &&t, std::shared_ptr<Texture> &&alt);
 
     public:
-        events::EventManager eventManager;
+        std::shared_ptr<events::EventManager> eventManager;
 
         static std::shared_ptr<Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>> build(const std::string &str);
         static std::shared_ptr<Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>> build(Trunk &&t);
@@ -66,7 +66,7 @@ namespace gui
 
     template <concepts::PositionableType Trunk, concepts::PositionableType... Branches, concepts::PositionableType... Leaves>
     requires concepts::ProcessorType<Trunk> && concepts::TranslatableType<Trunk> &&(concepts::ProcessorType<Branches> &&...) && (concepts::TranslatableType<Branches> && ...) && (concepts::ProcessorType<Leaves> && ...) && (concepts::TranslatableType<Leaves> && ...) //
-        Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::Tree(Trunk &&t) : trunk(std::forward<Trunk>(t))
+        Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::Tree(Trunk &&t) : trunk(std::forward<Trunk>(t)), eventManager(std::make_shared<events::EventManager>())
     {
         trunk.setTexture(0, std::shared_ptr<Texture>(t.texture));
         trunk.setTexture(1, std::shared_ptr<Texture>(t.texture));
@@ -78,7 +78,7 @@ namespace gui
 
     template <concepts::PositionableType Trunk, concepts::PositionableType... Branches, concepts::PositionableType... Leaves>
     requires concepts::ProcessorType<Trunk> && concepts::TranslatableType<Trunk> &&(concepts::ProcessorType<Branches> &&...) && (concepts::TranslatableType<Branches> && ...) && (concepts::ProcessorType<Leaves> && ...) && (concepts::TranslatableType<Leaves> && ...) //
-        Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::Tree(Trunk &&t, std::shared_ptr<Texture> &&alt) : trunk(std::forward<Trunk>(t))
+        Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::Tree(Trunk &&t, std::shared_ptr<Texture> &&alt) : trunk(std::forward<Trunk>(t)), eventManager(std::make_shared<events::EventManager>())
     {
         trunk.setTexture(0, std::shared_ptr<Texture>(t.texture));
         trunk.setTexture(1, std::forward<std::shared_ptr<Texture>>(alt));
@@ -109,7 +109,7 @@ namespace gui
     {
         auto rptr = std::shared_ptr<Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>>(new Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>(std::forward<Trunk>(t)));
 
-        rptr->eventManager.addCallback(
+        rptr->eventManager->addCallback(
             events::GUI_REDRAW, [wptr = rptr->weak_from_this()](const SDL_Event &e)
             {
                 auto ptr = wptr.lock();
@@ -151,7 +151,7 @@ namespace gui
                 ptr->trunk.y = yd;
                 ptr->trunk.update();
             });
-        rptr->eventManager.addCallback(
+        rptr->eventManager->addCallback(
             SDL_MOUSEBUTTONDOWN, [wptr = rptr->weak_from_this()](const SDL_Event &e)
             {
                 auto ptr = wptr.lock();
@@ -175,13 +175,13 @@ namespace gui
                                     if (events::containsMouse(std::as_const(b->trunk), e))
                                     {
                                         offset = -b->h; // Subtract size before closing/opening
-                                        b->eventManager.process(e);
+                                        b->eventManager->process(e);
                                         offset += b->h; // Add size after opening/closing
                                         branchHit = true;
                                     }
                                     else if (events::containsMouse(std::as_const(*b), e))
                                     {
-                                        b->eventManager.process(e);
+                                        b->eventManager->process(e);
                                         leafHit = true;
                                     }
                                 },
@@ -222,7 +222,7 @@ namespace gui
                                     {
                                         if (events::containsMouse(std::as_const(*l), e))
                                         {
-                                            l->eventManager.process(e);
+                                            l->eventManager->process(e);
                                             return true;
                                         }
                                         else
@@ -247,7 +247,7 @@ namespace gui
     {
         auto rptr = std::shared_ptr<Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>>(new Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>(std::forward<Trunk>(t), std::forward<std::shared_ptr<Texture>>(alt)));
 
-        rptr->eventManager.addCallback(
+        rptr->eventManager->addCallback(
             events::GUI_REDRAW, [wptr = rptr->weak_from_this()](const SDL_Event &e)
             {
                 auto ptr = wptr.lock();
@@ -289,7 +289,7 @@ namespace gui
                 ptr->trunk.y = yd;
                 ptr->trunk.update();
             });
-        rptr->eventManager.addCallback(
+        rptr->eventManager->addCallback(
             SDL_MOUSEBUTTONDOWN, [wptr = rptr->weak_from_this()](const SDL_Event &e)
             {
                 auto ptr = wptr.lock();
@@ -313,13 +313,13 @@ namespace gui
                                     if (events::containsMouse(std::as_const(b->trunk), e))
                                     {
                                         offset = -b->h; // Subtract size before closing/opening
-                                        b->eventManager.process(e);
+                                        b->eventManager->process(e);
                                         offset += b->h; // Add size after opening/closing
                                         branchHit = true;
                                     }
                                     else if (events::containsMouse(std::as_const(*b), e))
                                     {
-                                        b->eventManager.process(e);
+                                        b->eventManager->process(e);
                                         leafHit = true;
                                     }
                                 },
@@ -360,7 +360,7 @@ namespace gui
                                     {
                                         if (events::containsMouse(std::as_const(*l), e))
                                         {
-                                            l->eventManager.process(e);
+                                            l->eventManager->process(e);
                                             return true;
                                         }
                                         else

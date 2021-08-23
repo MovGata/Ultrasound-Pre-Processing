@@ -207,8 +207,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
                                mainWindow.kernel))
                 {
                     std::visit([e](auto &&k)
-                               { k->eventManager.process(e); },
+                               {
+                                    k->eventManager->process(e);
+                                    if (e.type == SDL_MOUSEBUTTONUP)
+                                    {
+                                        k.template reset<typename std::remove_reference_t<decltype(k)>::element_type>(nullptr);
+                                    }
+                                },
                                mainWindow.kernel);
+
                 }
                 else
                 {
