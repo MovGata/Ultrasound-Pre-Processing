@@ -7,13 +7,14 @@
 
 #include <CL/cl2.hpp>
 
+#include "../Filter.hh"
 #include "../Kernel.hh"
 #include "../Concepts.hh"
 #include "../../Data/Volume.hh"
 
 namespace opencl
 {
-    class Clamp : public data::Volume
+    class Clamp : public Filter
     {
     private:
         std::shared_ptr<opencl::Kernel> kernel;
@@ -34,26 +35,25 @@ namespace opencl
         Clamp(const cl::Context &c, const cl::CommandQueue &q, const std::shared_ptr<opencl::Kernel> &ptr);
         ~Clamp() = default;
 
-        template <concepts::VolumeType V>
-        void input(const std::weak_ptr<V> &wv)
+        void input(const std::weak_ptr<data::Volume> &wv)
         {
             auto v = wv.lock();
             if (!v)
                 return;
 
-            min = v->min;
-            max = v->max;
+            volume->min = v->min;
+            volume->max = v->max;
             inlength = v->length;
             inwidth = v->width;
             indepth = v->depth;
             inBuffer = v->buffer;
-            ratio = v->ratio;
-            delta = v->delta;
+            volume->ratio = v->ratio;
+            volume->delta = v->delta;
 
-            length = inlength;
-            width = inwidth;
-            depth = indepth;
-            buffer = cl::Buffer(context, CL_MEM_READ_WRITE, length * depth * width * sizeof(cl_uint));
+            volume->length = inlength;
+            volume->width = inwidth;
+            volume->depth = indepth;
+            volume->buffer = cl::Buffer(context, CL_MEM_READ_WRITE, volume->length * volume->depth * volume->width * sizeof(cl_uint));
         }
 
         void execute();

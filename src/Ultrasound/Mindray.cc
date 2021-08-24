@@ -15,8 +15,11 @@
 namespace ultrasound
 {
 
-    Mindray::Mindray() : Volume()
+    Mindray::Mindray()
     {
+        Filter::volume = std::make_shared<data::Volume>();
+        Filter::input = std::bind(input, this, std::placeholders::_1);
+        Filter::execute = std::bind(execute, this);
     }
 
     Mindray::~Mindray()
@@ -374,7 +377,6 @@ namespace ultrasound
             std::vector<char> buf;
             buf.reserve(frameSize);
 
-
             vWidth = 0;
 
             while (cpIs.read(buf.data(), frameSize))
@@ -410,11 +412,11 @@ namespace ultrasound
 
     void Mindray::load(const cl::Context &context)
     {
-        depth = cpStore.fetch<int32_t>("Depth", 0);
-        length = cpStore.fetch<int32_t>("Length", 0);
-        width = cpStore.fetch<int32_t>("Width", 0);
-        delta = cpStore.fetch<float>("AngleDelta", 0);
-        ratio = cpStore.fetch<float>("Ratio", 0);
+        volume->depth = cpStore.fetch<int32_t>("Depth", 0);
+        volume->length = cpStore.fetch<int32_t>("Length", 0);
+        volume->width = cpStore.fetch<int32_t>("Width", 0);
+        volume->delta = cpStore.fetch<float>("AngleDelta", 0);
+        volume->ratio = cpStore.fetch<float>("Ratio", 0);
 
         auto pLength = cpStore.fetch<uint16_t>("dLength", 0);
         auto pDepth = cpStore.fetch<uint16_t>("dDepth", 0);
@@ -428,26 +430,26 @@ namespace ultrasound
 
         uint32_t t, b, l, r;
 
-        t = static_cast<uint32_t>((pGap.at(0) - bGap.at(0)) / (bGap.at(1) - bGap.at(0)) * static_cast<float>(depth));
-        b = static_cast<uint32_t>((pGap.at(1) - bGap.at(0)) / (bGap.at(1) - bGap.at(0)) * static_cast<float>(depth));
-        l = static_cast<uint32_t>((pAngle.at(0) / delta + 0.5f) * static_cast<float>(length));
-        r = static_cast<uint32_t>((pAngle.at(1) / delta + 0.5f) * static_cast<float>(length));
+        t = static_cast<uint32_t>((pGap.at(0) - bGap.at(0)) / (bGap.at(1) - bGap.at(0)) * static_cast<float>(volume->depth));
+        b = static_cast<uint32_t>((pGap.at(1) - bGap.at(0)) / (bGap.at(1) - bGap.at(0)) * static_cast<float>(volume->depth));
+        l = static_cast<uint32_t>((pAngle.at(0) / volume->delta + 0.5f) * static_cast<float>(volume->length));
+        r = static_cast<uint32_t>((pAngle.at(1) / volume->delta + 0.5f) * static_cast<float>(volume->length));
 
-        raw.reserve(width * depth * length);
-        for (unsigned int z = 0; z < width; ++z)
+        volume->raw.reserve(volume->width * volume->depth * volume->length);
+        for (unsigned int z = 0; z < volume->width; ++z)
         {
-            auto zyx = z * length * depth;
+            auto zyx = z * volume->length * volume->depth;
             auto pz = z * pLength * pDepth * 3;
-            for (unsigned int y = 0; y < length; ++y)
+            for (unsigned int y = 0; y < volume->length; ++y)
             {
-                auto yx = y * depth;
-                auto py = std::clamp(static_cast<unsigned int>(static_cast<float>((y - l) * pLength) / static_cast<float>(r-l)), static_cast<unsigned int>(0), static_cast<unsigned int>(pLength - 1)) * pDepth;
-                for (unsigned int x = 0; x < depth; ++x)
+                auto yx = y * volume->depth;
+                auto py = std::clamp(static_cast<unsigned int>(static_cast<float>((y - l) * pLength) / static_cast<float>(r - l)), static_cast<unsigned int>(0), static_cast<unsigned int>(pLength - 1)) * pDepth;
+                for (unsigned int x = 0; x < volume->depth; ++x)
                 {
-                    auto px = std::clamp(static_cast<unsigned int>(static_cast<float>((x - t) * pDepth) / static_cast<float>(b-t)), static_cast<unsigned int>(0), static_cast<unsigned int>(pDepth - 1));
+                    auto px = std::clamp(static_cast<unsigned int>(static_cast<float>((x - t) * pDepth) / static_cast<float>(b - t)), static_cast<unsigned int>(0), static_cast<unsigned int>(pDepth - 1));
                     cl_uchar bnw = data.at(x + yx + zyx);
-                    max = std::max(max, bnw);
-                    min = std::min(min, bnw);
+                    volume->max = std::max(volume->max, bnw);
+                    volume->min = std::min(volume->min, bnw);
                     cl_uchar4 arr;
                     if (doppler.size() > 0 && x >= t && x < b && y >= l && y < r)
                     {
@@ -469,23 +471,26 @@ namespace ultrasound
                     {
                         arr = {bnw, bnw, bnw, bnw};
                     }
-                    raw.push_back(arr);
+                    volume->raw.push_back(arr);
                 }
             }
         }
 
-        buffer = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(raw[0]) * raw.size(), raw.data());
+        volume->buffer = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(volume->raw[0]) * volume->raw.size(), volume->raw.data());
         // mvBuffer = cl::Buffer(context, CL_MEM_READ_ONLY, 12 * sizeof(cl_float));
     }
 
     void Mindray::sendToCl(const cl::Context &context)
     {
-        buffer = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(raw[0]) * raw.size(), raw.data());
+        volume->buffer = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(volume->raw[0]) * volume->raw.size(), volume->raw.data());
+    }
+
+    void Mindray::input([[maybe_unused]] const std::weak_ptr<data::Volume> &wv)
+    {
     }
 
     void Mindray::execute()
     {
-        modified = true;
     }
 
 } // namespace ultrasound

@@ -17,15 +17,9 @@ namespace data
 
     class Volume
     {
-    protected:
+    public:
         Volume();
         std::vector<cl_uchar4> raw;
-
-    public:
-        glm::mat4 lastview;
-        glm::vec3 translation = {0.0f, 0.0f, 5.0f};
-
-        bool modified = false;
 
         cl_uchar max = 0;
         cl_uchar min = 0xFF;
@@ -36,8 +30,6 @@ namespace data
         cl::Buffer buffer;
         cl_float ratio;
         cl_float delta;
-
-        std::array<float, 12> inv = {0};
 
         Volume(const Volume &) = default;
         Volume(Volume &&) = default;

@@ -18,6 +18,9 @@
 #include "Program.hh"
 #include "Concepts.hh"
 
+#include "../GUI/Renderer.hh"
+#include "../GUI/Rectangle.hh"
+
 namespace opencl
 {
 
@@ -43,12 +46,11 @@ namespace opencl
         Device(unsigned int width = 512, unsigned int height = 512);
         ~Device();
 
-        template <concepts::VolumeType V>
-        void render(V &v)
+        void render(gui::Renderer<gui::Rectangle> &renderer)
         {
             cl::NDRange global(width, height);
             
-            if (v.buffer.template getInfo<CL_MEM_SIZE>() != v.length * v.depth * v.width * 4)
+            if (renderer.tf->buffer.template getInfo<CL_MEM_SIZE>() != renderer.tf->length * renderer.tf->depth * renderer.tf->width * 4)
             {
                 std::cerr << "invalid volume size." << '\n';
                 std::terminate();
@@ -56,10 +58,10 @@ namespace opencl
             
             try
             {
-                programs.at("raytracing")->at("render")->setArg(3, v.depth);
-                programs.at("raytracing")->at("render")->setArg(4, v.length);
-                programs.at("raytracing")->at("render")->setArg(5, v.width);
-                programs.at("raytracing")->at("render")->setArg(6, v.buffer);
+                programs.at("raytracing")->at("render")->setArg(3, renderer.tf->depth);
+                programs.at("raytracing")->at("render")->setArg(4, renderer.tf->length);
+                programs.at("raytracing")->at("render")->setArg(5, renderer.tf->width);
+                programs.at("raytracing")->at("render")->setArg(6, renderer.tf->buffer);
                 
                 cl_int err = 0;
                 if (type == CL_DEVICE_TYPE_GPU)
@@ -69,14 +71,14 @@ namespace opencl
                     std::vector<cl::Memory> memories;
                     memories.push_back(outBuffer);
                     err |= cQueue.enqueueAcquireGLObjects(&memories);
-                    err |= cQueue.enqueueWriteBuffer(invMVTransposed, CL_FALSE, 0, 12 * sizeof(float), v.inv.data());
+                    err |= cQueue.enqueueWriteBuffer(invMVTransposed, CL_FALSE, 0, 12 * sizeof(float), renderer.inv.data());
                     err |= cQueue.enqueueNDRangeKernel(*programs.at("raytracing")->at("render"), cl::NullRange, global);
                     err |= cQueue.enqueueReleaseGLObjects(&memories);
                 }
                 else
                 {
                     // Copy via host.
-                    err |= cQueue.enqueueWriteBuffer(invMVTransposed, CL_FALSE, 0, 12 * sizeof(float), v.inv.data());
+                    err |= cQueue.enqueueWriteBuffer(invMVTransposed, CL_FALSE, 0, 12 * sizeof(float), renderer.inv.data());
                     err |= cQueue.enqueueNDRangeKernel(*programs.at("raytracing")->at("render"), cl::NullRange, global);
                     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pixelBuffer);
                     GLubyte *p = static_cast<GLubyte *>(glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY));

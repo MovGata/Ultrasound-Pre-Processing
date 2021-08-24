@@ -41,7 +41,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 
     using RButton = gui::Button<gui::Rectangle>;
     using Dropzone = gui::Dropzone<gui::Rectangle>;
-    using Renderer = gui::Renderer<gui::Rectangle, data::Volume>;
+    using Renderer = gui::Renderer<gui::Rectangle>;
     using Tree = gui::Tree<RButton, std::tuple<RButton>, std::tuple<RButton>>;
 
     using Instance = gui::Instance;
@@ -123,18 +123,18 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     auto sqrt = std::make_shared<opencl::Sqrt>(device.context, device.cQueue, device.programs.at("utility")->at("square"));
     auto clamp = std::make_shared<opencl::Clamp>(device.context, device.cQueue, device.programs.at("utility")->at("clamping"));
 
-    auto mindray = gui::Kernel<ultrasound::Mindray>::buildButton<gui::varType, std::vector<gui::renType>, std::shared_ptr<Dropzone>>("MINDRAY", mainWindow.kernel, mainWindow.renderers, dropzone, reader);
-    auto toPolar = gui::Kernel<opencl::ToPolar>::buildButton<gui::varType, std::vector<gui::renType>, std::shared_ptr<Dropzone>>("To Polar", mainWindow.kernel, mainWindow.renderers, dropzone, polar);
-    auto toCartesian = gui::Kernel<opencl::ToCartesian>::buildButton<gui::varType, std::vector<gui::renType>, std::shared_ptr<Dropzone>>("To Cartesian", mainWindow.kernel, mainWindow.renderers, dropzone, cartesian);
-    auto sliceK = gui::Kernel<opencl::Slice>::buildButton<gui::varType, std::vector<gui::renType>, std::shared_ptr<Dropzone>>("Slice", mainWindow.kernel, mainWindow.renderers, dropzone, slice);
-    auto threshK = gui::Kernel<opencl::Threshold>::buildButton<gui::varType, std::vector<gui::renType>, std::shared_ptr<Dropzone>>("Threshold", mainWindow.kernel, mainWindow.renderers, dropzone, threshold);
-    auto invK = gui::Kernel<opencl::Invert>::buildButton<gui::varType, std::vector<gui::renType>, std::shared_ptr<Dropzone>>("Invert", mainWindow.kernel, mainWindow.renderers, dropzone, invert);
-    auto clampK = gui::Kernel<opencl::Clamp>::buildButton<gui::varType, std::vector<gui::renType>, std::shared_ptr<Dropzone>>("Clamp", mainWindow.kernel, mainWindow.renderers, dropzone, clamp);
-    auto conK = gui::Kernel<opencl::Contrast>::buildButton<gui::varType, std::vector<gui::renType>, std::shared_ptr<Dropzone>>("Contrast", mainWindow.kernel, mainWindow.renderers, dropzone, contrast);
-    auto logK = gui::Kernel<opencl::Log2>::buildButton<gui::varType, std::vector<gui::renType>, std::shared_ptr<Dropzone>>("Log2", mainWindow.kernel, mainWindow.renderers, dropzone, log);
-    auto shrinkK = gui::Kernel<opencl::Shrink>::buildButton<gui::varType, std::vector<gui::renType>, std::shared_ptr<Dropzone>>("Shrink", mainWindow.kernel, mainWindow.renderers, dropzone, shrink);
-    auto fadeK = gui::Kernel<opencl::Fade>::buildButton<gui::varType, std::vector<gui::renType>, std::shared_ptr<Dropzone>>("Fade", mainWindow.kernel, mainWindow.renderers, dropzone, fade);
-    auto sqrtK = gui::Kernel<opencl::Sqrt>::buildButton<gui::varType, std::vector<gui::renType>, std::shared_ptr<Dropzone>>("Sqrt", mainWindow.kernel, mainWindow.renderers, dropzone, sqrt);
+    auto mindray = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("MINDRAY", mainWindow.kernel, mainWindow.renderers, dropzone, reader);
+    auto toPolar = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("To Polar", mainWindow.kernel, mainWindow.renderers, dropzone, polar);
+    auto toCartesian = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("To Cartesian", mainWindow.kernel, mainWindow.renderers, dropzone, cartesian);
+    auto sliceK = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("Slice", mainWindow.kernel, mainWindow.renderers, dropzone, slice);
+    auto threshK = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("Threshold", mainWindow.kernel, mainWindow.renderers, dropzone, threshold);
+    auto invK = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("Invert", mainWindow.kernel, mainWindow.renderers, dropzone, invert);
+    auto clampK = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("Clamp", mainWindow.kernel, mainWindow.renderers, dropzone, clamp);
+    auto conK = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("Contrast", mainWindow.kernel, mainWindow.renderers, dropzone, contrast);
+    auto logK = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("Log2", mainWindow.kernel, mainWindow.renderers, dropzone, log);
+    auto shrinkK = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("Shrink", mainWindow.kernel, mainWindow.renderers, dropzone, shrink);
+    auto fadeK = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("Fade", mainWindow.kernel, mainWindow.renderers, dropzone, fade);
+    auto sqrtK = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("Sqrt", mainWindow.kernel, mainWindow.renderers, dropzone, sqrt);
 
     inputTree->addLeaf(std::move(mindray), 4.0f);
     dataTree->addLeaf(std::move(toPolar), 4.0f);
@@ -202,20 +202,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
             }
             else
             {
-                if (std::visit([](auto &&k)
-                               { return k != nullptr; },
-                               mainWindow.kernel))
+                if (mainWindow.kernel != nullptr)
                 {
-                    std::visit([e](auto &&k)
-                               {
-                                    k->eventManager->process(e);
-                                    if (e.type == SDL_MOUSEBUTTONUP)
-                                    {
-                                        k.template reset<typename std::remove_reference_t<decltype(k)>::element_type>(nullptr);
-                                    }
-                                },
-                               mainWindow.kernel);
-
+                    mainWindow.kernel->eventManager->process(e);
+                    if (e.type == SDL_MOUSEBUTTONUP)
+                    {
+                        mainWindow.kernel.reset<gui::Kernel>(nullptr);
+                    }
                 }
                 else
                 {
@@ -234,34 +227,27 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
             // Run OpenCL stuff
             for (auto &&renderer : mainWindow.renderers)
             {
-                std::visit([&device](auto &&r)
-                           {
-                               if (r->tf->modified)
-                               {
-                                   r->tf->update();
+                if (renderer->modified)
+                {
+                    renderer->updateView();
 
-                                   auto start = std::chrono::steady_clock::now();
-                                   device.render(*r->tf);
-                                   auto stop = std::chrono::steady_clock::now();
-                                   std::cout << "Kernel Execution Time: " << std::chrono::duration_cast<std::chrono::duration<float, std::milli>>(stop - start).count() << "ms" << std::endl;
+                    auto start = std::chrono::steady_clock::now();
+                    device.render(*renderer);
+                    auto stop = std::chrono::steady_clock::now();
+                    std::cout << "Kernel Execution Time: " << std::chrono::duration_cast<std::chrono::duration<float, std::milli>>(stop - start).count() << "ms" << std::endl;
 
-                                   r->texture->update(device.pixelBuffer);
-                               }
-                           },
-                           renderer);
+                    renderer->texture->update(device.pixelBuffer);
+                }
             }
 
-            // Set volumes to finished processing
+            // Set renders to finished processing
             for (auto &&renderer : mainWindow.renderers)
             {
-                std::visit([&device](auto &&r)
-                           { r->tf->modified = false; },
-                           renderer);
+                renderer->modified = false;
             }
 
             // Run OpenGL stuff
             mainWindow.update();
-
             mainWindow.clean();
             mainWindow.draw();
         }

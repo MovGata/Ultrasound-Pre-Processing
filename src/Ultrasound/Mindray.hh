@@ -19,14 +19,13 @@
 #include "../IO/InfoStore.hh"
 #include "../Data/Volume.hh"
 #include "../OpenCL/Concepts.hh"
+#include "../OpenCL/Filter.hh"
 
 
 namespace ultrasound
 {
-    class Mindray : public data::Volume
+    class Mindray : public opencl::Filter
     {
-    private:
-
     public:
         Mindray();
         ~Mindray();
@@ -46,8 +45,7 @@ namespace ultrasound
 
         void load(const cl::Context &context);
 
-        template<concepts::VolumeType V>
-        void input([[maybe_unused]] const std::weak_ptr<V> &wv){}
+        void input(const std::weak_ptr<data::Volume> &wv);
         void execute();
 
         void sendToCl(const cl::Context &context);

@@ -4,7 +4,6 @@
 #include <unordered_map>
 #include <memory>
 #include <vector>
-#include <variant>
 
 #include "Button.hh"
 #include "Rectangle.hh"
@@ -29,7 +28,7 @@ namespace gui
 
     public:
         ~Dropzone() = default;
-        std::vector<std::shared_ptr<varType>> kernels;
+        std::vector<std::shared_ptr<Kernel>> kernels;
 
         std::shared_ptr<events::EventManager> eventManager;
 
@@ -42,40 +41,22 @@ namespace gui
 
             for (auto &&kernel : kernels)
             {
-                std::visit([](auto &&k)
-                           { k->draw(); },
-                           *kernel);
+                kernel->draw();
             }
         }
 
-        template <typename K>
-        void erase(std::weak_ptr<Kernel<K>> wptr)
+        void erase(std::weak_ptr<Kernel> wptr)
         {
             auto sptr = wptr.lock();
             for (auto itr = kernels.begin(); itr != kernels.end(); itr = std::next(itr))
             {
-                if (std::visit(
-                        [&sptr](auto &&krnl)
-                        {
-                            if constexpr (std::same_as<std::decay_t<decltype(krnl)>, std::shared_ptr<Kernel<K>>>)
-                            {
-                                return sptr == krnl;
-                            }
-
-                            return false;
-                        },
-                        **itr))
+                if (sptr == *itr)
                 {
-                    std::visit(
-                        [](auto &&krnl)
-                        {
-                            if (krnl->inLink)
-                            {
-                                krnl->inLink->outLink.reset();
-                                krnl->inLink->outLine.hidden = true;
-                            }
-                        },
-                        **itr);
+                    if ((*itr)->inLink)
+                    {
+                        (*itr)->inLink->outLink.reset();
+                        (*itr)->inLink->outLine.hidden = true;
+                    }
                     kernels.erase(itr);
                     break;
                 }
@@ -100,15 +81,10 @@ namespace gui
                     ptr->y = newSize->second / oldSize->second * (ptr->y + ptr->h) - ptr->h;
                     yd = ptr->y - yd;
                     ptr->update();
-
+                    
                     for (auto &&kernel : ptr->kernels)
                     {
-                        std::visit(
-                            [yd](auto &&k)
-                            {
-                                k->update(yd);
-                            },
-                            *kernel);
+                        kernel->update(yd);
                     }
                 });
             rptr->eventManager->addCallback(
@@ -117,18 +93,9 @@ namespace gui
                     auto ptr = wptr.lock();
                     for (auto &kernel : ptr->kernels)
                     {
-                        if (std::visit(
-                                [e](auto &&k)
-                                {
-                                    if (events::containsMouse(*k, e))
-                                    {
-                                        k->eventManager->process(e);
-                                        return true;
-                                    }
-                                    return false;
-                                },
-                                *kernel))
+                        if (events::containsMouse(*kernel, e))
                         {
+                            kernel->eventManager->process(e);
                             break;
                         }
                     }

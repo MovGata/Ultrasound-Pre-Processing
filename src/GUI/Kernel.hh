@@ -4,7 +4,6 @@
 #include <functional>
 #include <string>
 #include <memory>
-#include <variant>
 #include <vector>
 
 #include <glm/ext.hpp>
@@ -17,6 +16,7 @@
 #include "Slider.hh"
 
 #include "../OpenCL/Kernel.hh"
+#include "../OpenCL/Filter.hh"
 #include "../events/EventManager.hh"
 #include "../OpenCL/Concepts.hh"
 
@@ -33,8 +33,6 @@
 #include "../OpenCL/Kernels/Threshold.hh"
 
 #include "../Ultrasound/Mindray.hh"
-
-#define KERNELBUTTON(K) template std::shared_ptr<Button<Rectangle>> Kernel<K>::buildButton<gui::varType, std::vector<gui::renType>, std::shared_ptr<gui::Dropzone<gui::Rectangle>>>(const std::string &str, gui::varType &wk, std::vector<gui::renType> &wr, std::shared_ptr<gui::Dropzone<gui::Rectangle>> &d, std::shared_ptr<K> &t)
 
 namespace
 {
@@ -73,74 +71,31 @@ namespace gui
     template <concepts::HidableType Drawable>
     class Dropzone;
 
-    template <typename K>
-    class Kernel;
-
-    template <typename KK>
-    using sk = std::shared_ptr<Kernel<KK>>;
-
-    using varType = std::variant<sk<ToPolar>, sk<ToCartesian>, sk<Slice>, sk<Threshold>, sk<Invert>, sk<Clamp>, sk<Contrast>, sk<Log2>, sk<Shrink>, sk<Fade>, sk<Sqrt>, sk<Mindray>>;
-
-    template <typename K>
-    class Kernel : public KernelBase, public std::enable_shared_from_this<Kernel<K>>
+    class Kernel : public KernelBase, public std::enable_shared_from_this<Kernel>
     {
     private:
-        Kernel(std::shared_ptr<K> &&k, std::shared_ptr<Texture> &&tptr) : KernelBase(std::forward<std::shared_ptr<Texture>>(tptr)), kernel(std::forward<std::shared_ptr<K>>(k)), eventManager(std::make_shared<events::EventManager>())
-        {
-            texture->fill({0x5C, 0x5C, 0x5C, 0xFF});
-
-            inNode = (Button<Rectangle>::build(kernel->in));
-            outNode = (Button<Rectangle>::build(kernel->out));
-            renderButton = (Button<Rectangle>::build("+"));
-
-            w = std::max(w, title.w + renderButton->w + 2.0f);
-            h = title.h * 3.0f;
-
-            int mx, my;
-            SDL_GetMouseState(&mx, &my);
-
-            x = static_cast<float>(mx) - w / 2.0f;
-            y = static_cast<float>(my) - h / 2.0f;
-
-            title.update(x + w / 2.0f - title.w / 2.0f - renderButton->w / 2.0f - 1.0f, y);
-            renderButton->update(title.x + title.w + 2.0f, title.y);
-            inNode->update(x + 2.0f, y + h / 2.0f);
-            outNode->update(x + w - 2.0f - outNode->w, y + h / 2.0f);
-
-            outLine.hidden = true;
-            outLine.texture->fill({0xD3, 0xD3, 0xD3, 0xFF});
-
-            options = TreeType::build("OPTIONS");
-            options->update(x, y+h);
-
-            auto test = Slider::build(0.0f, 0.0f, w, 5.0f);
-            options->addLeaf(std::move(test));
-
-            h = h + options->h;
-
-            Rectangle::update();
-        }
+        Kernel(std::shared_ptr<opencl::Filter> &&f, std::shared_ptr<Texture> &&tptr);
 
         bool move = true;
         std::weak_ptr<events::EventManager> optionEvent;
 
     public:
-        std::shared_ptr<K> kernel;
+        std::shared_ptr<opencl::Filter> filter;
         std::function<void(void)> arm, fire;
 
         std::shared_ptr<events::EventManager> eventManager;
 
         bool link = false;
 
-        static std::shared_ptr<Kernel<K>> build(std::shared_ptr<K> &&k, std::shared_ptr<Texture> &&tptr)
+        static std::shared_ptr<Kernel> build(std::shared_ptr<opencl::Filter> &&f, std::shared_ptr<Texture> &&tptr)
         {
-            auto sptr = std::shared_ptr<Kernel<K>>(new Kernel<K>(std::forward<std::shared_ptr<K>>(k), std::forward<std::shared_ptr<Texture>>(tptr)));
+            auto sptr = std::shared_ptr<Kernel>(new Kernel(std::forward<std::shared_ptr<opencl::Filter>>(f), std::forward<std::shared_ptr<Texture>>(tptr)));
             sptr->eventManager->addCallback(
                 SDL_MOUSEBUTTONDOWN,
                 [wptr = sptr->weak_from_this()](const SDL_Event &e)
                 {
                     auto ptr = wptr.lock();
-                    if (ptr->kernel->in == "IN" && events::containsMouse(std::as_const(*ptr->inNode), e))
+                    if (events::containsMouse(std::as_const(*ptr->inNode), e))
                     {
                         if (e.button.clicks == 2)
                         {
@@ -220,43 +175,22 @@ namespace gui
                         auto dy = ptr->y;
                         auto dx = ptr->x;
 
-                        ptr->x = static_cast<float>(e.motion.x) - ptr->w / 2.0f;
-                        ptr->y = static_cast<float>(e.motion.y) - ptr->h / 2.0f;
-                        ptr->Rectangle::update();
+                        ptr->Rectangle::update(static_cast<float>(e.motion.x) - ptr->w / 2.0f, static_cast<float>(e.motion.y) - ptr->h / 2.0f);
 
                         dy = ptr->y - dy;
                         dx = ptr->x - dx;
 
-                        ptr->inNode->y += dy;
-                        ptr->inNode->x += dx;
-                        ptr->inNode->update();
-
-                        ptr->outNode->y += dy;
-                        ptr->outNode->x += dx;
-                        ptr->outNode->update();
-
-                        ptr->title.y += dy;
-                        ptr->title.x += dx;
-                        ptr->title.update();
-
-                        ptr->renderButton->y += dy;
-                        ptr->renderButton->x += dx;
-                        ptr->renderButton->update();
-
+                        ptr->inNode->update(ptr->inNode->x + dx, ptr->inNode->y + dy);
+                        ptr->outNode->update(ptr->outNode->x + dx, ptr->outNode->y + dy);
+                        ptr->title.update(ptr->title.x + dx, ptr->title.y + dy);
+                        ptr->renderButton->update(ptr->renderButton->x + dx, ptr->renderButton->y + dy);
                         ptr->options->update(dx, dy);
 
                         if (ptr->outLink)
-                        {
-                            float oy = ptr->outLink->inNode->y + ptr->outLink->inNode->h / 2.0f;
-                            float ox = ptr->outLink->inNode->x;
-
-                            ptr->updateLine(ox, oy);
-                        }
+                            ptr->updateLine(ptr->outLink->inNode->x, ptr->outLink->inNode->y + ptr->outLink->inNode->h / 2.0f);
 
                         if (ptr->inLink)
-                        {
                             ptr->inLink->updateLine(ptr->inNode->x + ptr->inNode->w, ptr->inNode->y + ptr->inNode->h / 2.0f);
-                        }
                     }
                 });
             return sptr;
@@ -264,55 +198,21 @@ namespace gui
 
         ~Kernel() = default;
 
-        void execute()
-        {
-            if (inLink)
-            {
-                arm();
-            }
+        void execute();
+        void update(float dy);
 
-            kernel->execute();
-
-            if (outLink)
-            {
-                fire();
-            }
-        }
-
-        void update(float dy)
-        {
-            y += dy;
-            Rectangle::update();
-            inNode->y += dy;
-            outNode->y += dy;
-            outLine.y += dy;
-            title.y += dy;
-            renderButton->y += dy;
-            options->y += dy;
-
-            inNode->update();
-            outNode->update();
-            outLine.update();
-            title.update();
-            renderButton->update();
-            options->update();
-        }
-
-        template <typename KT>
-        static bool endLink(const SDL_Event &e, std::weak_ptr<Kernel<K>> wptr, std::shared_ptr<Kernel<KT>> &k)
+        static bool endLink(const SDL_Event &e, std::weak_ptr<Kernel> wptr, std::shared_ptr<Kernel> &k)
         {
             auto ptr = wptr.lock();
-            if constexpr (std::same_as<std::decay_t<decltype(k)>, std::shared_ptr<Kernel<K>>>)
+
+            if (k.get() == ptr.get())
             {
-                if (k.get() == ptr.get())
-                {
-                    ptr->link = false;
-                    ptr->outLine.hidden = true;
-                    return false;
-                }
+                ptr->link = false;
+                ptr->outLine.hidden = true;
+                return false;
             }
 
-            if (ptr->kernel->out == k->kernel->in && events::containsMouse(*k, e))
+            if (events::containsMouse(*k, e))
             {
                 if (k->inLink)
                 {
@@ -322,13 +222,11 @@ namespace gui
 
                 ptr->updateLine(k->inNode->x, k->inNode->y + k->inNode->h / 2.0f);
 
-                // ptr->outLink = std::make_shared<varType>(k);
                 ptr->outLink = std::static_pointer_cast<KernelBase>(k);
-                // k->inLink = std::make_shared<varType>(ptr);
                 k->inLink = std::static_pointer_cast<KernelBase>(ptr);
 
-                ptr->fire = std::bind(Kernel<KT>::execute, k.get());
-                k->arm = std::bind(KT::template input<K>, k->kernel.get(), std::weak_ptr(ptr->kernel));
+                ptr->fire = std::bind(Kernel::execute, k.get());
+                k->arm = std::bind(k->filter->input, ptr->filter->volume);
 
                 ptr->outLine.hidden = false;
                 return true;
@@ -341,40 +239,65 @@ namespace gui
             return false;
         }
 
-        template <typename WK, typename WR, typename D>
-        static std::shared_ptr<Button<Rectangle>> buildButton(const std::string &str, WK &wk, WR &wr, D &d, std::shared_ptr<K> &t);
-
-        std::shared_ptr<Renderer<Rectangle, K>> buildRenderer(std::vector<gui::renType> &wr)
+        template <typename D>
+        static std::shared_ptr<Button<Rectangle>> buildButton(const std::string &str, std::shared_ptr<Kernel> &wk, std::vector<std::shared_ptr<Renderer<Rectangle>>> &wr, D &d, std::shared_ptr<opencl::Filter> &&f)
         {
-            return Renderer<Rectangle, K>::build(wr, {0.0f, 0.0f, 1.0f, 1.0f, std::make_shared<gui::Texture>(512, 512)}, std::shared_ptr(kernel));
+            auto button = Button<Rectangle>::build(str);
+
+            button->onPress(
+                [&wk, &wr, &dropzone = d, filter = std::move(f), wptr = std::weak_ptr<Texture>(button->texture)]() mutable
+                {
+                    std::shared_ptr<Kernel> ptr = Kernel::build(std::shared_ptr(filter), wptr.lock());
+                    dropzone->kernels.emplace_back(ptr);
+
+                    ptr->eventManager->addCallback(
+                        SDL_MOUSEBUTTONUP,
+                        [&dropzone, kwptr = ptr->weak_from_this()](const SDL_Event &e)
+                        {
+                            auto skptr = kwptr.lock();
+
+                            if (skptr->link)
+                            {
+                                for (auto &kernel : dropzone->kernels)
+                                {
+                                    if (endLink(e, skptr->weak_from_this(), kernel))
+                                        break;
+                                }
+                            }
+                            else if (events::containsMouse(*dropzone, e))
+                            {
+                                skptr->y = std::max(dropzone->y, skptr->y);
+                                skptr->y = std::min(dropzone->y + dropzone->h - skptr->h, skptr->y);
+                            }
+                            else
+                            {
+                                dropzone->erase(skptr);
+                            }
+                        });
+
+                    ptr->eventManager->addCallback(
+                        SDL_MOUSEBUTTONDOWN,
+                        [&wk, kwptr = ptr->weak_from_this()]([[maybe_unused]] const SDL_Event &e)
+                        {
+                            wk = kwptr.lock();
+                        });
+
+                    ptr->renderButton->onRelease(
+                        [kwptr = ptr->weak_from_this(), &wr](const SDL_Event &ev)
+                        {
+                            auto cptr = kwptr.lock();
+                            if (!events::containsMouse(*cptr->inNode, ev) && !events::containsMouse(*cptr->outNode, ev))
+                            {
+                                wr.emplace_back(cptr->buildRenderer(wr));
+                            }
+                        });
+                    wk = std::move(ptr);
+                });
+            return button;
         }
+
+        std::shared_ptr<Renderer<Rectangle>> buildRenderer(std::vector<std::shared_ptr<Renderer<Rectangle>>> &wr);
     };
-
-    extern template class Kernel<opencl::ToPolar>;
-    extern template class Kernel<opencl::ToCartesian>;
-    extern template class Kernel<opencl::Clamp>;
-    extern template class Kernel<opencl::Contrast>;
-    extern template class Kernel<opencl::Fade>;
-    extern template class Kernel<opencl::Invert>;
-    extern template class Kernel<opencl::Log2>;
-    extern template class Kernel<opencl::Shrink>;
-    extern template class Kernel<opencl::Slice>;
-    extern template class Kernel<opencl::Sqrt>;
-    extern template class Kernel<opencl::Threshold>;
-    extern template class Kernel<ultrasound::Mindray>;
-
-    extern KERNELBUTTON(ToPolar);
-    extern KERNELBUTTON(ToCartesian);
-    extern KERNELBUTTON(Slice);
-    extern KERNELBUTTON(Threshold);
-    extern KERNELBUTTON(Invert);
-    extern KERNELBUTTON(Clamp);
-    extern KERNELBUTTON(Contrast);
-    extern KERNELBUTTON(Log2);
-    extern KERNELBUTTON(Shrink);
-    extern KERNELBUTTON(Fade);
-    extern KERNELBUTTON(Sqrt);
-    extern KERNELBUTTON(Mindray);
 
 }
 #endif
