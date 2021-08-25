@@ -119,7 +119,7 @@ namespace gui
                     {
                         ptr->h = ptr->h - ptr->options->h;
                         ptr->options->eventManager->process(e);
-                        ptr->optionEvent = ptr->options->eventManager;
+                        ptr->optionEvent = ptr->options->subManager;
                         ptr->h = ptr->h + ptr->options->h;
                         ptr->Rectangle::update();
                     }

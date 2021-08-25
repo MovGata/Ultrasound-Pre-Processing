@@ -21,6 +21,8 @@ namespace gui
         ~Slider() = default;
 
         void draw();
+        void update();
+        void update(float x, float y);
 
         float value = 0.0f;
         std::shared_ptr<events::EventManager> eventManager;

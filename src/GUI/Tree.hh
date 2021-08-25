@@ -40,6 +40,7 @@ namespace gui
 
     public:
         std::shared_ptr<events::EventManager> eventManager;
+        std::weak_ptr<events::EventManager> subManager;
 
         static std::shared_ptr<Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>> build(const std::string &str);
         static std::shared_ptr<Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>> build(Trunk &&t);
@@ -66,7 +67,8 @@ namespace gui
 
     template <concepts::PositionableType Trunk, concepts::PositionableType... Branches, concepts::PositionableType... Leaves>
     requires concepts::ProcessorType<Trunk> && concepts::TranslatableType<Trunk> &&(concepts::ProcessorType<Branches> &&...) && (concepts::TranslatableType<Branches> && ...) && (concepts::ProcessorType<Leaves> && ...) && (concepts::TranslatableType<Leaves> && ...) //
-        Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::Tree(Trunk &&t) : trunk(std::forward<Trunk>(t)), eventManager(std::make_shared<events::EventManager>())
+        Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::Tree(Trunk &&t) : trunk(std::forward<Trunk>(t)),
+    eventManager(std::make_shared<events::EventManager>())
     {
         trunk.setTexture(0, std::shared_ptr<Texture>(t.texture));
         trunk.setTexture(1, std::shared_ptr<Texture>(t.texture));
@@ -78,7 +80,8 @@ namespace gui
 
     template <concepts::PositionableType Trunk, concepts::PositionableType... Branches, concepts::PositionableType... Leaves>
     requires concepts::ProcessorType<Trunk> && concepts::TranslatableType<Trunk> &&(concepts::ProcessorType<Branches> &&...) && (concepts::TranslatableType<Branches> && ...) && (concepts::ProcessorType<Leaves> && ...) && (concepts::TranslatableType<Leaves> && ...) //
-        Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::Tree(Trunk &&t, std::shared_ptr<Texture> &&alt) : trunk(std::forward<Trunk>(t)), eventManager(std::make_shared<events::EventManager>())
+        Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::Tree(Trunk &&t, std::shared_ptr<Texture> &&alt) : trunk(std::forward<Trunk>(t)),
+    eventManager(std::make_shared<events::EventManager>())
     {
         trunk.setTexture(0, std::shared_ptr<Texture>(t.texture));
         trunk.setTexture(1, std::forward<std::shared_ptr<Texture>>(alt));
@@ -126,7 +129,7 @@ namespace gui
                     std::visit(
                         [offsetY = yd - ptr->y, offsetX = xd - ptr->x](auto &&b)
                         {
-                            b->update(offsetX, offsetY);
+                            b->update(b->x + offsetX, b->y + offsetY);
                         },
                         branch);
                 }
@@ -136,20 +139,13 @@ namespace gui
                     std::visit(
                         [offsetY = yd - ptr->y, offsetX = xd - ptr->x](auto &&l)
                         {
-                            l->x += offsetX;
-                            l->y += offsetY;
-                            l->update();
+                            l->update(l->x + offsetX, l->y + offsetY);
                         },
                         leaf);
                 }
 
-                ptr->x = xd;
-                ptr->y = yd;
-                ptr->update();
-
-                ptr->trunk.x = xd;
-                ptr->trunk.y = yd;
-                ptr->trunk.update();
+                ptr->update(xd, yd);
+                ptr->trunk.update(xd, yd);
             });
         rptr->eventManager->addCallback(
             SDL_MOUSEBUTTONDOWN, [wptr = rptr->weak_from_this()](const SDL_Event &e)
@@ -170,18 +166,20 @@ namespace gui
                         if (!branchHit && !leafHit)
                         {
                             std::visit(
-                                [e, &offset, &branchHit, &leafHit](auto &&b)
+                                [e, &offset, &branchHit, &leafHit, &ptr](auto &&b)
                                 {
                                     if (events::containsMouse(std::as_const(b->trunk), e))
                                     {
                                         offset = -b->h; // Subtract size before closing/opening
                                         b->eventManager->process(e);
+                                        ptr->subManager = b->eventManager;
                                         offset += b->h; // Add size after opening/closing
                                         branchHit = true;
                                     }
                                     else if (events::containsMouse(std::as_const(*b), e))
                                     {
                                         b->eventManager->process(e);
+                                        ptr->subManager = b->eventManager;
                                         leafHit = true;
                                     }
                                 },
@@ -207,8 +205,7 @@ namespace gui
                             std::visit(
                                 [offset](auto &&l)
                                 {
-                                    l->y += offset;
-                                    l->update();
+                                    l->update(l->x, l->y + offset);
                                 },
                                 leaf);
                         }
@@ -218,11 +215,12 @@ namespace gui
                         for (auto &&leaf : ptr->leaves)
                         {
                             if (std::visit(
-                                    [&e, &branchHit](auto &&l)
+                                    [&e, &branchHit, &ptr](auto &&l)
                                     {
                                         if (events::containsMouse(std::as_const(*l), e))
                                         {
                                             l->eventManager->process(e);
+                                            ptr->subManager = l->eventManager;
                                             return true;
                                         }
                                         else
@@ -237,6 +235,12 @@ namespace gui
                         }
                     }
                 }
+            });
+        rptr->eventManager->addCallback(
+            SDL_MOUSEBUTTONUP, [wptr = rptr->weak_from_this()]([[maybe_unused]] const SDL_Event &e)
+            {
+                auto ptr = wptr.lock();
+                ptr->subManager.reset();
             });
         return rptr;
     }
@@ -264,7 +268,7 @@ namespace gui
                     std::visit(
                         [offsetY = yd - ptr->y, offsetX = xd - ptr->x](auto &&b)
                         {
-                            b->update(offsetX, offsetY);
+                            b->update(b->x + offsetX, b->y + offsetY);
                         },
                         branch);
                 }
@@ -274,20 +278,13 @@ namespace gui
                     std::visit(
                         [offsetY = yd - ptr->y, offsetX = xd - ptr->x](auto &&l)
                         {
-                            l->x += offsetX;
-                            l->y += offsetY;
-                            l->update();
+                            l->update(l->x + offsetX, l->y + offsetY);
                         },
                         leaf);
                 }
 
-                ptr->x = xd;
-                ptr->y = yd;
-                ptr->update();
-
-                ptr->trunk.x = xd;
-                ptr->trunk.y = yd;
-                ptr->trunk.update();
+                ptr->update(xd, yd);
+                ptr->trunk.update(xd, yd);
             });
         rptr->eventManager->addCallback(
             SDL_MOUSEBUTTONDOWN, [wptr = rptr->weak_from_this()](const SDL_Event &e)
@@ -345,8 +342,7 @@ namespace gui
                             std::visit(
                                 [offset](auto &&l)
                                 {
-                                    l->y += offset;
-                                    l->update();
+                                    l->update(l->x, l->y + offset);
                                 },
                                 leaf);
                         }
@@ -390,11 +386,8 @@ namespace gui
     requires concepts::ProcessorType<Trunk> && concepts::TranslatableType<Trunk> &&(concepts::ProcessorType<Branches> &&...) && (concepts::TranslatableType<Branches> && ...) && (concepts::ProcessorType<Leaves> && ...) && (concepts::TranslatableType<Leaves> && ...) //
         void Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::update(float dy)
     {
-        y += dy;
-        update();
-
-        trunk.y += dy;
-        trunk.update();
+        Rectangle::update(x, y + dy);
+        trunk.update(trunk.x, trunk.y + dy);
 
         for (auto &&branch : branches)
         {
@@ -410,8 +403,7 @@ namespace gui
             std::visit(
                 [dy](auto &&l)
                 {
-                    l->y += dy;
-                    l->update();
+                    l->update(l->x, l->y + dy);
                 },
                 leaf);
         }
@@ -421,20 +413,16 @@ namespace gui
     requires concepts::ProcessorType<Trunk> && concepts::TranslatableType<Trunk> &&(concepts::ProcessorType<Branches> &&...) && (concepts::TranslatableType<Branches> && ...) && (concepts::ProcessorType<Leaves> && ...) && (concepts::TranslatableType<Leaves> && ...) //
         void Tree<Trunk, std::tuple<Branches...>, std::tuple<Leaves...>>::update(float dx, float dy)
     {
-        y += dy;
-        x += dx;
-        update();
+        Rectangle::update(x + dx, y + dy);
 
-        trunk.y += dy;
-        trunk.x += dx;
-        trunk.update();
+        trunk.update(trunk.x + dx, trunk.y += dy);
 
         for (auto &&branch : branches)
         {
             std::visit(
                 [dy, dx](auto &&b)
                 {
-                    b->update(dx, dy);
+                    b->update(b->x + dx, b->y + dy);
                 },
                 branch);
         }
@@ -443,9 +431,7 @@ namespace gui
             std::visit(
                 [dy, dx](auto &&l)
                 {
-                    l->y += dy;
-                    l->x += dx;
-                    l->update();
+                    l->update(l->x + dx, l->y + dy);
                 },
                 leaf);
         }
@@ -545,9 +531,7 @@ namespace gui
                               branches.back());
         }
 
-        u->trunk.x = u->x;
-        u->trunk.y = u->y;
-        u->trunk.update();
+        u->trunk.update(u->x, u->y);
 
         if (open)
         {
@@ -561,8 +545,7 @@ namespace gui
             std::visit(
                 [&u](auto &&l)
                 {
-                    l->y += u->h;
-                    l->update();
+                    l->update(l->x, l->y + u->h);
                 },
                 leaf);
         }
