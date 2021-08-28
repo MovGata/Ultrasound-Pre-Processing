@@ -1,0 +1,7 @@
+syntax: glob
+.vscode/*
+.d/*
+.o/*
+*.exe
+.hgtags
+*.orig
