@@ -18,11 +18,10 @@
 namespace gui
 {
 
-    template <concepts::HidableType Drawable>
-    class Dropzone : public Drawable, public std::enable_shared_from_this<Dropzone<Drawable>>
+    class Dropzone : public Rectangle, public std::enable_shared_from_this<Dropzone>
     {
     private:
-        Dropzone(Drawable &&d) : Drawable(std::forward<Drawable>(d)), eventManager(std::make_shared<events::EventManager>())
+        Dropzone(Rectangle &&d) : Rectangle(std::forward<Rectangle>(d))
         {
         }
 
@@ -30,14 +29,12 @@ namespace gui
         ~Dropzone() = default;
         std::vector<std::shared_ptr<Kernel>> kernels;
 
-        std::shared_ptr<events::EventManager> eventManager;
-
         void draw() const
         {
-            if (Drawable::hidden)
+            if (Rectangle::hidden)
                 return;
 
-            Drawable::draw();
+            Rectangle::upload();
 
             for (auto &&kernel : kernels)
             {
@@ -63,29 +60,37 @@ namespace gui
             }
         }
 
-        static std::shared_ptr<Dropzone<Drawable>> build(Drawable &&d)
+        static std::shared_ptr<Dropzone> build(float wWidth, float wHeight)
         {
-            auto rptr = std::shared_ptr<Dropzone<Drawable>>(new Dropzone<Drawable>(std::forward<Drawable>(d)));
+            auto rptr = std::shared_ptr<Dropzone>(new Dropzone({0.0f, wHeight / 2.0f, wWidth, wHeight / 2.0f}));
+            rptr->texture->fill({0x3C, 0x3C, 0x3C, 0xFF});
+
+            rptr->Rectangle::draw = std::bind(Dropzone::draw, rptr.get());
+            rptr->Rectangle::resize = std::bind(Rectangle::update, rptr.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+
             rptr->eventManager->addCallback(
                 events::GUI_REDRAW, [wptr = rptr->weak_from_this()](const SDL_Event &e)
                 {
                     auto ptr = wptr.lock();
 
-                    std::pair<float, float> *oldSize = static_cast<std::pair<float, float> *>(e.user.data1);
+                    // std::pair<float, float> *oldSize = static_cast<std::pair<float, float> *>(e.user.data1);
                     std::pair<float, float> *newSize = static_cast<std::pair<float, float> *>(e.user.data2);
 
                     // auto xd = ptr->x;
-                    auto yd = ptr->y;
-                    ptr->w = ptr->w * newSize->first / oldSize->first;
-                    ptr->x = ptr->x * newSize->first / oldSize->first;
-                    ptr->y = newSize->second / oldSize->second * (ptr->y + ptr->h) - ptr->h;
-                    yd = ptr->y - yd;
-                    ptr->update();
+                    // auto yOld = ptr->y;
+                    // auto yNew = newSize->second / oldSize->second * (ptr->y + ptr->h) - ptr->h;
                     
-                    for (auto &&kernel : ptr->kernels)
-                    {
-                        kernel->update(yd);
-                    }
+                    ptr->resize(
+                        0.0f,
+                        newSize->second - ptr->h - ptr->y,
+                        newSize->first - ptr->x,
+                        0.0f
+                    );
+                    
+                    // for (auto &&kernel : ptr->kernels)
+                    // {
+                    //     kernel->resize(0.0f, yOld, 0.0f, 0.0f);
+                    // }
                 });
             rptr->eventManager->addCallback(
                 SDL_MOUSEBUTTONDOWN, [wptr = rptr->weak_from_this()](const SDL_Event &e)

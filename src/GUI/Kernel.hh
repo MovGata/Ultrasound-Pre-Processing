@@ -38,8 +38,6 @@ namespace
 {
     using namespace opencl;
     using namespace ultrasound;
-
-    using TreeType = gui::Tree<gui::Button<gui::Rectangle>, std::tuple<gui::Button<gui::Rectangle>>, std::tuple<gui::Slider>>;
 }
 
 namespace gui
@@ -48,9 +46,9 @@ namespace gui
     class KernelBase : public Rectangle
     {
     public:
-        std::shared_ptr<Button<Rectangle>> inNode;
-        std::shared_ptr<Button<Rectangle>> outNode;
-        std::shared_ptr<Button<Rectangle>> renderButton;
+        std::shared_ptr<Button> inNode;
+        std::shared_ptr<Button> outNode;
+        std::shared_ptr<Button> renderButton;
 
         gui::Rectangle outLine;
         gui::Rectangle title;
@@ -58,7 +56,7 @@ namespace gui
         std::shared_ptr<KernelBase> inLink;
         std::shared_ptr<KernelBase> outLink;
 
-        std::shared_ptr<TreeType> options;
+        std::shared_ptr<Tree> options;
 
         void updateLine(float ox, float oy);
         void draw();
@@ -68,7 +66,6 @@ namespace gui
         ~KernelBase() = default;
     };
 
-    template <concepts::HidableType Drawable>
     class Dropzone;
 
     class Kernel : public KernelBase, public std::enable_shared_from_this<Kernel>
@@ -83,13 +80,14 @@ namespace gui
         std::shared_ptr<opencl::Filter> filter;
         std::function<void(void)> arm, fire;
 
-        std::shared_ptr<events::EventManager> eventManager;
-
         bool link = false;
 
         static std::shared_ptr<Kernel> build(std::shared_ptr<opencl::Filter> &&f, std::shared_ptr<Texture> &&tptr)
         {
             auto sptr = std::shared_ptr<Kernel>(new Kernel(std::forward<std::shared_ptr<opencl::Filter>>(f), std::forward<std::shared_ptr<Texture>>(tptr)));
+            sptr->Rectangle::draw = std::bind(Kernel::draw, sptr.get());
+            sptr->Rectangle::resize = std::bind(update, sptr.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+
             sptr->eventManager->addCallback(
                 SDL_MOUSEBUTTONDOWN,
                 [wptr = sptr->weak_from_this()](const SDL_Event &e)
@@ -172,25 +170,7 @@ namespace gui
                     }
                     else if (ptr->move)
                     {
-                        auto dy = ptr->y;
-                        auto dx = ptr->x;
-
-                        ptr->Rectangle::update(static_cast<float>(e.motion.x) - ptr->w / 2.0f, static_cast<float>(e.motion.y) - ptr->h / 2.0f);
-
-                        dy = ptr->y - dy;
-                        dx = ptr->x - dx;
-
-                        ptr->inNode->update(ptr->inNode->x + dx, ptr->inNode->y + dy);
-                        ptr->outNode->update(ptr->outNode->x + dx, ptr->outNode->y + dy);
-                        ptr->title.update(ptr->title.x + dx, ptr->title.y + dy);
-                        ptr->renderButton->update(ptr->renderButton->x + dx, ptr->renderButton->y + dy);
-                        ptr->options->update(dx, dy);
-
-                        if (ptr->outLink)
-                            ptr->updateLine(ptr->outLink->inNode->x, ptr->outLink->inNode->y + ptr->outLink->inNode->h / 2.0f);
-
-                        if (ptr->inLink)
-                            ptr->inLink->updateLine(ptr->inNode->x + ptr->inNode->w, ptr->inNode->y + ptr->inNode->h / 2.0f);
+                        ptr->resize(static_cast<float>(e.motion.xrel), static_cast<float>(e.motion.yrel), 0.0f, 0.0f);
                     }
                 });
             return sptr;
@@ -199,7 +179,7 @@ namespace gui
         ~Kernel() = default;
 
         void execute();
-        void update(float dy);
+        void update(float, float, float, float);
 
         static bool endLink(const SDL_Event &e, std::weak_ptr<Kernel> wptr, std::shared_ptr<Kernel> &k)
         {
@@ -240,9 +220,9 @@ namespace gui
         }
 
         template <typename D>
-        static std::shared_ptr<Button<Rectangle>> buildButton(const std::string &str, std::shared_ptr<Kernel> &wk, std::vector<std::shared_ptr<Renderer<Rectangle>>> &wr, D &d, std::shared_ptr<opencl::Filter> &&f)
+        static std::shared_ptr<Button> buildButton(const std::string &str, std::shared_ptr<Kernel> &wk, std::vector<std::shared_ptr<Renderer>> &wr, D &d, std::shared_ptr<opencl::Filter> &&f)
         {
-            auto button = Button<Rectangle>::build(str);
+            auto button = Button::build(str);
 
             button->onPress(
                 [&wk, &wr, &dropzone = d, filter = std::move(f), wptr = std::weak_ptr<Texture>(button->texture)]() mutable
@@ -296,7 +276,7 @@ namespace gui
             return button;
         }
 
-        std::shared_ptr<Renderer<Rectangle>> buildRenderer(std::vector<std::shared_ptr<Renderer<Rectangle>>> &wr);
+        std::shared_ptr<Renderer> buildRenderer(std::vector<std::shared_ptr<Renderer>> &wr);
     };
 
 }

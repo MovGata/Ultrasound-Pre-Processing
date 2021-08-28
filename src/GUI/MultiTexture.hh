@@ -4,6 +4,7 @@
 #include <array>
 #include <memory>
 
+#include <GL/glew.h>
 #include <GL/gl.h>
 
 #include "../Events/Concepts.hh"

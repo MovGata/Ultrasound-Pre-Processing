@@ -1,21 +1,10 @@
 #include "EventManager.hh"
+#include "GUI.hh"
 
 class Volume;
 
-namespace gui
-{
-    class Rectangle;
-    class Window;
-} // namespace gui
-
 namespace events
 {
-    // template<typename F, typename... Args>
-    // requires std::invocable<F, const SDL_Event &, Args &...>
-    // void EventManager::addCallback(Uint32 e, F f, Args &... args)
-    // {
-        
-    // }
 
     void EventManager::clearCallback(Uint32 e)
     {

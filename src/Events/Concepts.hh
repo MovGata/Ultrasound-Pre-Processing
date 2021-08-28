@@ -5,12 +5,14 @@
 #include <memory>
 #include <type_traits>
 
+#include <GL/glew.h>
 #include <GL/gl.h>
 #include <glm/glm.hpp>
 #include <SDL_events.h>
 
 #include "EventManager.hh"
 #include "../GUI/Texture.hh"
+#include "../GUI/Rectangle.hh"
 
 namespace concepts
 {
@@ -28,33 +30,7 @@ namespace concepts
     };
 
     template <typename T>
-    concept DrawableType = requires(T &t)
-    {
-        {decay(t.vertices[0])} -> std::same_as<float>;
-        {decay(t.texcoords[0])} -> std::same_as<float>;
-        {decay(t.modelview)} -> std::same_as<glm::mat4>;
-        {decay(t.modelview)} -> std::same_as<glm::mat4>;
-        {decay(t.vBuffer)} -> std::same_as<GLuint>;
-        {decay(t.tBuffer)} -> std::same_as<GLuint>;
-        {decay(t.vArray)} -> std::same_as<GLuint>;
-        {decay(t.texture)} -> std::same_as<std::shared_ptr<gui::Texture>>;
-        t.draw();
-    };
-
-    template <typename T>
-    concept PositionableType = DrawableType<T> && requires(T t)
-    {
-        {decay(t.x)} -> std::same_as<float>;
-        {decay(t.y)} -> std::same_as<float>;
-        {decay(t.w)} -> std::same_as<float>;
-        {decay(t.h)} -> std::same_as<float>;
-    };
-
-    // template <typename T>
-    // concept TransformableType = DrawableType<T> && requires(T t)
-    // {
-    //     {decay(t.transformations)} -> std::same_as<glm::mat4>;
-    // };
+    concept DrawableType = std::derived_from<T, gui::Rectangle>;
 
     template <typename T>
     concept HidableType = DrawableType<T> && requires(T t)

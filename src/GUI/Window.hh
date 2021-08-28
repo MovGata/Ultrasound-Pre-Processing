@@ -26,7 +26,6 @@
 
 namespace gui
 {
-    template <concepts::DrawableType... Drawables>
     class Window
     {
     private:
@@ -66,8 +65,8 @@ namespace gui
         std::pair<float, float> size;
 
     public:
-        std::vector<std::variant<std::shared_ptr<Drawables>...>> drawables;
-        std::vector<std::shared_ptr<gui::Renderer<gui::Rectangle>>> renderers;
+        std::vector<std::shared_ptr<gui::Rectangle>> drawables;
+        std::vector<std::shared_ptr<gui::Renderer>> renderers;
         std::shared_ptr<gui::Kernel> kernel;
 
         Window(unsigned int width = 640, unsigned int height = 480, Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE) : Window(SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, flags) {}
@@ -122,9 +121,10 @@ namespace gui
             float xOff = size.first > size.second ? (size.first - size.second) / 2.0f : 0.0f;
             float yOff = size.second > size.first ? (size.second - size.first) / 2.0f : 0.0f;
 
+            // This loop could be removed.
             for (auto &&renderer : renderers)
             {
-                renderer->update(static_cast<float>(rx) * rw + xOff, static_cast<float>(ry) * rw + yOff, rw, rw);
+                renderer->resize(static_cast<float>(rx) * rw + xOff - renderer->x, static_cast<float>(ry) * rw + yOff - renderer->y, rw - renderer->w, rw - renderer->h);
                 renderer->draw();
                 rx = (rx + 1) % rs;
                 ry = rx ? ry : ry + 1;
@@ -132,10 +132,7 @@ namespace gui
 
             for (auto &&drawable : drawables)
             {
-                std::visit(
-                    [](auto &&d)
-                    { d->draw(); },
-                    drawable);
+                drawable->draw();
             }
 
             if (kernel)
@@ -174,15 +171,7 @@ namespace gui
 
             for (auto &&drawable : drawables)
             {
-                std::visit(
-                    [ev](auto &&d)
-                    {
-                        if constexpr (concepts::ProcessorType<decltype(*d)>)
-                        {
-                            d->eventManager->process(ev);
-                        }
-                    },
-                    drawable);
+                drawable->eventManager->process(ev);
             }
 
             size.first = static_cast<float>(e.window.data1);
@@ -223,6 +212,7 @@ namespace gui
 
         void eraseDrawable(std::size_t i)
         {
+            drawables.erase(std::next(drawables.begin(), i));
         }
 
         void process(const SDL_Event &e)
@@ -231,32 +221,15 @@ namespace gui
             for (auto &&drawable : std::ranges::reverse_view(drawables)) // Reverse to interact with top drawn elements first.
             {
 
-                if (std::visit(
-                        [&e = std::as_const(e)](auto &&d)
-                        {
-                            if constexpr (concepts::ProcessorType<decltype(*d)>)
-                            {
-                                if constexpr (concepts::HidableType<decltype(*d)>)
-                                {
-                                    if (d->hidden)
-                                    {
-                                        return false;
-                                    }
-                                }
+                if (drawable->hidden)
+                    continue;
 
-                                if (events::containsMouse(std::as_const(*d), e))
-                                {
-                                    if (d->eventManager->process(e))
-                                    {
-                                        return true;
-                                    }
-                                }
-                            }
-                            return false;
-                        },
-                        drawable) == true)
+                if (events::containsMouse(std::as_const(*drawable), e))
                 {
-                    return;
+                    if (drawable->eventManager->process(e))
+                    {
+                        return;
+                    }
                 }
             }
             for (auto &&renderer : renderers) // Reverse to interact with top drawn elements first.
@@ -271,10 +244,9 @@ namespace gui
             }
         }
 
-        template <concepts::DrawableType Drawable>
-        void addDrawable(std::shared_ptr<Drawable> &&d)
+        void addDrawable(std::shared_ptr<gui::Rectangle> &&d)
         {
-            drawables.push_back(std::forward<std::shared_ptr<Drawable>>(d));
+            drawables.push_back(std::forward<std::shared_ptr<gui::Rectangle>>(d));
         }
     };
 

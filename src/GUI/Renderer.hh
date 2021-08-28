@@ -29,19 +29,15 @@
 
 namespace gui
 {
-    template <concepts::DrawableType Drawable>
-    requires concepts::PositionableType<Drawable>
-    class Renderer : public Drawable, public std::enable_shared_from_this<Renderer<Drawable>>
+    class Renderer : public Rectangle, public std::enable_shared_from_this<Renderer>
     {
     private:
-        std::shared_ptr<Button<Rectangle>> closeButton;
+        std::shared_ptr<Button> closeButton;
 
-        Renderer(Drawable &&d, std::shared_ptr<data::Volume> &&ptr) : Drawable(std::forward<Drawable>(d)), tf(std::forward<std::shared_ptr<data::Volume>>(ptr)), eventManager(std::make_shared<events::EventManager>())
+        Renderer(Rectangle &&d, std::shared_ptr<data::Volume> &&ptr) : Rectangle(std::forward<Rectangle>(d)), tf(std::forward<std::shared_ptr<data::Volume>>(ptr))
         {
-            closeButton = Button<Rectangle>::build("x");
-            closeButton->x = Drawable::x + Drawable::w - closeButton->w;
-            closeButton->y = Drawable::y;
-
+            closeButton = Button::build("x");
+            closeButton->resize(x + w - closeButton->w - closeButton->x, y - closeButton->y, 0.0f, 0.0f);
             lastview = glm::mat4(1.0f);
         }
 
@@ -57,11 +53,13 @@ namespace gui
 
         std::array<float, 12> inv = {0};
 
-        std::shared_ptr<events::EventManager> eventManager;
-
-        static std::shared_ptr<Renderer<Drawable>> build(std::vector<std::shared_ptr<Renderer<Rectangle>>> &wr, Drawable &&d, std::shared_ptr<data::Volume> &&ptr)
+        static std::shared_ptr<Renderer> build(std::vector<std::shared_ptr<Renderer>> &wr, Rectangle &&d, std::shared_ptr<data::Volume> &&ptr)
         {
-            auto rptr = std::shared_ptr<Renderer<Drawable>>(new Renderer<Drawable>(std::forward<Drawable>(d), std::forward<std::shared_ptr<data::Volume>>(ptr)));
+            auto rptr = std::shared_ptr<Renderer>(new Renderer(std::forward<Rectangle>(d), std::forward<std::shared_ptr<data::Volume>>(ptr)));
+            rptr->Rectangle::draw = std::bind(Renderer::draw, rptr.get());
+            rptr->Rectangle::resize = std::bind(update, rptr.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+
+
             rptr->modified = true;
 
             rptr->closeButton->onPress(
@@ -85,19 +83,13 @@ namespace gui
 
                     std::pair<float, float> *newSize = static_cast<std::pair<float, float> *>(e.user.data2);
 
-                    sptr->x = (newSize->first - std::max(newSize->first, newSize->second)) / 2.0f;
-                    sptr->y = (newSize->second - std::max(newSize->first, newSize->second)) / 2.0f;
-                    sptr->w = newSize->first;
-                    sptr->h = newSize->second;
-
-                    sptr->h = sptr->w = std::max(sptr->w, sptr->h);
-
                     // Keep the render shaped properly by cutting off the smaller edge.
-                    sptr->Drawable::update();
-
-                    sptr->closeButton->x = sptr->x + sptr->w - sptr->closeButton->w;
-                    sptr->closeButton->y = sptr->y;
-                    sptr->closeButton->update();
+                    sptr->resize(
+                        (newSize->first - std::max(newSize->first, newSize->second)) / 2.0f - sptr->x,
+                        (newSize->second - std::max(newSize->first, newSize->second)) / 2.0f - sptr->y,
+                        std::max(newSize->first, newSize->second) - sptr->w,
+                        std::max(newSize->first, newSize->second) - sptr->h
+                    );
                 });
             rptr->eventManager->addCallback(
                 SDL_MOUSEBUTTONDOWN,
@@ -190,24 +182,15 @@ namespace gui
             inv[11] = modelView[14];
         }
 
-        void update(float xx, float yy)
+        void update(float xx = 0.0f, float yy = 0.0f, float ww = 0.0f, float hh = 0.0f)
         {
-            Drawable::x = xx;
-            Drawable::y = yy;
-            Rectangle::update();
-            closeButton->update(Drawable::x + Drawable::w - closeButton->w, Drawable::y);
-        }
-
-        void update(float xx, float yy, float ww, float hh)
-        {
-            Drawable::w = ww;
-            Drawable::h = hh;
-            update(xx, yy);
+            Rectangle::update(xx, yy, ww, hh);
+            closeButton->resize(x + w - closeButton->w - closeButton->x, y - closeButton->y, 0.0f, 0.0f);
         }
 
         void draw()
         {
-            Drawable::draw();
+            Rectangle::upload();
             closeButton->draw();
         }
     };

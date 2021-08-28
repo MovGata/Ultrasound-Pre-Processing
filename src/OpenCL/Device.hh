@@ -46,7 +46,7 @@ namespace opencl
         Device(unsigned int width = 512, unsigned int height = 512);
         ~Device();
 
-        void render(gui::Renderer<gui::Rectangle> &renderer)
+        void render(gui::Renderer &renderer)
         {
             cl::NDRange global(width, height);
             

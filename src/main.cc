@@ -39,16 +39,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 
     std::ios::sync_with_stdio(false);
 
-    using RButton = gui::Button<gui::Rectangle>;
-    using Dropzone = gui::Dropzone<gui::Rectangle>;
-    using Renderer = gui::Renderer<gui::Rectangle>;
-    using Tree = gui::Tree<RButton, std::tuple<RButton>, std::tuple<RButton>>;
+    using gui::Window;
 
-    using Instance = gui::Instance;
-    using Window = gui::Window<RButton, Dropzone, Renderer, Tree>;
-
-    Instance init;
-    Window mainWindow(1024, 768);
+    gui::Instance init;
+    gui::Window mainWindow(1024, 768);
     init.initGL();
 
     mainWindow.redraw();
@@ -72,11 +66,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     std::shared_ptr<gui::Texture> t;
 
     // DROP ZONE
-
-    gui::Rectangle dropRec(0.0f, wHeight / 2.0f, wWidth, wHeight / 2.0f);
-    dropRec.texture->fill({0x3C, 0x3C, 0x3C, 0xFF});
-    dropRec.update();
-    auto dropzone = Dropzone::build(std::move(dropRec));
+    auto dropzone = gui::Dropzone::build(wWidth, wHeight);
     mainWindow.addDrawable(std::shared_ptr(dropzone));
 
     // KERNELS
@@ -87,25 +77,20 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     t->addText(font, "> KERNELS");
 
     auto alt = std::make_shared<gui::Texture>(*t);
-
-    auto rec = RButton::build({wWidth - 2.0f * (static_cast<float>(w) + 2.0f), 0.0f, static_cast<float>(w) + 2.0f, static_cast<float>(h) + 2.0f, std::move(t)});
-    rec->update();
+    auto rec = std::make_shared<gui::Rectangle>(wWidth - 2.0f * (static_cast<float>(w) + 2.0f), 0.0f, static_cast<float>(w) + 2.0f, static_cast<float>(h) + 2.0f, std::move(t));
 
     int oneWidth;
     TTF_SizeText(font, ">", &oneWidth, nullptr);
 
     alt->rotate(1, 1, oneWidth, oneWidth);
 
-    auto tree = Tree::build(RButton({*rec}), std::move(alt));
-    tree->x = wWidth - 2.0f * (static_cast<float>(w) + 2.0f);
-    tree->w *= 2.0f;
-    tree->y = 0.0f;
+    auto tree = gui::Tree::build(std::move(rec), std::move(alt));
+    tree->Rectangle::update(wWidth - 2.0f * (static_cast<float>(w) + 2.0f), 0.0f, tree->w, 0.0f);
     tree->texture->fill({0x2C, 0x2C, 0x2C, 0xFF});
-    tree->update();
 
-    auto inputTree = Tree::build("INPUTS");
-    auto outputTree = Tree::build("OUTPUTS");
-    auto dataTree = Tree::build("DATA");
+    auto inputTree = gui::Tree::build("INPUTS");
+    auto outputTree = gui::Tree::build("OUTPUTS");
+    auto dataTree = gui::Tree::build("DATA");
 
     tree->addBranch(std::shared_ptr(inputTree), 4.0f);
     tree->addBranch(std::shared_ptr(outputTree), 4.0f);
@@ -123,18 +108,18 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     auto sqrt = std::make_shared<opencl::Sqrt>(device.context, device.cQueue, device.programs.at("utility")->at("square"));
     auto clamp = std::make_shared<opencl::Clamp>(device.context, device.cQueue, device.programs.at("utility")->at("clamping"));
 
-    auto mindray = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("MINDRAY", mainWindow.kernel, mainWindow.renderers, dropzone, reader);
-    auto toPolar = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("To Polar", mainWindow.kernel, mainWindow.renderers, dropzone, polar);
-    auto toCartesian = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("To Cartesian", mainWindow.kernel, mainWindow.renderers, dropzone, cartesian);
-    auto sliceK = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("Slice", mainWindow.kernel, mainWindow.renderers, dropzone, slice);
-    auto threshK = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("Threshold", mainWindow.kernel, mainWindow.renderers, dropzone, threshold);
-    auto invK = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("Invert", mainWindow.kernel, mainWindow.renderers, dropzone, invert);
-    auto clampK = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("Clamp", mainWindow.kernel, mainWindow.renderers, dropzone, clamp);
-    auto conK = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("Contrast", mainWindow.kernel, mainWindow.renderers, dropzone, contrast);
-    auto logK = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("Log2", mainWindow.kernel, mainWindow.renderers, dropzone, log);
-    auto shrinkK = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("Shrink", mainWindow.kernel, mainWindow.renderers, dropzone, shrink);
-    auto fadeK = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("Fade", mainWindow.kernel, mainWindow.renderers, dropzone, fade);
-    auto sqrtK = gui::Kernel::buildButton<std::shared_ptr<Dropzone>>("Sqrt", mainWindow.kernel, mainWindow.renderers, dropzone, sqrt);
+    auto mindray = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("MINDRAY", mainWindow.kernel, mainWindow.renderers, dropzone, reader);
+    auto toPolar = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("To Polar", mainWindow.kernel, mainWindow.renderers, dropzone, polar);
+    auto toCartesian = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("To Cartesian", mainWindow.kernel, mainWindow.renderers, dropzone, cartesian);
+    auto sliceK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Slice", mainWindow.kernel, mainWindow.renderers, dropzone, slice);
+    auto threshK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Threshold", mainWindow.kernel, mainWindow.renderers, dropzone, threshold);
+    auto invK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Invert", mainWindow.kernel, mainWindow.renderers, dropzone, invert);
+    auto clampK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Clamp", mainWindow.kernel, mainWindow.renderers, dropzone, clamp);
+    auto conK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Contrast", mainWindow.kernel, mainWindow.renderers, dropzone, contrast);
+    auto logK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Log2", mainWindow.kernel, mainWindow.renderers, dropzone, log);
+    auto shrinkK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Shrink", mainWindow.kernel, mainWindow.renderers, dropzone, shrink);
+    auto fadeK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Fade", mainWindow.kernel, mainWindow.renderers, dropzone, fade);
+    auto sqrtK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Sqrt", mainWindow.kernel, mainWindow.renderers, dropzone, sqrt);
 
     inputTree->addLeaf(std::move(mindray), 4.0f);
     dataTree->addLeaf(std::move(toPolar), 4.0f);
@@ -153,11 +138,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 
     // HIDE BUTTON
 
-    std::shared_ptr<RButton> hideButton;
     t = std::make_shared<gui::Texture>(40, 40);
     t->fill({0x4E, 0x4E, 0x4E, 0xFF});
-    hideButton = RButton::build({wWidth - 40.0f, wHeight - 20.0f, 40.0f, 20.0f, std::move(t)});
-    hideButton->update();
+    std::shared_ptr<gui::Button> hideButton = gui::Button::build({wWidth - 40.0f, wHeight - 20.0f, 40.0f, 20.0f, std::move(t)});
     hideButton->onPress(
         [wptr = dropzone->weak_from_this(), wptr2 = tree->weak_from_this()]()
         {
