@@ -68,9 +68,11 @@ namespace gui
         outLine.hidden = true;
         outLine.texture->fill({0xD3, 0xD3, 0xD3, 0xFF});
 
-        options = Tree::build("OPTIONS");
-        auto test = Slider::build(0.0f, 0.0f, w, 5.0f);
-        options->addLeaf(std::move(test));
+        // options = Tree::build("OPTIONS");
+        // auto test = Slider::build(0.0f, 0.0f, w, 5.0f);
+        // options->addLeaf(std::move(test));
+        options = filter->getOptions();
+
 
         options->resize(x - options->x,
                         y + h - options->y, 0.0f, 0.0f);

@@ -11,6 +11,7 @@
 #include "../Kernel.hh"
 #include "../Concepts.hh"
 #include "../../Data/Volume.hh"
+#include "../../GUI/Tree.hh"
 
 namespace opencl
 {
@@ -57,6 +58,8 @@ namespace opencl
         }
 
         void execute();
+
+        std::shared_ptr<gui::Tree> getOptions();
     };
 
 } // namespace opencl

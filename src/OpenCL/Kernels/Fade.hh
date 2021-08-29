@@ -10,6 +10,7 @@
 #include "../Kernel.hh"
 #include "../Concepts.hh"
 #include "../../Data/Volume.hh"
+#include "../../GUI/Tree.hh"
 
 namespace opencl
 {
@@ -34,6 +35,7 @@ namespace opencl
             Filter::volume = std::make_shared<data::Volume>();
             Filter::input = std::bind(input, this, std::placeholders::_1);
             Filter::execute = std::bind(execute, this);
+            Filter::getOptions = std::bind(getOptions, this);
         }
 
         ~Fade() = default;
@@ -72,6 +74,7 @@ namespace opencl
             kernel->global = cl::NDRange(volume->depth, volume->length, volume->width);
             kernel->execute(queue);
         }
+        std::shared_ptr<gui::Tree> getOptions();
     };
 
 } // namespace opencl

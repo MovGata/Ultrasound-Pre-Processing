@@ -11,6 +11,8 @@
 #include "../Kernel.hh"
 #include "../Concepts.hh"
 #include "../../Data/Volume.hh"
+#include "../../GUI/Tree.hh"
+#include "../../GUI/Slider.hh"
 
 namespace opencl
 {
@@ -25,6 +27,7 @@ namespace opencl
 
         cl::Buffer slices;
 
+        std::array<std::shared_ptr<gui::Slider>, 3> slcSliders;
         std::array<float, 3> slc = {0.5f, 0.5f, 0.5f};
 
     public:
@@ -39,6 +42,11 @@ namespace opencl
             Filter::volume = std::make_shared<data::Volume>();
             Filter::input = std::bind(input, this, std::placeholders::_1);
             Filter::execute = std::bind(execute, this);
+            Filter::getOptions = std::bind(getOptions, this);
+
+            slcSliders[0] = gui::Slider::build(0.0f, 0.0f, 0.0f, 10.0f);
+            slcSliders[1] = gui::Slider::build(0.0f, 0.0f, 0.0f, 10.0f);
+            slcSliders[2] = gui::Slider::build(0.0f, 0.0f, 0.0f, 10.0f);
         }
 
         ~Slice() = default;
@@ -62,6 +70,13 @@ namespace opencl
             volume->width = inwidth;
             volume->depth = indepth;
             volume->buffer = cl::Buffer(context, CL_MEM_READ_WRITE, volume->length * volume->depth * volume->width * sizeof(cl_uint));
+
+            slc[0] = slcSliders[0]->value;
+            slc[1] = slcSliders[1]->value;
+            slc[2] = slcSliders[2]->value;
+
+            std::cout << slc[0] << ' ' << slc[1] << ' ' << slc[2] << std::endl;
+
             slices = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 3 * sizeof(cl_float), slc.data());
         }
 
@@ -80,6 +95,7 @@ namespace opencl
             kernel->global = cl::NDRange(volume->depth, volume->length, volume->width);
             kernel->execute(queue);
         }
+        std::shared_ptr<gui::Tree> getOptions();
     };
 
 } // namespace opencl

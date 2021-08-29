@@ -20,6 +20,7 @@
 #include "../Data/Volume.hh"
 #include "../OpenCL/Concepts.hh"
 #include "../OpenCL/Filter.hh"
+#include "../GUI/Tree.hh"
 
 
 namespace ultrasound
@@ -47,6 +48,7 @@ namespace ultrasound
 
         void input(const std::weak_ptr<data::Volume> &wv);
         void execute();
+        std::shared_ptr<gui::Tree> getOptions();
 
         void sendToCl(const cl::Context &context);
 

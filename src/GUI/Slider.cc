@@ -31,7 +31,7 @@ namespace gui
                                                    pptr->fg.w = std::clamp(static_cast<float>(e.motion.x), pptr->fg.x, pptr->fg.x + pptr->bg.w - 1.0f) - pptr->fg.x;
                                                    pptr->fg.update();
 
-                                                   pptr->value = std::clamp((pptr->fg.w - pptr->fg.x) / (pptr->bg.w - 2.0f), 0.0f, 1.0f);
+                                                   pptr->value = std::clamp((pptr->bg.w - pptr->fg.w - 1.0f) / (pptr->bg.w - 2.0f), 0.0f, 1.0f);
                                                });
             });
 

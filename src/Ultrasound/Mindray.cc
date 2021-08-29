@@ -20,6 +20,7 @@ namespace ultrasound
         Filter::volume = std::make_shared<data::Volume>();
         Filter::input = std::bind(input, this, std::placeholders::_1);
         Filter::execute = std::bind(execute, this);
+        Filter::getOptions = std::bind(getOptions, this);
     }
 
     Mindray::~Mindray()
@@ -491,6 +492,12 @@ namespace ultrasound
 
     void Mindray::execute()
     {
+    }
+
+    std::shared_ptr<gui::Tree> Mindray::getOptions()
+    {
+        std::shared_ptr<gui::Tree> options = gui::Tree::build("OPTIONS");
+        return options;
     }
 
 } // namespace ultrasound

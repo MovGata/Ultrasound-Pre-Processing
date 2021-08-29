@@ -1,5 +1,7 @@
 #include "Clamp.hh"
 
+#include "../../GUI/Slider.hh"
+
 namespace opencl
 {
 
@@ -8,6 +10,7 @@ namespace opencl
         Filter::volume = std::make_shared<data::Volume>();
         Filter::input = std::bind(input, this, std::placeholders::_1);
         Filter::execute = std::bind(execute, this);
+        Filter::getOptions = std::bind(getOptions, this);
     }
 
     void Clamp::execute()
@@ -26,6 +29,13 @@ namespace opencl
 
         kernel->global = cl::NDRange(volume->depth, volume->length, volume->width);
         kernel->execute(queue);
+    }
+
+    std::shared_ptr<gui::Tree> Clamp::getOptions()
+    {
+        std::shared_ptr<gui::Tree> options = gui::Tree::build("OPTIONS");
+        options->addLeaf(gui::Slider::build(0.0f, 0.0f, options->w, 10.0f));
+        return options;
     }
 
 } // namespace opencl

@@ -10,6 +10,7 @@
 #include "../Kernel.hh"
 #include "../Concepts.hh"
 #include "../../Data/Volume.hh"
+#include "../../GUI/Tree.hh"
 
 
 namespace opencl
@@ -35,6 +36,7 @@ namespace opencl
             Filter::volume = std::make_shared<data::Volume>();
             Filter::input = std::bind(input, this, std::placeholders::_1);
             Filter::execute = std::bind(execute, this);
+            Filter::getOptions = std::bind(getOptions, this);
         }
         
         ~Contrast() = default;
@@ -76,6 +78,9 @@ namespace opencl
             volume->min = 0;
             volume->max = 0xFF;
         }
+
+        std::shared_ptr<gui::Tree> getOptions();
+        
     };
 
 } // namespace opencl

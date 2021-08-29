@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 
+#include "../GUI/Tree.hh"
 #include "../Data/Volume.hh"
 
 namespace opencl
@@ -18,6 +19,7 @@ namespace opencl
         std::shared_ptr<data::Volume> volume;
         std::function<void(const std::weak_ptr<data::Volume> &)> input;
         std::function<void(void)> execute;
+        std::function<std::shared_ptr<gui::Tree>(void)> getOptions;
     };
 
 } // namespace opencl
