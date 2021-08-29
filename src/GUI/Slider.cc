@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <iostream>
 
 #include "Slider.hh"
 
@@ -19,7 +20,6 @@ namespace gui
         rptr->Rectangle::draw = std::bind(Slider::draw, rptr.get());
         rptr->Rectangle::resize = std::bind(Slider::update, rptr.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
 
-
         rptr->eventManager->addCallback(
             SDL_MOUSEBUTTONDOWN, [wptr = rptr->weak_from_this()]([[maybe_unused]] const SDL_Event &)
             {
@@ -28,7 +28,7 @@ namespace gui
                                                [wptr](const SDL_Event &e)
                                                {
                                                    auto pptr = wptr.lock();
-                                                   pptr->fg.w = std::clamp(static_cast<float>(e.motion.x) - pptr->fg.x, 0.0f, pptr->bg.w - 1.0f);
+                                                   pptr->fg.w = std::clamp(static_cast<float>(e.motion.x), pptr->fg.x, pptr->fg.x + pptr->bg.w - 1.0f) - pptr->fg.x;
                                                    pptr->fg.update();
 
                                                    pptr->value = std::clamp((pptr->fg.w - pptr->fg.x) / (pptr->bg.w - 2.0f), 0.0f, 1.0f);
@@ -48,8 +48,8 @@ namespace gui
     void Slider::update(float xx, float yy, float ww, float hh)
     {
         Rectangle::update(xx, yy, ww, hh);
-        fg.update(xx, yy, ww, hh);
         bg.update(xx, yy, ww, hh);
+        fg.update(xx, yy, ww, hh);
     }
 
     void Slider::draw()

@@ -166,7 +166,7 @@ namespace gui
             branch->draw();
 
         for (auto &&leaf : leaves)
-            leaf->upload();
+            leaf->draw();
     }
 
     float Tree::toggle()
@@ -227,21 +227,20 @@ namespace gui
 
     void Tree::addLeaf(leaf_t &&u, float offset)
     {
-        u->x = x + offset;
-
+        float yOff = 0.0f;
         if (branches.empty() && leaves.empty())
         {
-            u->y = trunk.y + trunk.h;
+            yOff = trunk.y + trunk.h;
         }
         else if (leaves.empty())
         {
             auto back = branches.back();
-            u->y = back->trunk.y + back->trunk.h;
+            yOff = back->trunk.y + back->trunk.h;
         }
         else
         {
             auto back = leaves.back();
-            u->y = back->y + back->h;
+            yOff = back->y + back->h;
         }
 
         if (open)
@@ -249,7 +248,8 @@ namespace gui
             h += u->h;
             update();
         }
-        u->update();
+
+        u->resize(x + offset - u->x, yOff - u->y, 0.0f, 0.0f);
 
         leaves.emplace_back(std::forward<leaf_t>(u));
     }
