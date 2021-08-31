@@ -49,6 +49,14 @@ namespace data
     {
     }
 
+    void Volume::loadFromCl(const cl::CommandQueue &cQueue)
+    {
+        auto bSize = buffer.getInfo<CL_MEM_SIZE>();
+        raw.resize(bSize);
+        cQueue.enqueueReadBuffer(buffer, CL_TRUE, 0, bSize, raw.data()); // Rework into non-blocking
+        cQueue.finish();
+    }
+
     void Volume::sendToCl(const cl::Context &context)
     {
         buffer = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(raw[0]) * raw.size(), raw.data());
