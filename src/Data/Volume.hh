@@ -36,7 +36,7 @@ namespace data
         Volume(unsigned int depth, unsigned int length, int unsigned width, const std::vector<uint8_t> &data);
         ~Volume();
 
-        void loadFromCl(const cl::Context &context);
+        void loadFromCl(const cl::CommandQueue &cQueue);
         void sendToCl(const cl::Context &context);
         void update();
     };

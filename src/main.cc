@@ -28,6 +28,7 @@
 #include "OpenCL/Kernels/Threshold.hh"
 
 #include "IO/InfoStore.hh"
+#include "IO/Types/Binary.hh"
 #include "Ultrasound/Mindray.hh"
 
 #include "Data/Volume.hh"
@@ -107,8 +108,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     auto fade = std::make_shared<opencl::Fade>(device.context, device.cQueue, device.programs.at("utility")->at("fade"));
     auto sqrt = std::make_shared<opencl::Sqrt>(device.context, device.cQueue, device.programs.at("utility")->at("square"));
     auto clamp = std::make_shared<opencl::Clamp>(device.context, device.cQueue, device.programs.at("utility")->at("clamping"));
+    
+    auto binary = std::make_shared<io::Binary>(device.cQueue);
+
 
     auto mindray = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("MINDRAY", mainWindow.kernel, mainWindow.renderers, dropzone, reader);
+    
     auto toPolar = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("To Polar", mainWindow.kernel, mainWindow.renderers, dropzone, polar);
     auto toCartesian = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("To Cartesian", mainWindow.kernel, mainWindow.renderers, dropzone, cartesian);
     auto sliceK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Slice", mainWindow.kernel, mainWindow.renderers, dropzone, slice);
@@ -120,6 +125,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     auto shrinkK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Shrink", mainWindow.kernel, mainWindow.renderers, dropzone, shrink);
     auto fadeK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Fade", mainWindow.kernel, mainWindow.renderers, dropzone, fade);
     auto sqrtK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Sqrt", mainWindow.kernel, mainWindow.renderers, dropzone, sqrt);
+    
+    auto outputButton = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Binary", mainWindow.kernel, mainWindow.renderers, dropzone, binary);
 
     inputTree->addLeaf(std::move(mindray), 4.0f);
     dataTree->addLeaf(std::move(toPolar), 4.0f);
@@ -133,6 +140,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     dataTree->addLeaf(std::move(shrinkK), 4.0f);
     dataTree->addLeaf(std::move(fadeK), 4.0f);
     dataTree->addLeaf(std::move(sqrtK), 4.0f);
+    outputTree->addLeaf(std::move(outputButton), 4.0f);
 
     mainWindow.addDrawable(std::shared_ptr(tree));
 
