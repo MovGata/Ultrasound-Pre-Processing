@@ -62,6 +62,7 @@ namespace gui
                 glBindVertexArray(0);
             });
         update();
+        draw = std::bind(Rectangle::upload, this);
     }
 
     void Rectangle::upload() const

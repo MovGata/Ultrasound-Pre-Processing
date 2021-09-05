@@ -20,6 +20,7 @@
 
 #include "../GUI/Renderer.hh"
 #include "../GUI/Rectangle.hh"
+#include "../GUI/Tree.hh"
 
 namespace opencl
 {
@@ -43,8 +44,12 @@ namespace opencl
         cl::Context context;
         cl_device_type type = CL_DEVICE_TYPE_CPU;
 
+        bool selected = false;
+
         Device(unsigned int width = 512, unsigned int height = 512);
         ~Device();
+
+        void initialise();
 
         void render(gui::Renderer &renderer)
         {
@@ -103,6 +108,8 @@ namespace opencl
         }
 
         void createDisplay(unsigned int w, unsigned int h);
+
+        std::shared_ptr<gui::Tree> buildDeviceTree(float x = 0.0f, float y = 0.0f);
 
         void selectDevice();
     };

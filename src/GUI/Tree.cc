@@ -197,29 +197,34 @@ namespace gui
 
     void Tree::addBranch(branch_t &&u, float offset)
     {
-        u->x = x + offset;
+        float xOff = x + offset;
+        float yOff = 0.0f;
+        // u->x = x + offset;
         if (branches.empty())
         {
-            u->y = trunk.y + trunk.h;
+            yOff = trunk.y + trunk.h;
+            // u->y = trunk.y + trunk.h;
         }
         else
         {
             branch_t back = branches.back();
-            u->y = back->trunk.y + back->trunk.h;
+            yOff = back->trunk.y + back->trunk.h;
+            // u->y = back->trunk.y + back->trunk.h;
         }
 
-        u->trunk.update(u->x, u->y);
+        // u->trunk.update(u->x, u->y);
+        u->resize(xOff, yOff, 0.0f, 0.0f);
 
         if (open)
         {
-            h += u->h;
-            update();
+            // h += u->h;
+            update(0.0f, 0.0f, 0.0f, u->h);
         }
-        u->update();
+        // u->update();
 
         for (auto &&leaf : leaves)
         {
-            leaf->update(0.0f, u->h, 0.0f, 0.0f);
+            leaf->resize(0.0f, u->h, 0.0f, 0.0f);
         }
 
         branches.emplace_back(std::forward<branch_t>(u));

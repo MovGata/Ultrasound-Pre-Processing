@@ -48,19 +48,100 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 
     mainWindow.redraw();
 
+    TTF_Font *font = init.loadFont("./res/fonts/cour.ttf");
+    gui::Texture::lastFont = font;
+
+    auto size = mainWindow.getSize();
+    float wWidth = static_cast<float>(size.first);
+    float wHeight = static_cast<float>(size.second);
+
+    opencl::Device device;
+
+    {
+        int w, h;
+        TTF_SizeText(gui::Texture::lastFont, "Select a Device:", &w, &h);
+        std::shared_ptr<gui::Texture> dTexture = std::make_shared<gui::Texture>(w, h);
+        dTexture->addText("Select a Device:");
+
+        std::shared_ptr<gui::Rectangle> dTitle = std::make_shared<gui::Rectangle>(0.0f, 0.0f, dTexture->textureW, dTexture->textureH, std::move(dTexture));
+        dTitle->update();
+        mainWindow.addDrawable(std::move(dTitle));
+        mainWindow.addDrawable(device.buildDeviceTree(0.0f, static_cast<float>(h) + 10.0f));
+    }
+
+
+    auto timeA = SDL_GetTicks();
+    bool quit = false;
+
+    std::size_t eventCount = 1;
+    while (!quit && !device.selected)
+    {
+        SDL_Event e;
+        while (SDL_PollEvent(&e))
+        {
+            ++eventCount;
+            if (e.type == SDL_QUIT)
+            {
+                quit = true;
+                break;
+            }
+            else if (e.type == SDL_WINDOWEVENT)
+            {
+                if (e.window.event == SDL_WINDOWEVENT_CLOSE)
+                {
+                    quit = true;
+                    break;
+                }
+                else
+                {
+                    if (e.window.windowID == mainWindow.getID())
+                    {
+                        mainWindow.process(e);
+                    }
+                }
+            }
+            else
+            {
+                mainWindow.process(e);
+            }
+        }
+
+        if (eventCount) // If no events have occurred, no changes to drawing have occurred.
+        {
+            // Share GL buffers.
+            glFlush();
+            // Run OpenGL stuff
+            mainWindow.update();
+            mainWindow.clean();
+            mainWindow.draw();
+        }
+
+        eventCount = 0;
+
+        auto duration = long(timeA) + long(1000.0 / 30.0) - long(SDL_GetTicks());
+        if (duration - 2 > 0)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(duration - 2)); // Sleep with 2ms left over.
+        }
+        while (SDL_GetTicks() < timeA + 1000 / 30)
+            ; // Busy wait last 2 ms.
+        timeA = SDL_GetTicks();
+    }
+
+    if (quit)
+    {
+        return EXIT_SUCCESS;
+    }
+
+    device.initialise();
+
+    mainWindow.drawables.clear();
+
     std::shared_ptr<ultrasound::Mindray> reader = std::make_shared<ultrasound::Mindray>();
     if (!reader->load("tests/data/5"))
     {
         std::terminate();
     }
-
-    opencl::Device device;
-
-    TTF_Font *font = init.loadFont("./res/fonts/cour.ttf");
-
-    auto size = mainWindow.getSize();
-    float wWidth = static_cast<float>(size.first);
-    float wHeight = static_cast<float>(size.second);
 
     reader->load(device.context);
 
@@ -108,12 +189,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     auto fade = std::make_shared<opencl::Fade>(device.context, device.cQueue, device.programs.at("utility")->at("fade"));
     auto sqrt = std::make_shared<opencl::Sqrt>(device.context, device.cQueue, device.programs.at("utility")->at("square"));
     auto clamp = std::make_shared<opencl::Clamp>(device.context, device.cQueue, device.programs.at("utility")->at("clamping"));
-    
+
     auto binary = std::make_shared<io::Binary>(device.cQueue);
 
-
     auto mindray = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("MINDRAY", mainWindow.kernel, mainWindow.renderers, dropzone, reader);
-    
+
     auto toPolar = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("To Polar", mainWindow.kernel, mainWindow.renderers, dropzone, polar);
     auto toCartesian = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("To Cartesian", mainWindow.kernel, mainWindow.renderers, dropzone, cartesian);
     auto sliceK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Slice", mainWindow.kernel, mainWindow.renderers, dropzone, slice);
@@ -125,7 +205,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     auto shrinkK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Shrink", mainWindow.kernel, mainWindow.renderers, dropzone, shrink);
     auto fadeK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Fade", mainWindow.kernel, mainWindow.renderers, dropzone, fade);
     auto sqrtK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Sqrt", mainWindow.kernel, mainWindow.renderers, dropzone, sqrt);
-    
+
     auto outputButton = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Binary", mainWindow.kernel, mainWindow.renderers, dropzone, binary);
 
     inputTree->addLeaf(std::move(mindray), 4.0f);
@@ -160,10 +240,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 
     mainWindow.addDrawable(std::shared_ptr(hideButton));
 
-    auto timeA = SDL_GetTicks();
-    bool quit = false;
+    timeA = SDL_GetTicks();
+    eventCount = 1;
 
-    std::size_t eventCount = 1;
     while (!quit)
     {
 
