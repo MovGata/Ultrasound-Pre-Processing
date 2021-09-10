@@ -44,13 +44,11 @@ namespace ultrasound
 
         bool load(const char *dir);
 
-        void load(const cl::Context &context);
+        void load();
 
         void input(const std::weak_ptr<data::Volume> &wv);
         void execute();
         std::shared_ptr<gui::Tree> getOptions();
-
-        void sendToCl(const cl::Context &context);
 
     };
 

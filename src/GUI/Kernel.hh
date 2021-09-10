@@ -78,13 +78,14 @@ namespace gui
 
     public:
         std::shared_ptr<opencl::Filter> filter;
-        std::function<void(void)> arm, fire;
+        std::function<void(std::shared_ptr<data::Volume> &)> fire;
+        std::function<void(std::shared_ptr<data::Volume> &)> arm;
 
         bool link = false;
 
         static std::shared_ptr<Kernel> build(std::shared_ptr<opencl::Filter> &&f, std::shared_ptr<Texture> &&tptr)
         {
-            auto sptr = std::shared_ptr<Kernel>(new Kernel(std::forward<std::shared_ptr<opencl::Filter>>(f), std::forward<std::shared_ptr<Texture>>(tptr)));
+            auto sptr = std::shared_ptr<Kernel>(new Kernel(std::move(f), std::forward<std::shared_ptr<Texture>>(tptr)));
             sptr->Rectangle::draw = std::bind(Kernel::draw, sptr.get());
             sptr->Rectangle::resize = std::bind(update, sptr.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
 
@@ -97,7 +98,7 @@ namespace gui
                     {
                         if (e.button.clicks == 2)
                         {
-                            ptr->execute();
+                            ptr->execute(ptr->filter->volume);
                         }
                     }
                     else if (events::containsMouse(std::as_const(*ptr->outNode), e))
@@ -178,7 +179,7 @@ namespace gui
 
         ~Kernel() = default;
 
-        void execute();
+        void execute(std::shared_ptr<data::Volume> &sp);
         void update(float, float, float, float);
 
         static bool endLink(const SDL_Event &e, std::weak_ptr<Kernel> wptr, std::shared_ptr<Kernel> &k)
@@ -205,8 +206,8 @@ namespace gui
                 ptr->outLink = std::static_pointer_cast<KernelBase>(k);
                 k->inLink = std::static_pointer_cast<KernelBase>(ptr);
 
-                ptr->fire = std::bind(Kernel::execute, k.get());
-                k->arm = std::bind(k->filter->input, ptr->filter->volume);
+                ptr->fire = std::bind(Kernel::execute, k.get(), std::placeholders::_1);
+                k->arm = std::bind(k->filter->input, std::placeholders::_1);
 
                 ptr->outLine.hidden = false;
                 return true;

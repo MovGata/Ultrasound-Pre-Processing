@@ -82,15 +82,15 @@ namespace gui
         Rectangle::update();
     }
 
-    void Kernel::execute()
+    void Kernel::execute(std::shared_ptr<data::Volume> &sp)
     {
-        if (inLink)
-            arm();
+        if (inLink && sp)
+            arm(sp);
 
         filter->execute();
 
         if (outLink)
-            fire();
+            fire(filter->volume);
     }
 
     void Kernel::update(float dx, float dy, float dw, float dh)

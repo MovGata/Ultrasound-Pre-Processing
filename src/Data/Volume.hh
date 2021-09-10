@@ -19,7 +19,7 @@ namespace data
     {
     public:
         Volume();
-        std::vector<cl_uchar4> raw;
+        std::vector<std::vector<cl_uchar4>> raw;
 
         cl_uchar max = 0;
         cl_uchar min = 0xFF;
@@ -27,17 +27,19 @@ namespace data
         cl_uint depth;
         cl_uint length;
         cl_uint width;
+        cl_uint frames;
+
         cl::Buffer buffer;
         cl_float ratio;
         cl_float delta;
 
         Volume(const Volume &) = default;
         Volume(Volume &&) = default;
-        Volume(unsigned int depth, unsigned int length, int unsigned width, const std::vector<uint8_t> &data);
+        Volume(unsigned int depth, unsigned int length, int unsigned width, unsigned int frames, const std::vector<uint8_t> &data);
         ~Volume();
 
-        void loadFromCl(const cl::CommandQueue &cQueue);
-        void sendToCl(const cl::Context &context);
+        std::vector<cl_uchar4> loadFromCl(const cl::CommandQueue &cQueue);
+        void sendToCl(const cl::Context &context, unsigned int i);
         void update();
     };
 

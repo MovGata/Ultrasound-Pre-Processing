@@ -143,7 +143,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
         std::terminate();
     }
 
-    reader->load(device.context);
+    reader->load();
+
+    reader->volume->sendToCl(device.context, 0);
 
     std::shared_ptr<gui::Texture> t;
 
@@ -192,7 +194,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 
     auto binary = std::make_shared<io::Binary>(device.cQueue);
 
-    auto mindray = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("MINDRAY", mainWindow.kernel, mainWindow.renderers, dropzone, reader);
+    auto mindray = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("MINDRAY", mainWindow.kernel, mainWindow.renderers, dropzone, std::move(reader));
 
     auto toPolar = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("To Polar", mainWindow.kernel, mainWindow.renderers, dropzone, polar);
     auto toCartesian = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("To Cartesian", mainWindow.kernel, mainWindow.renderers, dropzone, cartesian);

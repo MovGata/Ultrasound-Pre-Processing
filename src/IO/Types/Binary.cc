@@ -1,6 +1,7 @@
 #include "Binary.hh"
 
 #include <SDL2/SDL_rwops.h>
+#include <iostream>
 
 #include "../SDL2/RWOpsStream.hh"
 
@@ -28,8 +29,10 @@ namespace io
     {
         SDL_RWops *outFile = SDL_RWFromFile("./out.bin", "wb");
         std::shared_ptr<data::Volume> sptr = inVolume.lock();
-        
-        SDL_RWwrite(outFile, sptr->raw.data(), sptr->raw.size(), 1);
+        for (std::vector<cl_uchar4> &v : sptr->raw)
+        {
+            SDL_RWwrite(outFile, v.data(), v.size(), 1);
+        }
         SDL_RWclose(outFile);
     }
 

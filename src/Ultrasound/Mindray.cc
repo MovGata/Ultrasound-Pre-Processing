@@ -378,8 +378,6 @@ namespace ultrasound
             std::vector<char> buf;
             buf.reserve(frameSize);
 
-            vWidth = 0;
-
             while (cpIs.read(buf.data(), frameSize))
             {
                 data.reserve(data.size() + dataSize);
@@ -387,8 +385,6 @@ namespace ultrasound
 
                 std::copy(buf.data() + dataOffset, buf.data() + dataOffset + dataSize, std::back_inserter(data));
                 std::copy(buf.data() + dopplerOffset, buf.data() + dopplerOffset + dopplerSize, std::back_inserter(pData));
-
-                ++vWidth;
             }
 
             cpStore.load<uint8_t>("Data", std::move(data));
@@ -411,7 +407,7 @@ namespace ultrasound
         return true;
     }
 
-    void Mindray::load(const cl::Context &context)
+    void Mindray::load()
     {
         volume->depth = cpStore.fetch<int32_t>("Depth", 0);
         volume->length = cpStore.fetch<int32_t>("Length", 0);
@@ -425,6 +421,8 @@ namespace ultrasound
         std::vector<uint8_t> &data = cpStore.fetch<uint8_t>("Data");
         std::vector<uint8_t> &doppler = cpStore.fetch<uint8_t>("Doppler");
 
+        volume->frames = static_cast<cl_uint>(data.size()) / volume->width / volume->depth / volume->length;
+
         std::vector<float> bGap = vmBinStore.fetch<float>("BDispPointRange");
         std::vector<float> pGap = vmBinStore.fetch<float>("CDispPointRange");
         std::vector<float> pAngle = vmBinStore.fetch<float>("CDispLineRange");
@@ -436,54 +434,52 @@ namespace ultrasound
         l = static_cast<uint32_t>((pAngle.at(0) / volume->delta + 0.5f) * static_cast<float>(volume->length));
         r = static_cast<uint32_t>((pAngle.at(1) / volume->delta + 0.5f) * static_cast<float>(volume->length));
 
-        volume->raw.reserve(volume->width * volume->depth * volume->length);
-        for (unsigned int z = 0; z < volume->width; ++z)
+        volume->raw.resize(volume->frames);
+        for (unsigned int v = 0; v < volume->frames; ++v)
         {
-            auto zyx = z * volume->length * volume->depth;
-            auto pz = z * pLength * pDepth * 3;
-            for (unsigned int y = 0; y < volume->length; ++y)
+            volume->raw[v].reserve(volume->width * volume->depth * volume->length);
+            auto zyxv = v * volume->length * volume->depth * volume->width;
+            auto pv = volume->width * v;
+            for (unsigned int z = 0; z < volume->width; ++z)
             {
-                auto yx = y * volume->depth;
-                auto py = std::clamp(static_cast<unsigned int>(static_cast<float>((y - l) * pLength) / static_cast<float>(r - l)), static_cast<unsigned int>(0), static_cast<unsigned int>(pLength - 1)) * pDepth;
-                for (unsigned int x = 0; x < volume->depth; ++x)
+                auto zyx = z * volume->length * volume->depth;
+                auto pz = z * pLength * pDepth * 3;
+                for (unsigned int y = 0; y < volume->length; ++y)
                 {
-                    auto px = std::clamp(static_cast<unsigned int>(static_cast<float>((x - t) * pDepth) / static_cast<float>(b - t)), static_cast<unsigned int>(0), static_cast<unsigned int>(pDepth - 1));
-                    cl_uchar bnw = data.at(x + yx + zyx);
-                    volume->max = std::max(volume->max, bnw);
-                    volume->min = std::min(volume->min, bnw);
-                    cl_uchar4 arr;
-                    if (doppler.size() > 0 && x >= t && x < b && y >= l && y < r)
+                    auto yx = y * volume->depth;
+                    auto py = std::clamp(static_cast<unsigned int>(static_cast<float>((y - l) * pLength) / static_cast<float>(r - l)), static_cast<unsigned int>(0), static_cast<unsigned int>(pLength - 1)) * pDepth;
+                    for (unsigned int x = 0; x < volume->depth; ++x)
                     {
-                        int8_t dData = static_cast<int8_t>(doppler.at(px + py + pz));
-                        if (dData < 0)
+                        auto px = std::clamp(static_cast<unsigned int>(static_cast<float>((x - t) * pDepth) / static_cast<float>(b - t)), static_cast<unsigned int>(0), static_cast<unsigned int>(pDepth - 1));
+                        cl_uchar bnw = data.at(x + yx + zyx + zyxv);
+                        volume->max = std::max(volume->max, bnw);
+                        volume->min = std::min(volume->min, bnw);
+                        cl_uchar4 arr;
+                        if (doppler.size() > 0 && x >= t && x < b && y >= l && y < r)
                         {
-                            arr = {0x00, static_cast<cl_uchar>(static_cast<uint8_t>(static_cast<int8_t>(-1) * dData) * static_cast<uint8_t>(2)), 0xFF, bnw};
-                        }
-                        else if (dData > 0)
-                        {
-                            arr = {0xFF, static_cast<cl_uchar>(static_cast<uint8_t>(dData) * static_cast<uint8_t>(2)), 0x00, bnw};
+                            int8_t dData = static_cast<int8_t>(doppler.at(px + py + pz + pv));
+                            if (dData < 0)
+                            {
+                                arr = {0x00, static_cast<cl_uchar>(static_cast<uint8_t>(static_cast<int8_t>(-1) * dData) * static_cast<uint8_t>(2)), 0xFF, bnw};
+                            }
+                            else if (dData > 0)
+                            {
+                                arr = {0xFF, static_cast<cl_uchar>(static_cast<uint8_t>(dData) * static_cast<uint8_t>(2)), 0x00, bnw};
+                            }
+                            else
+                            {
+                                arr = {bnw, bnw, bnw, bnw};
+                            }
                         }
                         else
                         {
                             arr = {bnw, bnw, bnw, bnw};
                         }
+                        volume->raw[v].push_back(arr);
                     }
-                    else
-                    {
-                        arr = {bnw, bnw, bnw, bnw};
-                    }
-                    volume->raw.push_back(arr);
                 }
             }
         }
-
-        volume->buffer = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(volume->raw[0]) * volume->raw.size(), volume->raw.data());
-        // mvBuffer = cl::Buffer(context, CL_MEM_READ_ONLY, 12 * sizeof(cl_float));
-    }
-
-    void Mindray::sendToCl(const cl::Context &context)
-    {
-        volume->buffer = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(volume->raw[0]) * volume->raw.size(), volume->raw.data());
     }
 
     void Mindray::input([[maybe_unused]] const std::weak_ptr<data::Volume> &wv)
