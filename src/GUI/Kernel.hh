@@ -11,7 +11,7 @@
 #include "Rectangle.hh"
 #include "Button.hh"
 #include "Texture.hh"
-#include "Renderer.hh"
+// #include "Renderer.hh"
 #include "Tree.hh"
 #include "Slider.hh"
 
@@ -42,6 +42,8 @@ namespace
 
 namespace gui
 {
+
+    class Renderer;
 
     class KernelBase : public Rectangle
     {
@@ -98,7 +100,7 @@ namespace gui
                     {
                         if (e.button.clicks == 2)
                         {
-                            ptr->execute(ptr->filter->volume);
+                            ptr->execute(ptr->filter->volume); // Store function in main loop and add counter to volume
                         }
                     }
                     else if (events::containsMouse(std::as_const(*ptr->outNode), e))

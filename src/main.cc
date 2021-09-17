@@ -138,7 +138,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     mainWindow.drawables.clear();
 
     std::shared_ptr<ultrasound::Mindray> reader = std::make_shared<ultrasound::Mindray>();
-    if (!reader->load("tests/data/5"))
+    if (!reader->load("D:/Downloads/Mindray DC-70/SOLEDAD - Mindray DC-70/SOLEDAD20180706-154618-7786/VAS20180706154636/201807061553310009OB"))
     {
         std::terminate();
     }
@@ -308,7 +308,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
                     auto stop = std::chrono::steady_clock::now();
                     std::cout << "Kernel Execution Time: " << std::chrono::duration_cast<std::chrono::duration<float, std::milli>>(stop - start).count() << "ms" << std::endl;
 
-                    renderer->texture->update(device.pixelBuffer);
+                    renderer->addFrame(device.pixelBuffer);
+
+                    // renderer->texture->update(device.pixelBuffer);
                 }
             }
 

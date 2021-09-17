@@ -227,6 +227,8 @@ namespace gui
             leaf->resize(0.0f, u->h, 0.0f, 0.0f);
         }
 
+        update(0.0f, 0.0f, std::max(w, u->w)-w, 0.0f);
+
         branches.emplace_back(std::forward<branch_t>(u));
     }
 
@@ -255,6 +257,7 @@ namespace gui
         }
 
         u->resize(x + offset - u->x, yOff - u->y, 0.0f, 0.0f);
+        update(0.0f, 0.0f, std::max(w, u->w)-w, 0.0f);
 
         leaves.emplace_back(std::forward<leaf_t>(u));
     }

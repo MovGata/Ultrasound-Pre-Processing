@@ -148,5 +148,4 @@ namespace gui
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 
-
 } // namespace gui

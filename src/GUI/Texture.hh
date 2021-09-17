@@ -2,11 +2,13 @@
 #define GUI_TEXTURE_HH
 
 #include <string>
+#include <vector>
 
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include <SDL2/SDL_pixels.h>
 #include <SDL2/SDL_ttf.h>
+#include <CL/cl2.hpp>
 
 namespace gui
 {

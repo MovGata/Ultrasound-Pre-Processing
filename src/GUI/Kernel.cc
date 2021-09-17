@@ -112,7 +112,7 @@ namespace gui
 
     std::shared_ptr<Renderer> Kernel::buildRenderer(std::vector<std::shared_ptr<Renderer>> &wr)
     {
-        return Renderer::build(wr, {0.0f, 0.0f, 1.0f, 1.0f, std::make_shared<gui::Texture>(512, 512)}, std::shared_ptr(filter->volume));
+        return Renderer::build(wr, {0.0f, 0.0f, 1.0f, 1.0f, std::make_shared<gui::Texture>(512, 512)}, std::shared_ptr(filter->volume), shared_from_this());
     }
 
 } // namespace gui

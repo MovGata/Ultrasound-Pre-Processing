@@ -23,9 +23,7 @@ namespace opencl
         cl_uint inwidth;
         cl_uint indepth;
         cl::Buffer inBuffer;
-
         std::shared_ptr<gui::Slider> thresholdSlider;
-        cl_uchar threshold = 0xFF / 8;
 
     public:
         cl::Context context;
@@ -41,6 +39,21 @@ namespace opencl
             Filter::execute = std::bind(execute, this);
             Filter::getOptions = std::bind(getOptions, this);
             
+            thresholdSlider = gui::Slider::build(0.0f, 0.0f, 0.0f, 10.0f);
+        }
+
+        Threshold(const Threshold &th)
+        {
+            kernel = th.kernel;
+            context = th.context;
+            queue = th.queue;
+            kernel = th.kernel;
+
+            Filter::volume = std::make_shared<data::Volume>();
+            Filter::input = std::bind(input, this, std::placeholders::_1);
+            Filter::execute = std::bind(execute, this);
+            Filter::getOptions = std::bind(getOptions, this);
+
             thresholdSlider = gui::Slider::build(0.0f, 0.0f, 0.0f, 10.0f);
         }
 
@@ -74,7 +87,7 @@ namespace opencl
             kernel->setArg(2, inwidth);
             kernel->setArg(3, inBuffer);
             kernel->setArg(4, volume->buffer);
-            kernel->setArg(5, threshold);
+            kernel->setArg(5, static_cast<cl_uchar>(thresholdSlider->value*255.0f));
 
             kernel->global = cl::NDRange(volume->depth, volume->length, volume->width);
             kernel->execute(queue);

@@ -1,10 +1,15 @@
 #ifndef GUI_RENDERER_HH
 #define GUI_RENDERER_HH
 
+#include <functional>
 #include <memory>
+
+#include <GL/glew.h>
+#include <GL/gl.h>
 
 #include "Button.hh"
 #include "Rectangle.hh"
+#include "Kernel.hh"
 
 #include "../Data/Volume.hh"
 
@@ -34,17 +39,20 @@ namespace gui
     private:
         std::shared_ptr<Button> closeButton;
 
-        Renderer(Rectangle &&d, std::shared_ptr<data::Volume> &&ptr) : Rectangle(std::forward<Rectangle>(d)), tf(std::forward<std::shared_ptr<data::Volume>>(ptr))
+        Renderer(Rectangle &&d, std::shared_ptr<data::Volume> &&ptr, std::shared_ptr<Kernel> &&krnl) : Rectangle(std::forward<Rectangle>(d)), tf(std::forward<std::shared_ptr<data::Volume>>(ptr)), kernel(std::forward<std::shared_ptr<Kernel>>(krnl))
         {
             closeButton = Button::build("x");
             closeButton->resize(x + w - closeButton->w - closeButton->x, y - closeButton->y, 0.0f, 0.0f);
             lastview = glm::mat4(1.0f);
+            video.resize(tf->frames);
         }
 
     public:
         ~Renderer() = default;
 
         std::shared_ptr<data::Volume> tf;
+
+        std::vector<std::vector<cl_uchar4>> video;
 
         glm::mat4 lastview;
         glm::vec3 translation = {0.0f, 0.0f, 5.0f};
@@ -53,12 +61,13 @@ namespace gui
 
         std::array<float, 12> inv = {0};
 
-        static std::shared_ptr<Renderer> build(std::vector<std::shared_ptr<Renderer>> &wr, Rectangle &&d, std::shared_ptr<data::Volume> &&ptr)
+        std::shared_ptr<Kernel> kernel;
+
+        static std::shared_ptr<Renderer> build(std::vector<std::shared_ptr<Renderer>> &wr, Rectangle &&d, std::shared_ptr<data::Volume> &&ptr, std::shared_ptr<Kernel> &&krnl)
         {
-            auto rptr = std::shared_ptr<Renderer>(new Renderer(std::forward<Rectangle>(d), std::forward<std::shared_ptr<data::Volume>>(ptr)));
+            auto rptr = std::shared_ptr<Renderer>(new Renderer(std::forward<Rectangle>(d), std::forward<std::shared_ptr<data::Volume>>(ptr), std::forward<std::shared_ptr<Kernel>>(krnl)));
             rptr->Rectangle::draw = std::bind(Renderer::draw, rptr.get());
             rptr->Rectangle::resize = std::bind(update, rptr.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
-
 
             rptr->modified = true;
 
@@ -88,8 +97,7 @@ namespace gui
                         (newSize->first - std::max(newSize->first, newSize->second)) / 2.0f - sptr->x,
                         (newSize->second - std::max(newSize->first, newSize->second)) / 2.0f - sptr->y,
                         std::max(newSize->first, newSize->second) - sptr->w,
-                        std::max(newSize->first, newSize->second) - sptr->h
-                    );
+                        std::max(newSize->first, newSize->second) - sptr->h);
                 });
             rptr->eventManager->addCallback(
                 SDL_MOUSEBUTTONDOWN,
@@ -186,6 +194,20 @@ namespace gui
         {
             Rectangle::update(xx, yy, ww, hh);
             closeButton->resize(x + w - closeButton->w - closeButton->x, y - closeButton->y, 0.0f, 0.0f);
+        }
+
+        void addFrame(GLuint pixelBuffer)
+        {
+            if (tf->cFrame >= tf->frames)
+                return;
+
+            video[tf->cFrame].resize(512 * 512);
+
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pixelBuffer);
+            glGetBufferSubData(GL_PIXEL_UNPACK_BUFFER, 0, 512 * 512 * sizeof(GLubyte) * 4, video[tf->cFrame++].data());
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+            texture->update(pixelBuffer);
         }
 
         void draw()

@@ -68,7 +68,7 @@ kernel void threshold(
     uint z = get_global_id(2);
 
     uint offset = x + y * depth + z * length * depth;
-    if (input[offset].w > 0xA0)
+    if (input[offset].w > val)
     {
         output[offset] = input[offset];
         // output[offset].w = 0xFF;

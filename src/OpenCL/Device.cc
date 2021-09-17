@@ -60,6 +60,7 @@ namespace opencl
         try
         {
             outBuffer = (type == CL_DEVICE_TYPE_GPU ? cl::BufferGL(context, CL_MEM_WRITE_ONLY, pixelBuffer) : cl::Buffer(context, CL_MEM_WRITE_ONLY, width * height * sizeof(cl_uint)));
+            // outBuffer = cl::Buffer(context, CL_MEM_WRITE_ONLY, width * height * sizeof(cl_uint));
             invMVTransposed = cl::Buffer(context, CL_MEM_READ_ONLY, 12 * sizeof(float));
 
             programs.at("raytracing")->at("render")->setArg(0, width);
