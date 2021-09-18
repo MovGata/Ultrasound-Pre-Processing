@@ -27,8 +27,11 @@ namespace ultrasound
 {
     class Mindray : public opencl::Filter
     {
+    private:
+        cl::Context context;
+        
     public:
-        Mindray();
+        Mindray(cl::Context c);
         ~Mindray();
 
         const std::string in = "IN";

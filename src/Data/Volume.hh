@@ -29,6 +29,7 @@ namespace data
         cl_uint width;
         cl_uint frames;
         cl_uint cFrame;
+        cl_uint rFrame;
 
         cl::Buffer buffer;
         cl_float ratio;

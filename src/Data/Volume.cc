@@ -43,7 +43,7 @@ namespace data
         }
     }
 
-    Volume::Volume() : cFrame(0)
+    Volume::Volume() : cFrame(0), rFrame(0)
     {
     }
 

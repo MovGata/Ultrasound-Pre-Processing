@@ -44,7 +44,6 @@ namespace gui
             closeButton = Button::build("x");
             closeButton->resize(x + w - closeButton->w - closeButton->x, y - closeButton->y, 0.0f, 0.0f);
             lastview = glm::mat4(1.0f);
-            video.resize(tf->frames);
         }
 
     public:
@@ -62,6 +61,8 @@ namespace gui
         std::array<float, 12> inv = {0};
 
         std::shared_ptr<Kernel> kernel;
+        cl_uint cFrame = 0;
+        cl_uint rFrame = 0;
 
         static std::shared_ptr<Renderer> build(std::vector<std::shared_ptr<Renderer>> &wr, Rectangle &&d, std::shared_ptr<data::Volume> &&ptr, std::shared_ptr<Kernel> &&krnl)
         {
@@ -198,22 +199,35 @@ namespace gui
 
         void addFrame(GLuint pixelBuffer)
         {
-            if (tf->cFrame >= tf->frames)
+            video.resize(tf->frames);
+
+            if (rFrame >= tf->frames)
                 return;
 
-            video[tf->cFrame].resize(512 * 512);
+            video[rFrame].resize(512 * 512);
 
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pixelBuffer);
-            glGetBufferSubData(GL_PIXEL_UNPACK_BUFFER, 0, 512 * 512 * sizeof(GLubyte) * 4, video[tf->cFrame++].data());
+            glGetBufferSubData(GL_PIXEL_UNPACK_BUFFER, 0, 512 * 512 * sizeof(GLubyte) * 4, video[rFrame++].data());
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
-            texture->update(pixelBuffer);
+            // texture->update(pixelBuffer);
+
+            if (rFrame >= tf->frames)
+            {
+                rFrame = 0;
+                modified = false;
+            }
         }
 
         void draw()
         {
+            texture->update(video[cFrame++]);
             Rectangle::upload();
             closeButton->draw();
+            if (modified)
+                cFrame %= rFrame;
+            else
+                cFrame %= static_cast<cl_uint>(video.size());
         }
     };
 

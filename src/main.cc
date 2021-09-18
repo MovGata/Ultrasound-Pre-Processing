@@ -137,8 +137,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 
     mainWindow.drawables.clear();
 
-    std::shared_ptr<ultrasound::Mindray> reader = std::make_shared<ultrasound::Mindray>();
-    if (!reader->load("D:/Downloads/Mindray DC-70/SOLEDAD - Mindray DC-70/SOLEDAD20180706-154618-7786/VAS20180706154636/201807061553310009OB"))
+    std::shared_ptr<ultrasound::Mindray> reader = std::make_shared<ultrasound::Mindray>(device.context);
+    if (!reader->load("./tests/data/5"))
     {
         std::terminate();
     }
@@ -297,10 +297,22 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
             glFlush();
 
             // Run OpenCL stuff
-            for (auto &&renderer : mainWindow.renderers)
+
+            auto sortedRenderers = mainWindow.renderers;
+            std::sort(sortedRenderers.begin(), sortedRenderers.end(), [](const std::shared_ptr<gui::Renderer> &sa, const std::shared_ptr<gui::Renderer> &sb){return sa->cFrame < sb->cFrame;});
+
+            int lastR = -1;
+            for (auto &&renderer : sortedRenderers)
             {
                 if (renderer->modified)
                 {
+                    // Helps to minimise cost if sequential renderers want the same volume frames.
+                    if (lastR == -1 || static_cast<cl_uint>(lastR) != renderer->rFrame)
+                    {
+                        gui::Kernel::executeKernels(renderer->rFrame);
+                        lastR = renderer->rFrame;
+                    }
+
                     renderer->updateView();
 
                     auto start = std::chrono::steady_clock::now();
@@ -315,16 +327,17 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
             }
 
             // Set renders to finished processing
-            for (auto &&renderer : mainWindow.renderers)
-            {
-                renderer->modified = false;
-            }
+            // for (auto &&renderer : mainWindow.renderers)
+            // {
+            //     renderer->modified = false;
+            // }
 
-            // Run OpenGL stuff
-            mainWindow.update();
-            mainWindow.clean();
-            mainWindow.draw();
         }
+
+        // Run OpenGL stuff
+        mainWindow.update();
+        mainWindow.clean();
+        mainWindow.draw();
 
         eventCount = 0;
 

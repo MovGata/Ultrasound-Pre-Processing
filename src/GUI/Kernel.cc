@@ -5,6 +5,19 @@
 namespace gui
 {
 
+    std::vector<std::weak_ptr<Kernel>> Kernel::xKernels;
+
+    void Kernel::executeKernels(cl_uint i)
+    {
+        for (auto &wptr : xKernels)
+        {
+            auto sptr = wptr.lock();
+            sptr->filter->volume->rFrame = i;
+            sptr->execute(sptr->filter->volume);
+        }
+
+    }
+
     KernelBase::KernelBase(std::shared_ptr<Texture> &&tptr) : Rectangle(0.0f, 0.0f, 40.0f, 40.0f), outLine({0.0f, 0.0f, 0.0f, 3.0f}), title(0.0f, 0.0f, static_cast<float>(tptr->textureW), static_cast<float>(tptr->textureH), std::forward<std::shared_ptr<Texture>>(tptr))
     {
     }
@@ -80,11 +93,13 @@ namespace gui
         h = h + options->h;
 
         Rectangle::update();
+
+        arm = std::bind(filter->input, std::placeholders::_1);
     }
 
     void Kernel::execute(std::shared_ptr<data::Volume> &sp)
     {
-        if (inLink && sp)
+        if (sp)
             arm(sp);
 
         filter->execute();

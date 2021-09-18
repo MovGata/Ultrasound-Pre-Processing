@@ -82,6 +82,7 @@ namespace gui
         std::shared_ptr<opencl::Filter> filter;
         std::function<void(std::shared_ptr<data::Volume> &)> fire;
         std::function<void(std::shared_ptr<data::Volume> &)> arm;
+        static std::vector<std::weak_ptr<Kernel>> xKernels;
 
         bool link = false;
 
@@ -100,7 +101,8 @@ namespace gui
                     {
                         if (e.button.clicks == 2)
                         {
-                            ptr->execute(ptr->filter->volume); // Store function in main loop and add counter to volume
+                            xKernels.push_back(wptr);
+                            //ptr->execute(ptr->filter->volume); // Store function in main loop and add counter to volume
                         }
                     }
                     else if (events::containsMouse(std::as_const(*ptr->outNode), e))
@@ -209,7 +211,6 @@ namespace gui
                 k->inLink = std::static_pointer_cast<KernelBase>(ptr);
 
                 ptr->fire = std::bind(Kernel::execute, k.get(), std::placeholders::_1);
-                k->arm = std::bind(k->filter->input, std::placeholders::_1);
 
                 ptr->outLine.hidden = false;
                 return true;
@@ -280,6 +281,9 @@ namespace gui
         }
 
         std::shared_ptr<Renderer> buildRenderer(std::vector<std::shared_ptr<Renderer>> &wr);
+
+        static void executeKernels(cl_uint i);
+
     };
 
 }

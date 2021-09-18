@@ -95,6 +95,13 @@ namespace gui
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 
+    void Texture::update(std::vector<cl_uchar4> pixels)
+    {
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, textureW, textureH, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, pixels.data());
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
     Texture::operator GLuint()
     {
         return texture;

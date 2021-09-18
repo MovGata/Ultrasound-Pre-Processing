@@ -18,7 +18,6 @@ namespace gui
     private:
         GLuint texture;
 
-
     public:
         GLsizei textureW = 0, textureH = 0;
         static TTF_Font *lastFont;
@@ -34,6 +33,7 @@ namespace gui
         void fill(SDL_Colour c);
 
         void rotate(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
+        void update(std::vector<cl_uchar4> pixels);
 
         operator GLuint();
     };

@@ -55,6 +55,7 @@ namespace opencl
             inBuffer = v->buffer;
             volume->ratio = v->ratio;
             volume->delta = v->delta;
+            volume->frames = v->frames;
 
             // depth = static_cast<cl_uint>(static_cast<float>(v->depth) - static_cast<float>(v->depth) * v->ratio / (v->ratio + 1.0f));
             // length = static_cast<cl_uint>((static_cast<float>(v->length) - 1.0f) / (2.0f * std::tan(v->delta / 2.0f) * static_cast<float>(v->depth)));

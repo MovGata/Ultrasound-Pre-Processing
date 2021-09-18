@@ -15,7 +15,7 @@
 namespace ultrasound
 {
 
-    Mindray::Mindray()
+    Mindray::Mindray(cl::Context c) : context(c)
     {
         Filter::volume = std::make_shared<data::Volume>();
         Filter::input = std::bind(input, this, std::placeholders::_1);
@@ -435,6 +435,7 @@ namespace ultrasound
         r = static_cast<uint32_t>((pAngle.at(1) / volume->delta + 0.5f) * static_cast<float>(volume->length));
 
         volume->raw.resize(volume->frames);
+        bool flipped = false;
         for (unsigned int v = 0; v < volume->frames; ++v)
         {
             volume->raw[v].reserve(volume->width * volume->depth * volume->length);
@@ -442,8 +443,18 @@ namespace ultrasound
             auto pv = volume->width * v;
             for (unsigned int z = 0; z < volume->width; ++z)
             {
-                auto zyx = z * volume->length * volume->depth;
-                auto pz = z * pLength * pDepth * 3;
+                unsigned int zyx, pz;
+                if (flipped)
+                {
+                    zyx = (volume->width - 1 - z) * volume->length * volume->depth;
+                    pz = (volume->width - 1 - z) * pLength * pDepth * 3;
+                }
+                else
+                {
+                    zyx = z * volume->length * volume->depth;
+                    pz = z * pLength * pDepth * 3;
+                }
+                flipped = !flipped;
                 for (unsigned int y = 0; y < volume->length; ++y)
                 {
                     auto yx = y * volume->depth;
@@ -484,6 +495,10 @@ namespace ultrasound
 
     void Mindray::input([[maybe_unused]] const std::weak_ptr<data::Volume> &wv)
     {
+        auto sp = wv.lock();
+        if (sp->rFrame >= sp->frames)
+            return;
+        sp->sendToCl(context, sp->rFrame);
     }
 
     void Mindray::execute()
