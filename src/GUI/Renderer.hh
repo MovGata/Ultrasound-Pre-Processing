@@ -38,11 +38,15 @@ namespace gui
     {
     private:
         std::shared_ptr<Button> closeButton;
+        std::shared_ptr<Button> pauseButton;
 
         Renderer(Rectangle &&d, std::shared_ptr<data::Volume> &&ptr, std::shared_ptr<Kernel> &&krnl) : Rectangle(std::forward<Rectangle>(d)), tf(std::forward<std::shared_ptr<data::Volume>>(ptr)), kernel(std::forward<std::shared_ptr<Kernel>>(krnl))
         {
             closeButton = Button::build("x");
             closeButton->resize(x + w - closeButton->w - closeButton->x, y - closeButton->y, 0.0f, 0.0f);
+
+            pauseButton = Button::build("P");
+            pauseButton->resize(x - pauseButton->x, y + h - pauseButton->h - pauseButton->y, 0.0f, 0.0f);
             lastview = glm::mat4(1.0f);
         }
 
@@ -57,6 +61,7 @@ namespace gui
         glm::vec3 translation = {0.0f, 0.0f, 5.0f};
 
         bool modified = false;
+        bool paused = false;
 
         std::array<float, 12> inv = {0};
 
@@ -86,6 +91,13 @@ namespace gui
                     }
                 });
 
+            rptr->pauseButton->onPress(
+                [&wr, wptr = rptr->weak_from_this()]() mutable
+                {
+                    auto sptr = wptr.lock();
+                    sptr->paused = !sptr->paused;
+                });
+
             rptr->eventManager->addCallback(
                 events::GUI_REDRAW, [wptr = rptr->weak_from_this()](const SDL_Event &e)
                 {
@@ -110,6 +122,12 @@ namespace gui
                         if (events::containsMouse(std::as_const(*sptr->closeButton), e))
                         {
                             sptr->closeButton->eventManager->process(e);
+                            return;
+                        }
+                        
+                        if (events::containsMouse(std::as_const(*sptr->pauseButton), e))
+                        {
+                            sptr->pauseButton->eventManager->process(e);
                             return;
                         }
 
@@ -195,6 +213,7 @@ namespace gui
         {
             Rectangle::update(xx, yy, ww, hh);
             closeButton->resize(x + w - closeButton->w - closeButton->x, y - closeButton->y, 0.0f, 0.0f);
+            pauseButton->resize(x - pauseButton->x, y + h - pauseButton->h - pauseButton->y, 0.0f, 0.0f);
         }
 
         void addFrame(GLuint pixelBuffer)
@@ -221,13 +240,14 @@ namespace gui
 
         void draw()
         {
-            texture->update(video[cFrame++]);
+            if (!paused)
+                texture->update(video[cFrame++]);
+
             Rectangle::upload();
             closeButton->draw();
-            if (modified)
-                cFrame %= rFrame;
-            else
-                cFrame %= static_cast<cl_uint>(video.size());
+            pauseButton->draw();
+            
+            cFrame = modified ? cFrame % rFrame : cFrame % static_cast<cl_uint>(video.size());
         }
     };
 

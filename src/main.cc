@@ -138,7 +138,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     mainWindow.drawables.clear();
 
     std::shared_ptr<ultrasound::Mindray> reader = std::make_shared<ultrasound::Mindray>(device.context);
-    if (!reader->load("./tests/data/5"))
+    if (!reader->load("D:/Downloads/Mindray DC-70/SOLEDAD - Mindray DC-70/SOLEDAD20180706-154618-7786/VAS20180706154636/201807061553310009OB/"))
     {
         std::terminate();
     }
