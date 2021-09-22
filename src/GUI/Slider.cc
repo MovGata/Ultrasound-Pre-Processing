@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <iostream>
+#include <cmath>
 
 #include "Slider.hh"
 
@@ -28,10 +29,7 @@ namespace gui
                                                [wptr](const SDL_Event &e)
                                                {
                                                    auto pptr = wptr.lock();
-                                                   pptr->fg.w = std::clamp(static_cast<float>(e.motion.x), pptr->fg.x, pptr->fg.x + pptr->bg.w - 1.0f) - pptr->fg.x;
-                                                   pptr->fg.update();
-
-                                                   pptr->value = std::clamp((pptr->bg.w - pptr->fg.w - 1.0f) / (pptr->bg.w - 2.0f), 0.0f, 1.0f);
+                                                   pptr->modify((std::clamp(static_cast<float>(e.motion.x), pptr->fg.x, pptr->fg.x + pptr->bg.w - 1.0f) - pptr->fg.x) / (pptr->bg.w - 1.0f - pptr->fg.x));
                                                });
             });
 
@@ -43,6 +41,13 @@ namespace gui
             });
 
         return rptr;
+    }
+
+    void Slider::modify(float p)
+    {
+        fg.w = std::lerp(fg.x, bg.w-1.0f, p);
+        fg.update();
+        value = p;
     }
 
     void Slider::update(float xx, float yy, float ww, float hh)

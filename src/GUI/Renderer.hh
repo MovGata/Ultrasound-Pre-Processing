@@ -8,6 +8,7 @@
 #include <GL/gl.h>
 
 #include "Button.hh"
+#include "Slider.hh"
 #include "Rectangle.hh"
 #include "Kernel.hh"
 
@@ -39,6 +40,7 @@ namespace gui
     private:
         std::shared_ptr<Button> closeButton;
         std::shared_ptr<Button> pauseButton;
+        std::shared_ptr<Slider> progressBar;
 
         Renderer(Rectangle &&d, std::shared_ptr<data::Volume> &&ptr, std::shared_ptr<Kernel> &&krnl) : Rectangle(std::forward<Rectangle>(d)), tf(std::forward<std::shared_ptr<data::Volume>>(ptr)), kernel(std::forward<std::shared_ptr<Kernel>>(krnl))
         {
@@ -47,6 +49,9 @@ namespace gui
 
             pauseButton = Button::build("P");
             pauseButton->resize(x - pauseButton->x, y + h - pauseButton->h - pauseButton->y, 0.0f, 0.0f);
+
+            progressBar = Slider::build(x + pauseButton->w + 4.0f, pauseButton->y, w - pauseButton->w - 4.0f, pauseButton->h);
+
             lastview = glm::mat4(1.0f);
         }
 
@@ -124,21 +129,34 @@ namespace gui
                             sptr->closeButton->eventManager->process(e);
                             return;
                         }
-                        
-                        if (events::containsMouse(std::as_const(*sptr->pauseButton), e))
+                        else if (events::containsMouse(std::as_const(*sptr->pauseButton), e))
                         {
                             sptr->pauseButton->eventManager->process(e);
                             return;
                         }
-
-                        sptr->eventManager->addCallback(
-                            SDL_MOUSEMOTION, [wptr](const SDL_Event &ev)
-                            {
-                                auto ssptr = wptr.lock();
-                                ssptr->lastview = glm::rotate(ssptr->lastview, glm::radians(static_cast<float>(ev.motion.yrel)), {1.0f, 0.0f, 0.0f});
-                                ssptr->lastview = glm::rotate(ssptr->lastview, -glm::radians(static_cast<float>(ev.motion.xrel)), {0.0f, 1.0f, 0.0f});
-                                ssptr->modified = true;
-                            });
+                        else if (events::containsMouse(std::as_const(*sptr->progressBar), e))
+                        {
+                            sptr->progressBar->eventManager->process(e);
+                            sptr->cFrame = static_cast<cl_uint>(std::lerp(0.0f, static_cast<float>(sptr->tf->frames - 1), sptr->progressBar->value));
+                            sptr->eventManager->addCallback(
+                                SDL_MOUSEMOTION, [wptr](const SDL_Event &ev)
+                                {
+                                    auto ssptr = wptr.lock();
+                                    ssptr->progressBar->eventManager->process(ev);
+                                });
+                            return;
+                        }
+                        else
+                        {
+                            sptr->eventManager->addCallback(
+                                SDL_MOUSEMOTION, [wptr](const SDL_Event &ev)
+                                {
+                                    auto ssptr = wptr.lock();
+                                    ssptr->lastview = glm::rotate(ssptr->lastview, glm::radians(static_cast<float>(ev.motion.yrel)), {1.0f, 0.0f, 0.0f});
+                                    ssptr->lastview = glm::rotate(ssptr->lastview, -glm::radians(static_cast<float>(ev.motion.xrel)), {0.0f, 1.0f, 0.0f});
+                                    ssptr->modified = true;
+                                });
+                        }
                     }
                     else if (e.button.button == SDL_BUTTON_RIGHT)
                     {
@@ -153,10 +171,11 @@ namespace gui
                 });
             rptr->eventManager->addCallback(
                 SDL_MOUSEBUTTONUP,
-                [wptr = rptr->weak_from_this()]([[maybe_unused]] const SDL_Event &)
+                [wptr = rptr->weak_from_this()](const SDL_Event &e)
                 {
                     auto sptr = wptr.lock();
                     sptr->eventManager->clearCallback(SDL_MOUSEMOTION);
+                    sptr->progressBar->eventManager->process(e);
                 });
             rptr->eventManager->addCallback(
                 SDL_MOUSEWHEEL,
@@ -214,6 +233,7 @@ namespace gui
             Rectangle::update(xx, yy, ww, hh);
             closeButton->resize(x + w - closeButton->w - closeButton->x, y - closeButton->y, 0.0f, 0.0f);
             pauseButton->resize(x - pauseButton->x, y + h - pauseButton->h - pauseButton->y, 0.0f, 0.0f);
+            progressBar->resize(x + pauseButton->w + 4.0f - progressBar->x, pauseButton->y - progressBar->y, w - pauseButton->w - 4.0f - progressBar->w, 0.0f);
         }
 
         void addFrame(GLuint pixelBuffer)
@@ -240,14 +260,20 @@ namespace gui
 
         void draw()
         {
+            cl_uint vFrames = static_cast<cl_uint>(video.size());
+
+            if (vFrames > 1)
+                progressBar->modify(static_cast<float>(cFrame) / static_cast<float>(vFrames - 1));
+
             if (!paused)
                 texture->update(video[cFrame++]);
 
             Rectangle::upload();
             closeButton->draw();
             pauseButton->draw();
-            
-            cFrame = modified ? cFrame % rFrame : cFrame % static_cast<cl_uint>(video.size());
+            progressBar->draw();
+
+            cFrame = modified ? cFrame % rFrame : cFrame % vFrames;
         }
     };
 

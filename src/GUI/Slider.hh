@@ -23,6 +23,8 @@ namespace gui
         void draw();
         void update(float xx = 0.0f, float yy = 0.0f, float ww = 0.0f, float hh = 0.0f);
 
+        void modify(float p);
+
         float value = 0.0f;
         
         static std::shared_ptr<Slider> build(float x, float y, float w, float h);
