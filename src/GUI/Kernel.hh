@@ -137,6 +137,16 @@ namespace gui
                 });
 
             sptr->eventManager->addCallback(
+                SDL_DROPFILE,
+                [wptr = sptr->weak_from_this()](const SDL_Event &e)
+                {
+                    auto ptr = wptr.lock();
+                    std::cout << e.drop.file << std::endl;
+                    ptr->filter->load(e.drop.file);
+                    SDL_free(e.drop.file);
+                });
+
+            sptr->eventManager->addCallback(
                 SDL_MOUSEBUTTONUP,
                 [wptr = sptr->weak_from_this()](const SDL_Event &e)
                 {

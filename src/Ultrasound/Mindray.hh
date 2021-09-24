@@ -29,6 +29,7 @@ namespace ultrasound
     {
     private:
         cl::Context context;
+        void fillVolume();
         
     public:
         Mindray(cl::Context c);
@@ -46,8 +47,6 @@ namespace ultrasound
         cpInfoStore cpStore;
 
         bool load(const char *dir);
-
-        void load();
 
         void input(const std::weak_ptr<data::Volume> &wv);
         void execute();

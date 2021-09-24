@@ -21,6 +21,7 @@ namespace data
         Volume();
         std::vector<std::vector<cl_uchar4>> raw;
 
+
         cl_uchar max = 0;
         cl_uchar min = 0xFF;
 

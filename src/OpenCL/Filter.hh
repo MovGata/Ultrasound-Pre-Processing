@@ -20,6 +20,7 @@ namespace opencl
         std::function<void(const std::weak_ptr<data::Volume> &)> input;
         std::function<void(void)> execute;
         std::function<std::shared_ptr<gui::Tree>(void)> getOptions;
+        std::function<void(const char *)> load = [](const char *){};
     };
 
 } // namespace opencl

@@ -21,6 +21,7 @@ namespace ultrasound
         Filter::input = std::bind(input, this, std::placeholders::_1);
         Filter::execute = std::bind(execute, this);
         Filter::getOptions = std::bind(getOptions, this);
+        Filter::load = std::bind(load, this, std::placeholders::_1);
     }
 
     Mindray::~Mindray()
@@ -29,8 +30,13 @@ namespace ultrasound
 
     bool Mindray::load(const char *dir)
     {
+
+        std::filesystem::path dirPath(dir);
+
+        dirPath = std::filesystem::is_directory(dirPath) ? dirPath : dirPath.parent_path();
+
         std::string vmTxt, vmBin, cp;
-        for (const auto &entry : std::filesystem::directory_iterator(dir))
+        for (const auto &entry : std::filesystem::directory_iterator(dirPath))
         {
             if (entry.path().filename() == "VirtualMachine.txt")
             {
@@ -404,10 +410,13 @@ namespace ultrasound
             cpStore.load<float>("Ratio", std::move(zoom));
         }
 
+        fillVolume();
+        volume->sendToCl(context, 0);
+
         return true;
     }
 
-    void Mindray::load()
+    void Mindray::fillVolume()
     {
         volume->depth = cpStore.fetch<int32_t>("Depth", 0);
         volume->length = cpStore.fetch<int32_t>("Length", 0);
@@ -441,6 +450,7 @@ namespace ultrasound
             volume->raw[v].reserve(volume->width * volume->depth * volume->length);
             auto zyxv = v * volume->length * volume->depth * volume->width;
             auto pv = volume->width * v;
+            flipped = !flipped;
             for (unsigned int z = 0; z < volume->width; ++z)
             {
                 unsigned int zyx, pz;
@@ -454,7 +464,6 @@ namespace ultrasound
                     zyx = z * volume->length * volume->depth;
                     pz = z * pLength * pDepth * 3;
                 }
-                flipped = !flipped;
                 for (unsigned int y = 0; y < volume->length; ++y)
                 {
                     auto yx = y * volume->depth;

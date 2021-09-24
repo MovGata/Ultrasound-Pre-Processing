@@ -92,6 +92,21 @@ namespace gui
                     //     kernel->resize(0.0f, yOld, 0.0f, 0.0f);
                     // }
                 });
+
+            rptr->eventManager->addCallback(
+                SDL_DROPFILE, [wptr = rptr->weak_from_this()](const SDL_Event &e)
+                {
+                    auto ptr = wptr.lock();
+                    for (auto &kernel : ptr->kernels)
+                    {
+                        if (events::containsMouse(*kernel, e))
+                        {
+                            kernel->eventManager->process(e);
+                            break;
+                        }
+                    }
+                });
+
             rptr->eventManager->addCallback(
                 SDL_MOUSEBUTTONDOWN, [wptr = rptr->weak_from_this()](const SDL_Event &e)
                 {
