@@ -67,7 +67,8 @@ namespace gui
 
     void Rectangle::upload() const
     {
-        events::draw(*this);
+        if (!hidden)
+            events::draw(*this);
     }
 
     void Rectangle::update(float xx, float yy, float ww, float hh)

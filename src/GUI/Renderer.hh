@@ -267,15 +267,17 @@ namespace gui
             if (vFrames > 1)
                 progressBar->modify(static_cast<float>(cFrame) / static_cast<float>(vFrames - 1));
 
-            if (!paused)
+            if (!paused && !video.empty())
+            {
                 texture->update(video[cFrame++]);
+                cFrame = modified ? cFrame % rFrame : cFrame % vFrames;
+            }
 
             Rectangle::upload();
             closeButton->draw();
             pauseButton->draw();
             progressBar->draw();
 
-            cFrame = modified ? cFrame % rFrame : cFrame % vFrames;
         }
     };
 

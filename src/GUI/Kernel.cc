@@ -99,6 +99,8 @@ namespace gui
 
     void Kernel::execute(std::shared_ptr<data::Volume> &sp)
     {
+        active = true;
+
         if (sp)
             arm(sp);
 

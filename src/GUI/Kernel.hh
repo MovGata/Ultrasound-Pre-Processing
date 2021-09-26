@@ -77,6 +77,7 @@ namespace gui
 
         bool move = true;
         std::weak_ptr<events::EventManager> optionEvent;
+        bool active = false;
 
     public:
         std::shared_ptr<opencl::Filter> filter;
@@ -144,9 +145,8 @@ namespace gui
                     std::cout << e.drop.file << std::endl;
                     ptr->filter->load(e.drop.file);
                     SDL_free(e.drop.file);
-                    // std::call_once()
                     xKernels.push_back(wptr);
-
+                    executeKernels(0);
                 });
 
             sptr->eventManager->addCallback(
@@ -226,6 +226,9 @@ namespace gui
                 ptr->fire = std::bind(Kernel::execute, k.get(), std::placeholders::_1);
 
                 ptr->outLine.hidden = false;
+
+                k->active = ptr->active;
+
                 return true;
             }
             else
@@ -285,7 +288,8 @@ namespace gui
                             auto cptr = kwptr.lock();
                             if (!events::containsMouse(*cptr->inNode, ev) && !events::containsMouse(*cptr->outNode, ev))
                             {
-                                wr.emplace_back(cptr->buildRenderer(wr));
+                                if (cptr->active)
+                                    wr.emplace_back(cptr->buildRenderer(wr));
                             }
                         });
                     wk = std::move(ptr);
