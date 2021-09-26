@@ -81,6 +81,7 @@ namespace gui
             rptr->Rectangle::resize = std::bind(update, rptr.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
 
             rptr->modified = true;
+            rptr->cFrame = rptr->rFrame = 0;
 
             rptr->closeButton->onPress(
                 [&wr, wptr = rptr->weak_from_this()]() mutable
@@ -155,6 +156,7 @@ namespace gui
                                     ssptr->lastview = glm::rotate(ssptr->lastview, glm::radians(static_cast<float>(ev.motion.yrel)), {1.0f, 0.0f, 0.0f});
                                     ssptr->lastview = glm::rotate(ssptr->lastview, -glm::radians(static_cast<float>(ev.motion.xrel)), {0.0f, 1.0f, 0.0f});
                                     ssptr->modified = true;
+                                    ssptr->cFrame = ssptr->rFrame = 0;
                                 });
                         }
                     }

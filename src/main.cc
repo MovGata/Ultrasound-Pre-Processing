@@ -138,14 +138,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     mainWindow.drawables.clear();
 
     std::shared_ptr<ultrasound::Mindray> reader = std::make_shared<ultrasound::Mindray>(device.context);
-    // if (!reader->load("D:/Downloads/Mindray DC-70/SOLEDAD - Mindray DC-70/SOLEDAD20180706-154618-7786/VAS20180706154636/201807061553310009OB/"))
-    // {
-    //     std::terminate();
-    // }
-
-    // reader->load();
-
-    // reader->volume->sendToCl(device.context, 0);
 
     std::shared_ptr<gui::Texture> t;
 
@@ -289,8 +281,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
             }
         }
 
-        if (eventCount) // If no events have occurred, no changes to drawing have occurred.
-        {
+        // if (eventCount) // If no events have occurred, no changes to drawing have occurred.
+        // {
             // mainWindow.setActive();
 
             // Share GL buffers.
@@ -332,7 +324,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
             //     renderer->modified = false;
             // }
 
-        }
+        // }
 
         // Run OpenGL stuff
         mainWindow.update();
