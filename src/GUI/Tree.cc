@@ -72,7 +72,7 @@ namespace gui
                 auto ptr = wptr.lock();
 
                 float offset = 0;
-                if (events::containsMouse(ptr->trunk, e))
+                if (events::containsMouse(ptr->trunk, e, false, true))
                 {
                     ptr->toggle();
                 }
@@ -84,7 +84,7 @@ namespace gui
                     {
                         if (!branchHit && !leafHit)
                         {
-                            if (events::containsMouse(branch->trunk, e))    // Hit branch header
+                            if (events::containsMouse(branch->trunk, e, false, true))    // Hit branch header
                             {
                                 offset = -branch->h;                        // Subtract size before closing/opening
                                 branch->eventManager->process(e);
@@ -92,7 +92,7 @@ namespace gui
                                 offset += branch->h;                        // Add size after opening/closing
                                 branchHit = true;
                             }
-                            else if (events::containsMouse(*branch, e))     // Hit branch sub-item
+                            else if (events::containsMouse(*branch, e, false, true))     // Hit branch sub-item
                             {
                                 branch->eventManager->process(e);
                                 ptr->subManager = branch->eventManager;
@@ -117,7 +117,7 @@ namespace gui
                     {
                         for (auto &&leaf : ptr->leaves)
                         {
-                            if (events::containsMouse(*leaf, e))
+                            if (events::containsMouse(*leaf, e, false, true))
                             {
                                 leaf->eventManager->process(e);
                                 ptr->subManager = leaf->eventManager;
@@ -139,15 +139,15 @@ namespace gui
     void Tree::update(float dx, float dy, float dw, float dh)
     {
         Rectangle::update(dx, dy, dw, dh);
-        trunk.update(dx, dy, dw, dh);
+        trunk.update(dx, dy, 0.0f, 0.0f);//dw, dh);
 
         for (auto &&branch : branches)
         {
-            branch->resize(dx, dy, dw, dh);
+            branch->resize(dx, dy, 0.0f, 0.0f);//, dw, dh);
         }
         for (auto &&leaf : leaves)
         {
-            leaf->resize(dx, dy, dw, dh);
+            leaf->resize(dx, dy, 0.0f, 0.0f);//, dw, dh);
         }
     }
 

@@ -65,7 +65,7 @@ namespace events
     }
 
     template <concepts::DrawableType Drawable>
-    bool containsMouse(const Drawable &d, const SDL_Event &e)
+    bool containsMouse(const Drawable &d, const SDL_Event &e, bool hz = true, bool vt = true)
     {
         // Uint32 ID = 0;
         // switch (e.type)
@@ -125,7 +125,7 @@ namespace events
 
         mvec = inv * mvec;
 
-        if (mvec.x < 0.0f || mvec.x > 1.0f || mvec.y < 0.0f || mvec.y > 1.0f)
+        if ((hz && (mvec.x < 0.0f || mvec.x > 1.0f)) || (vt && (mvec.y < 0.0f || mvec.y > 1.0f)))
         {
             return false;
         }
