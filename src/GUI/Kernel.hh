@@ -99,11 +99,11 @@ namespace gui
                     auto ptr = wptr.lock();
                     if (events::containsMouse(std::as_const(*ptr->inNode), e))
                     {
-                        if (e.button.clicks == 2)
-                        {
-                            xKernels.push_back(wptr);
+                        // if (e.button.clicks == 2)
+                        // {
+                            // xKernels.push_back(wptr);
                             //ptr->execute(ptr->filter->volume); // Store function in main loop and add counter to volume
-                        }
+                        // }
                     }
                     else if (events::containsMouse(std::as_const(*ptr->outNode), e))
                     {
@@ -144,6 +144,9 @@ namespace gui
                     std::cout << e.drop.file << std::endl;
                     ptr->filter->load(e.drop.file);
                     SDL_free(e.drop.file);
+                    // std::call_once()
+                    xKernels.push_back(wptr);
+
                 });
 
             sptr->eventManager->addCallback(
