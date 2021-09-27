@@ -144,6 +144,7 @@ namespace gui
                                 {
                                     auto ssptr = wptr.lock();
                                     ssptr->progressBar->eventManager->process(ev);
+                                    ssptr->cFrame = static_cast<cl_uint>(std::round(std::lerp(0.0f, static_cast<float>(ssptr->video.size() - 1), ssptr->progressBar->value)));
                                 });
                             return;
                         }

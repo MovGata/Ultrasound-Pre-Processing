@@ -29,7 +29,7 @@ namespace gui
                                                [wptr](const SDL_Event &e)
                                                {
                                                    auto pptr = wptr.lock();
-                                                   pptr->modify((std::clamp(static_cast<float>(e.motion.x), pptr->fg.x, pptr->fg.x + pptr->bg.w - 1.0f) - pptr->fg.x) / (pptr->bg.w - 1.0f - pptr->fg.x));
+                                                   pptr->modify((std::clamp(static_cast<float>(e.motion.x), pptr->fg.x, pptr->fg.x + pptr->bg.w) - pptr->fg.x) / (pptr->bg.w));
                                                });
             });
 
@@ -45,7 +45,7 @@ namespace gui
 
     void Slider::modify(float p)
     {
-        fg.w = std::lerp(fg.x, bg.w-1.0f, p);
+        fg.w = std::lerp(0.0f, bg.w, p);
         fg.update();
         value = p;
     }
@@ -54,7 +54,8 @@ namespace gui
     {
         Rectangle::update(xx, yy, ww, hh);
         bg.update(xx, yy, ww, hh);
-        fg.update(xx, yy, ww, hh);
+        fg.update(xx, yy, 0.0f, hh);
+        modify(value); // Scales progress to new width
     }
 
     void Slider::draw()
