@@ -26,7 +26,7 @@ namespace gui
             TTF_SizeText(Texture::lastFont, str.c_str(), &w, &h);
             auto t = std::make_shared<gui::Texture>(w + 2, h + 2);
             t->addText(Texture::lastFont, str.c_str());
-            return build({0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), std::move(t)});
+            return build({0.0f, 0.0f, static_cast<float>(w) + 2, static_cast<float>(h) + 2, std::move(t)});
         }
 
         static std::shared_ptr<Button> build(Rectangle &&d)

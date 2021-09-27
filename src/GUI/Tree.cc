@@ -213,7 +213,7 @@ namespace gui
         }
 
         // u->trunk.update(u->x, u->y);
-        u->resize(xOff, yOff, 0.0f, 0.0f);
+        u->resize(xOff - u->x, yOff - u->y, 0.0f, 0.0f);
 
         if (open)
         {
