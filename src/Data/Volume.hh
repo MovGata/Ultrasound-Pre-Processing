@@ -35,6 +35,7 @@ namespace data
         cl::Buffer buffer;
         cl_float ratio;
         cl_float delta;
+        cl_float fRate;
 
         Volume(const Volume &) = default;
         Volume(Volume &&) = default;

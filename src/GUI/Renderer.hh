@@ -41,6 +41,7 @@ namespace gui
         std::shared_ptr<Button> closeButton;
         std::shared_ptr<Button> pauseButton;
         std::shared_ptr<Slider> progressBar;
+        Uint32 lastTick = 0;
 
         Renderer(Rectangle &&d, std::shared_ptr<data::Volume> &&ptr, std::shared_ptr<Kernel> &&krnl) : Rectangle(std::forward<Rectangle>(d)), tf(std::forward<std::shared_ptr<data::Volume>>(ptr)), kernel(std::forward<std::shared_ptr<Kernel>>(krnl))
         {
@@ -268,16 +269,20 @@ namespace gui
             if (vFrames > 1)
                 progressBar->modify(static_cast<float>(cFrame) / static_cast<float>(vFrames - 1));
 
-            if (!paused && !video.empty())
+            Uint32 newTick = SDL_GetTicks();
+
+            if (!paused && !video.empty() && (static_cast<float>(newTick - lastTick) > tf->fRate || modified))
             {
                 texture->update(video[cFrame++]);
                 cFrame = modified ? cFrame % rFrame : cFrame % vFrames;
+                lastTick = newTick;
             }
 
             Rectangle::upload();
             closeButton->draw();
             pauseButton->draw();
             progressBar->draw();
+
 
         }
     };

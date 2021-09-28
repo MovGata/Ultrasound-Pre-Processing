@@ -55,6 +55,7 @@ namespace opencl
             inBuffer = v->buffer;
             volume->ratio = v->ratio;
             volume->delta = v->delta;
+            volume->fRate = v->fRate;
 
             volume->frames = v->frames;
 

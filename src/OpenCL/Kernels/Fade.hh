@@ -57,6 +57,7 @@ namespace opencl
             volume->ratio = v->ratio;
             volume->delta = v->delta;
             volume->frames = v->frames;
+            volume->fRate = v->fRate;
 
             volume->length = inlength;
             volume->width = inwidth;

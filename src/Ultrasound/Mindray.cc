@@ -435,6 +435,9 @@ namespace ultrasound
         std::vector<float> bGap = vmBinStore.fetch<float>("BDispPointRange");
         std::vector<float> pGap = vmBinStore.fetch<float>("CDispPointRange");
         std::vector<float> pAngle = vmBinStore.fetch<float>("CDispLineRange");
+        std::vector<float> fRate = vmBinStore.fetch<float>("BUploadFrmRate");
+
+        volume->fRate = fRate.front();
 
         uint32_t t, b, l, r;
 
