@@ -169,6 +169,7 @@ namespace gui
                             {
                                 auto ssptr = wptr.lock();
                                 events::translate(*ssptr, {-static_cast<float>(4 * ev.motion.xrel) / ssptr->w, -static_cast<float>(4 * ev.motion.yrel) / ssptr->h, 0.0f});
+                                ssptr->cFrame = ssptr->rFrame = 0;
                             });
                         // sptr->eventManager->addCallback(SDL_MOUSEMOTION, events::translateEvent<data::Volume>, *sptr->tf);
                     }
@@ -187,6 +188,7 @@ namespace gui
                 {
                     auto sptr = wptr.lock();
                     events::translate(*sptr, {0.0f, 0.0f, e.wheel.y});
+                    sptr->cFrame = sptr->rFrame = 0;
                 });
             return rptr;
         }
