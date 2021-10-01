@@ -339,7 +339,7 @@ namespace ultrasound
 
             uint32_t vLength = std::abs(lineRange.at(0) - lineRange.at(1)) + 1;
             uint32_t vDepth = std::abs(pointRange.at(0) - pointRange.at(1)) + 1;
-            uint32_t vWidth = frameCount.at(0);
+            uint32_t vWidth = vmTxtStore.fetch<vmTxtInfoStore>("CinePartition", 0).fetch<vmTxtInfoStore>("CinePartition0", 0).info.contains("VolumeInfo") ? frameCount.at(0) : 1;
             float angleDelta = std::abs(angleRange.at(0) - angleRange.at(1));
             float zoom = 2 * bzoom.at(0);
 
@@ -430,7 +430,7 @@ namespace ultrasound
         std::vector<uint8_t> &data = cpStore.fetch<uint8_t>("Data");
         std::vector<uint8_t> &doppler = cpStore.fetch<uint8_t>("Doppler");
 
-        volume->frames = static_cast<cl_uint>(data.size()) / volume->width / volume->depth / volume->length;
+        volume->frames = vmTxtStore.fetch<vmTxtInfoStore>("CinePartition", 0).fetch<vmTxtInfoStore>("CinePartition0", 0).info.contains("VolumeInfo") ? vmTxtStore.fetch<vmTxtInfoStore>("CinePartition", 0).fetch<vmTxtInfoStore>("CinePartition0", 0).fetch<vmTxtInfoStore>("VolumeInfo", 0).fetch<uint32_t>("volume_count", 0) : 1; //static_cast<cl_uint>(data.size()) / volume->width / volume->depth / volume->length;
 
         std::vector<float> bGap = vmBinStore.fetch<float>("BDispPointRange");
         std::vector<float> pGap = vmBinStore.fetch<float>("CDispPointRange");
@@ -450,6 +450,7 @@ namespace ultrasound
         bool flipped = false;
         for (unsigned int v = 0; v < volume->frames; ++v)
         {
+            volume->raw[v].clear();
             volume->raw[v].reserve(volume->width * volume->depth * volume->length);
             auto zyxv = v * volume->length * volume->depth * volume->width;
             auto pv = volume->width * v;

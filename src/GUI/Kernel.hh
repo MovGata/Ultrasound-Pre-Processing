@@ -102,8 +102,8 @@ namespace gui
                     {
                         // if (e.button.clicks == 2)
                         // {
-                            // xKernels.push_back(wptr);
-                            //ptr->execute(ptr->filter->volume); // Store function in main loop and add counter to volume
+                        // xKernels.push_back(wptr);
+                        //ptr->execute(ptr->filter->volume); // Store function in main loop and add counter to volume
                         // }
                     }
                     else if (events::containsMouse(std::as_const(*ptr->outNode), e))
@@ -142,9 +142,18 @@ namespace gui
                 [wptr = sptr->weak_from_this()](const SDL_Event &e)
                 {
                     auto ptr = wptr.lock();
-                    std::cout << e.drop.file << std::endl;
                     ptr->filter->load(e.drop.file);
                     SDL_free(e.drop.file);
+                    
+                    for (auto itr = xKernels.begin(); itr != xKernels.end(); ++itr)
+                    {
+                        if (itr->lock() == ptr)
+                        {
+                            xKernels.erase(itr);
+                            break;
+                        }
+                    }
+                    
                     xKernels.push_back(wptr);
                     executeKernels(0);
                 });
@@ -300,7 +309,6 @@ namespace gui
         std::shared_ptr<Renderer> buildRenderer(std::vector<std::shared_ptr<Renderer>> &wr);
 
         static void executeKernels(cl_uint i);
-
     };
 
 }

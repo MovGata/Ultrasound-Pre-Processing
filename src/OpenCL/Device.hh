@@ -57,7 +57,7 @@ namespace opencl
             
             if (renderer.tf->buffer.template getInfo<CL_MEM_SIZE>() != renderer.tf->length * renderer.tf->depth * renderer.tf->width * 4)
             {
-                std::cerr << "invalid volume size." << '\n';
+                std::cerr << "Memory (" << renderer.tf->buffer.template getInfo<CL_MEM_SIZE>() << ") does not match volume memory footprint (" << renderer.tf->length * renderer.tf->depth * renderer.tf->width * 4 << ").\n";
                 std::terminate();
             }
             
