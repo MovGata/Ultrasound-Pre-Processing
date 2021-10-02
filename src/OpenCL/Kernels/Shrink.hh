@@ -30,7 +30,7 @@ namespace opencl
         const std::string in = "3D";
         const std::string out = "3D";
 
-        Shrink(const cl::Context &c, const cl::CommandQueue &q, const std::shared_ptr<opencl::Kernel> &ptr)
+        Shrink(const cl::Context &c, const cl::CommandQueue &q, const std::shared_ptr<opencl::Kernel> &ptr);
         ~Shrink() = default;
 
         void input(const std::weak_ptr<data::Volume> &wv);

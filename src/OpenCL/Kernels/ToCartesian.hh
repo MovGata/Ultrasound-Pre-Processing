@@ -31,7 +31,7 @@ namespace opencl
         const std::string in = "3D";
         const std::string out = "3D";
 
-        ToCartesian(const cl::Context &c, const cl::CommandQueue &q, const std::shared_ptr<opencl::Kernel> &ptr)
+        ToCartesian(const cl::Context &c, const cl::CommandQueue &q, const std::shared_ptr<opencl::Kernel> &ptr);
         ~ToCartesian() = default;
 
         void input(const std::weak_ptr<data::Volume> &wv);

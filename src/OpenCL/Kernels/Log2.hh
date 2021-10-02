@@ -30,7 +30,7 @@ namespace opencl
         const std::string in = "3D";
         const std::string out = "3D";
 
-        Log2(const cl::Context &c, const cl::CommandQueue &q, const std::shared_ptr<opencl::Kernel> &ptr)
+        Log2(const cl::Context &c, const cl::CommandQueue &q, const std::shared_ptr<opencl::Kernel> &ptr);
         ~Log2() = default;
 
         void input(const std::weak_ptr<data::Volume> &wv);

@@ -37,7 +37,7 @@ namespace opencl
         const std::string in = "3D";
         const std::string out = "3D";
 
-        Slice(const cl::Context &c, const cl::CommandQueue &q, const std::shared_ptr<opencl::Kernel> &ptr)
+        Slice(const cl::Context &c, const cl::CommandQueue &q, const std::shared_ptr<opencl::Kernel> &ptr);
         ~Slice() = default;
 
         void input(const std::weak_ptr<data::Volume> &wv);
