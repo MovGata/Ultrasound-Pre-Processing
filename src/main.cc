@@ -69,9 +69,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
         mainWindow.addDrawable(device.buildDeviceTree(0.0f, static_cast<float>(h) + 10.0f));
     }
 
-
     auto timeA = SDL_GetTicks();
     bool quit = false;
+
+    /* * * * * * * * * * * * *
+     * Device Selection Loop *
+     * * * * * * * * * * * * */
 
     std::size_t eventCount = 1;
     while (!quit && !device.selected)
@@ -235,7 +238,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     mainWindow.addDrawable(std::shared_ptr(hideButton));
 
     timeA = SDL_GetTicks();
-    eventCount = 1;
+
+    /* * * * * * *
+     * Main Loop *
+     * * * * * * */
 
     while (!quit)
     {
@@ -243,7 +249,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
         SDL_Event e;
         while (SDL_PollEvent(&e))
         {
-            ++eventCount;
             if (e.type == SDL_QUIT)
             {
                 quit = true;
@@ -281,57 +286,40 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
             }
         }
 
-        // if (eventCount) // If no events have occurred, no changes to drawing have occurred.
-        // {
-            // mainWindow.setActive();
+        // Share GL buffers.
+        glFlush();
 
-            // Share GL buffers.
-            glFlush();
+        // If renderers are at the same frame, we can save loading costs.
+        auto sortedRenderers = mainWindow.renderers;
+        std::sort(sortedRenderers.begin(), sortedRenderers.end(), [](const std::shared_ptr<gui::Renderer> &sa, const std::shared_ptr<gui::Renderer> &sb)
+                  { return sa->cFrame < sb->cFrame; });
 
-            // Run OpenCL stuff
-
-            auto sortedRenderers = mainWindow.renderers;
-            std::sort(sortedRenderers.begin(), sortedRenderers.end(), [](const std::shared_ptr<gui::Renderer> &sa, const std::shared_ptr<gui::Renderer> &sb){return sa->cFrame < sb->cFrame;});
-
-            int lastR = -1;
-            for (auto &&renderer : sortedRenderers)
+        int lastR = -1;
+        for (auto &&renderer : sortedRenderers)
+        {
+            if (renderer->modified)
             {
-                if (renderer->modified)
+                // Helps to minimise cost if sequential renderers want the same volume frames.
+                if (lastR == -1 || static_cast<cl_uint>(lastR) != renderer->rFrame)
                 {
-                    // Helps to minimise cost if sequential renderers want the same volume frames.
-                    if (lastR == -1 || static_cast<cl_uint>(lastR) != renderer->rFrame)
-                    {
-                        gui::Kernel::executeKernels(renderer->rFrame);
-                        lastR = renderer->rFrame;
-                    }
-
-                    renderer->updateView();
-
-                    auto start = std::chrono::steady_clock::now();
-                    device.render(*renderer);
-                    auto stop = std::chrono::steady_clock::now();
-                    std::cout << "Kernel Execution Time: " << std::chrono::duration_cast<std::chrono::duration<float, std::milli>>(stop - start).count() << "ms" << std::endl;
-
-                    renderer->addFrame(device.pixelBuffer);
-
-                    // renderer->texture->update(device.pixelBuffer);
+                    gui::Kernel::executeKernels(renderer->rFrame);
+                    lastR = renderer->rFrame;
                 }
+
+                renderer->updateView();
+
+                auto start = std::chrono::steady_clock::now();
+                device.render(*renderer); // 3D -> 2D render
+                auto stop = std::chrono::steady_clock::now();
+                std::cout << "Kernel Execution Time: " << std::chrono::duration_cast<std::chrono::duration<float, std::milli>>(stop - start).count() << "ms" << std::endl;
+                renderer->addFrame(device.pixelBuffer); // Save 2D Render
             }
-
-            // Set renders to finished processing
-            // for (auto &&renderer : mainWindow.renderers)
-            // {
-            //     renderer->modified = false;
-            // }
-
-        // }
+        }
 
         // Run OpenGL stuff
         mainWindow.update();
         mainWindow.clean();
         mainWindow.draw();
-
-        eventCount = 0;
 
         auto duration = long(timeA) + long(1000.0 / 30.0) - long(SDL_GetTicks());
         if (duration - 2 > 0)

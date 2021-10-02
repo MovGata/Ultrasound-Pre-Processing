@@ -8,20 +8,19 @@
 namespace opencl
 {
 
-class Source
-{
-private:
-    cl::Program::Sources src;
+    class Source
+    {
+    private:
+        cl::Program::Sources src;
 
-public:
-    std::string name;
+    public:
+        std::string name;
 
-    Source(const std::string &url);
-    // Source(std::initializer_list<char *> urls);
-    ~Source();
+        Source(const std::string &url);
+        ~Source();
 
-    operator cl::Program::Sources();
-};
+        operator cl::Program::Sources();
+    };
 
 } // namespace opencl
 

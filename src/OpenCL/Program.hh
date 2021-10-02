@@ -12,22 +12,20 @@
 
 namespace opencl
 {
+    class Program
+    {
+    private:
+        cl::Program program;
 
-class Program
-{
-private:
-    cl::Program program;
+    public:
+        std::map<std::string, std::shared_ptr<Kernel>> kernels;
+        std::string name;
 
-public:
-    std::map<std::string, std::shared_ptr<Kernel>> kernels;
-    std::string name;
-    
-    Program(cl::Context context, Source src);
-    ~Program();
+        Program(cl::Context context, Source src);
+        ~Program();
 
-    std::shared_ptr<Kernel> &at(std::string str);
-    // cl::Program *operator->();
-};
+        std::shared_ptr<Kernel> &at(std::string str);
+    };
 } // namespace opencl
 
 #endif

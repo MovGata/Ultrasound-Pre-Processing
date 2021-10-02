@@ -15,14 +15,9 @@ namespace gui
             sptr->filter->volume->rFrame = i;
             sptr->execute(sptr->filter->volume);
         }
-
     }
 
-    KernelBase::KernelBase(std::shared_ptr<Texture> &&tptr) : Rectangle(0.0f, 0.0f, 40.0f, 40.0f), outLine({0.0f, 0.0f, 0.0f, 3.0f}), title(0.0f, 0.0f, static_cast<float>(tptr->textureW), static_cast<float>(tptr->textureH), std::forward<std::shared_ptr<Texture>>(tptr))
-    {
-    }
-
-    void KernelBase::updateLine(float ox, float oy)
+    void Kernel::updateLine(float ox, float oy)
     {
         float newX = x + w;
         float newY = outNode->y + outNode->h / 2.0f - outLine.h / 2.0f;
@@ -34,7 +29,7 @@ namespace gui
             0.0f);
     }
 
-    void KernelBase::draw()
+    void Kernel::draw()
     {
         Rectangle::upload();
         title.upload();
@@ -49,7 +44,152 @@ namespace gui
         }
     }
 
-    Kernel::Kernel(std::shared_ptr<opencl::Filter> &&f, std::shared_ptr<Texture> &&tptr) : KernelBase(std::forward<std::shared_ptr<Texture>>(tptr)), filter(std::forward<std::shared_ptr<opencl::Filter>>(f))
+    std::shared_ptr<Kernel> Kernel::build(std::shared_ptr<opencl::Filter> &&f, std::shared_ptr<Texture> &&tptr)
+    {
+        auto sptr = std::shared_ptr<Kernel>(new Kernel(std::move(f), std::forward<std::shared_ptr<Texture>>(tptr)));
+        sptr->Rectangle::draw = std::bind(Kernel::draw, sptr.get());
+        sptr->Rectangle::resize = std::bind(update, sptr.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+
+        sptr->eventManager->addCallback(
+            SDL_MOUSEBUTTONDOWN,
+            [wptr = sptr->weak_from_this()](const SDL_Event &e)
+            {
+                auto ptr = wptr.lock();
+                if (events::containsMouse(std::as_const(*ptr->outNode), e))
+                {
+                    if (ptr->outLink)
+                    {
+                        ptr->outLink->inLink.reset();
+                    }
+
+                    ptr->updateLine(static_cast<float>(e.motion.x), static_cast<float>(e.motion.y));
+                    ptr->outLine.hidden = false;
+                    ptr->link = true;
+                    ptr->outNode->eventManager->process(e);
+                    return;
+                }
+                else if (events::containsMouse(std::as_const(*ptr->options), e))
+                {
+                    ptr->h = ptr->h - ptr->options->h;
+                    ptr->options->eventManager->process(e);
+                    ptr->optionEvent = ptr->options->subManager;
+                    ptr->h = ptr->h + ptr->options->h;
+                    ptr->Rectangle::update();
+                }
+                else
+                {
+                    ptr->link = false;
+                    ptr->move = true;
+                }
+            });
+
+        sptr->eventManager->addCallback(
+            SDL_DROPFILE,
+            [wptr = sptr->weak_from_this()](const SDL_Event &e)
+            {
+                auto ptr = wptr.lock();
+                ptr->filter->load(e.drop.file);
+                SDL_free(e.drop.file);
+
+                for (auto itr = xKernels.begin(); itr != xKernels.end(); ++itr)
+                {
+                    if (itr->lock() == ptr)
+                    {
+                        xKernels.erase(itr);
+                        break;
+                    }
+                }
+
+                xKernels.push_back(wptr);
+                executeKernels(0);
+            });
+
+        sptr->eventManager->addCallback(
+            SDL_MOUSEBUTTONUP,
+            [wptr = sptr->weak_from_this()](const SDL_Event &e)
+            {
+                auto ptr = wptr.lock();
+                ptr->move = false;
+                if (!ptr)
+                    return;
+
+                auto optr = ptr->optionEvent.lock();
+                if (optr)
+                {
+                    optr->process(e);
+                    ptr->optionEvent.reset();
+                }
+                else if (events::containsMouse(std::as_const(*ptr->renderButton), e))
+                {
+                    ptr->renderButton->eventManager->process(e);
+                    return;
+                }
+            });
+
+        sptr->eventManager->addCallback(
+            SDL_MOUSEMOTION,
+            [wptr = sptr->weak_from_this()](const SDL_Event &e)
+            {
+                auto ptr = wptr.lock();
+                auto optr = ptr->optionEvent.lock();
+
+                if (ptr->link)
+                {
+                    ptr->updateLine(static_cast<float>(e.motion.x), static_cast<float>(e.motion.y));
+                }
+                else if (optr)
+                {
+                    optr->process(e);
+                }
+                else if (ptr->move)
+                {
+                    ptr->resize(static_cast<float>(e.motion.xrel), static_cast<float>(e.motion.yrel), 0.0f, 0.0f);
+                }
+            });
+        return sptr;
+    }
+
+    bool Kernel::endLink(const SDL_Event &e, std::weak_ptr<Kernel> wptr, std::shared_ptr<Kernel> &k)
+    {
+        auto ptr = wptr.lock();
+
+        if (k.get() == ptr.get())
+        {
+            ptr->link = false;
+            ptr->outLine.hidden = true;
+            return false;
+        }
+
+        if (events::containsMouse(*k, e))
+        {
+            if (k->inLink)
+            {
+                k->inLink->outLink.reset();
+                k->inLink->outLine.hidden = true;
+            }
+
+            ptr->updateLine(k->inNode->x, k->inNode->y + k->inNode->h / 2.0f);
+
+            ptr->outLink = k;
+            k->inLink = ptr;
+
+            ptr->fire = std::bind(Kernel::execute, k.get(), std::placeholders::_1);
+
+            ptr->outLine.hidden = false;
+
+            k->active = ptr->active;
+
+            return true;
+        }
+        else
+        {
+            ptr->link = false;
+            ptr->outLine.hidden = true;
+        }
+        return false;
+    }
+
+    Kernel::Kernel(std::shared_ptr<opencl::Filter> &&f, std::shared_ptr<Texture> &&tptr) : Rectangle(0.0f, 0.0f, 40.0f, 40.0f), filter(std::forward<std::shared_ptr<opencl::Filter>>(f)), outLine({0.0f, 0.0f, 0.0f, 3.0f}), title(0.0f, 0.0f, static_cast<float>(tptr->textureW), static_cast<float>(tptr->textureH), std::forward<std::shared_ptr<Texture>>(tptr))
     {
         texture->fill({0x5C, 0x5C, 0x5C, 0xFF});
 
@@ -81,11 +221,7 @@ namespace gui
         outLine.hidden = true;
         outLine.texture->fill({0xD3, 0xD3, 0xD3, 0xFF});
 
-        // options = Tree::build("OPTIONS");
-        // auto test = Slider::build(0.0f, 0.0f, w, 5.0f);
-        // options->addLeaf(std::move(test));
         options = filter->getOptions();
-
 
         options->resize(x - options->x,
                         y + h - options->y, 0.0f, 0.0f);
@@ -119,7 +255,7 @@ namespace gui
         title.update(dx, dy, dw, dh);
         renderButton->resize(dx, dy, dw, dh);
         options->resize(dx, dy, dw, dh);
-        
+
         if (outLink)
             updateLine(outLink->inNode->x, outLink->inNode->y + outLink->inNode->h / 2.0f);
 

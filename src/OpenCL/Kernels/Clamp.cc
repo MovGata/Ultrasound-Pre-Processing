@@ -13,6 +13,29 @@ namespace opencl
         Filter::getOptions = std::bind(getOptions, this);
     }
 
+    void Clamp::input(const std::weak_ptr<data::Volume> &wv)
+    {
+        auto v = wv.lock();
+        if (!v)
+            return;
+
+        volume->min = v->min;
+        volume->max = v->max;
+        inlength = v->length;
+        inwidth = v->width;
+        indepth = v->depth;
+        inBuffer = v->buffer;
+        volume->ratio = v->ratio;
+        volume->delta = v->delta;
+        volume->frames = v->frames;
+        volume->fRate = v->fRate;
+
+        volume->length = inlength;
+        volume->width = inwidth;
+        volume->depth = indepth;
+        volume->buffer = cl::Buffer(context, CL_MEM_READ_WRITE, volume->length * volume->depth * volume->width * sizeof(cl_uint));
+    }
+
     void Clamp::execute()
     {
         kernel->setArg(0, indepth);

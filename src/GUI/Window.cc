@@ -1,310 +1,192 @@
-// #include "Window.hh"
+#include "Window.hh"
 
-// #include <cmath>
-// #include <iostream>
-// #include <numbers>
+namespace gui
+{
 
-// #include <gl/gl.h>
-// #include <gl/glext.h>
-// #include <glm/glm.hpp>
-// #include <glm/gtc/matrix_transform.hpp>
+    void Window::windowEvent(const SDL_Event &e)
+    {
+        switch (e.window.event)
+        {
+        case SDL_WINDOWEVENT_MINIMIZED:
+            minimised = true;
+            break;
+        case SDL_WINDOWEVENT_MAXIMIZED:
+            break;
+        case SDL_WINDOWEVENT_RESTORED:
+            minimised = false;
+            break;
+        case SDL_WINDOWEVENT_SIZE_CHANGED:
+            redraw(e);
+            break;
+        case SDL_WINDOWEVENT_MOVED:
+            break;
+        default:
+            break;
+        }
+    }
 
+    Window::Window(unsigned int width, unsigned int height, Uint32 flags) : Window(SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, flags) {}
+    Window::Window(unsigned int xPos, unsigned int yPos, unsigned int width, unsigned int height, Uint32 flags) : eventManager(std::make_shared<events::EventManager>()), window(nullptr, SDL_DestroyWindow), projection(1.0f), size(static_cast<float>(width), static_cast<float>(height))
+    {
+        window.reset(SDL_CreateWindow("Ultrasound Pre-Processor", xPos, yPos, width, height, flags));
+        if (window == nullptr)
+        {
+            std::cout << "SDL2 window initialisation failed, error: " << SDL_GetError() << std::endl;
+            return;
+        }
 
-// #include "../Events/GUI.hh"
+        glContext = SDL_GL_CreateContext(window.get());
+        if (glContext == nullptr)
+        {
+            std::cout << "OpenGL context initialisation failed, error: " << SDL_GetError() << std::endl;
+            window.release();
+            return;
+        }
 
-// namespace gui
-// {
-//     template <concepts::DrawableType... Drawables>
-//     Window<Drawables...>::Window(unsigned int width, unsigned int height, Uint32 flags) : Window(SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, flags) {}
+        eventManager->addCallback(SDL_WINDOWEVENT, std::bind(windowEvent, this, std::placeholders::_1));
+    }
 
-//     template <concepts::DrawableType... Drawables>
-//     Window<Drawables...>::Window(unsigned int xPos, unsigned int yPos, unsigned int width, unsigned int height, Uint32 flags) : window(nullptr, SDL_DestroyWindow), projection(1.0f)
-//     {
-//         window.reset(SDL_CreateWindow("Ultrasound Pre-Processor", xPos, yPos, width, height, flags));
-//         if (window == nullptr)
-//         {
-//             std::cout << "SDL2 window initialisation failed, error: " << SDL_GetError() << std::endl;
-//             return;
-//         }
+    Window::~Window()
+    {
+        SDL_GL_DeleteContext(glContext);
+    }
 
-//         // addCallback(SDL_WINDOWEVENT, Window::windowEvent);
-//         // addCallback(SDL_MOUSEWHEEL, Window::scrollEvent);
-//         // addCallback(SDL_MOUSEBUTTONUP, Window::dragStopEvent);
-//         // addCallback(SDL_MOUSEBUTTONDOWN, Window::dragStartEvent);
-//         // addCallback(SDL_MOUSEMOTION, Window::dragEvent);
-//         // addCallback(Rectangle::dropEventData, Window::userDrop);
-//         // addCallback(Rectangle::volumeEventData, Window::userDrop);
-//         // addCallback(Rectangle::moveEventData, Window::userDrop);
-//         // addCallback(Rectangle::showEventData, Window::userShow);
+    void Window::clean()
+    {
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
 
-//         glContext = SDL_GL_CreateContext(window.get());
-//         if (glContext == nullptr)
-//         {
-//             std::cout << "OpenGL context initialisation failed, error: " << SDL_GetError() << std::endl;
-//             window.release();
-//             return;
-//         }
+    void Window::update()
+    {
+    }
 
-//         modelview = glm::mat4(1.0f);
+    void Window::draw()
+    {
+        if (minimised)
+        {
+            return;
+        }
 
-//         // arrow = Rectangle(0.5f, 0.0f, 0.5f, 0.005f);
-//         // arrow.setBG({0xFF, 0xFF, 0xFF, 0xFF});
-//         // arrow.allocTexture(1, 1);
-//         // arrow.update(modelview);
+        unsigned int rs = static_cast<unsigned int>(std::sqrt(renderers.size() - 1)) + 1;
+        unsigned int rx = 0; // Move this stuff to time of addition at some point.
+        unsigned int ry = 0;
+        float rw = std::min(size.first, size.second) / static_cast<float>(rs);
+        float xOff = size.first > size.second ? (size.first - size.second) / 2.0f : 0.0f;
+        float yOff = size.second > size.first ? (size.second - size.first) / 2.0f : 0.0f;
 
-//         clean();
-//         redraw();
-//     }
+        // This loop could be removed.
+        for (auto &&renderer : renderers)
+        {
+            renderer->resize(static_cast<float>(rx) * rw + xOff - renderer->x, static_cast<float>(ry) * rw + yOff - renderer->y, rw - renderer->w, rw - renderer->h);
+            renderer->draw();
+            rx = (rx + 1) % rs;
+            ry = rx ? ry : ry + 1;
+        }
 
-//     template <concepts::DrawableType... Drawables>
-//     Window<Drawables...>::~Window()
-//     {
-//         SDL_GL_DeleteContext(glContext);
-//     }
+        for (auto &&drawable : drawables)
+        {
+            drawable->draw();
+        }
 
-//     // void Window::process(const SDL_Event &e)
-//     // {
-//     //     em.process(*this, e);
-//     // }
+        if (kernel)
+            kernel->draw();
 
-//     template <concepts::DrawableType... Drawables>
-//     auto Window<Drawables...>::getPosition() -> std::pair<int, int>
-//     {
-//         std::pair<int, int> p;
-//         SDL_GetWindowPosition(window.get(), &p.first, &p.second);
-//         return p;
-//     }
+        SDL_GL_SwapWindow(window.get());
+    }
 
-//     template <concepts::DrawableType... Drawables>
-//     auto Window<Drawables...>::getSize() -> std::pair<int, int>
-//     {
-//         std::pair<int, int> p;
-//         SDL_GetWindowSize(window.get(), &p.first, &p.second);
-//         return p;
-//     }
+    void Window::redraw()
+    {
+        SDL_Event ev;
+        ev.window.data1 = static_cast<Sint32>(size.first);
+        ev.window.data2 = static_cast<Sint32>(size.second);
+        redraw(ev);
+    }
 
-//     template <concepts::DrawableType... Drawables>
-//     auto Window<Drawables...>::getID() -> Uint32
-//     {
-//         return SDL_GetWindowID(window.get());
-//     }
+    void Window::redraw(const SDL_Event &e)
+    {
+        if (minimised)
+        {
+            return;
+        }
 
-//     template <concepts::DrawableType... Drawables>
-//     void Window<Drawables...>::clean()
-//     {
-//         glClear(GL_COLOR_BUFFER_BIT);
-//     }
+        glViewport(0, 0, e.window.data1, e.window.data2);
 
-//     template <concepts::DrawableType... Drawables>
-//     void Window<Drawables...>::update()
-//     {
-//     }
+        std::pair<float, float> newSize = {e.window.data1, e.window.data2};
 
-//     template <concepts::DrawableType... Drawables>
-//     void Window<Drawables...>::draw()
-//     {
-//         if (minimised)
-//         {
-//             return;
-//         }
+        SDL_Event ev;
+        ev.user.type = events::GUI_REDRAW;
+        ev.user.code = 0;
+        ev.user.data1 = static_cast<void *>(&size);
+        ev.user.data2 = static_cast<void *>(&newSize);
 
-//         for (auto &&drawable : drawables)
-//         {
-//             std::visit(
-//                 [](auto &&d)
-//                 { d.draw(); },
-//                 drawable);
-//         }
-        
-//         // clean();
+        for (auto &&drawable : drawables)
+        {
+            drawable->eventManager->process(ev);
+        }
 
-//         // for (const auto &rec : subRectangles)
-//         // {
-//         //     // rec->draw();
-//         //     events::visible(events::draw<Rectangle>, (*rec));
-//         // }
+        size.first = static_cast<float>(e.window.data1);
+        size.second = static_cast<float>(e.window.data2);
 
-//         // for (const auto &rec : subRectangles)
-//         // {
-//         //     rec->drawChildren();
-//         // }
+        projection = glm::ortho(0.0f, size.first, size.second, 0.0f, 0.0f, 1.0f);
+        glUniformMatrix4fv(Instance::projectionUni, 1, GL_FALSE, reinterpret_cast<const GLfloat *>(&projection[0]));
+    }
 
-//         // for (const auto &rec : subRectangles)
-//         // {
-//         //     rec->drawLinks();
-//         // }
+    auto Window::getPosition() -> std::pair<int, int>
+    {
+        std::pair<int, int> p;
+        SDL_GetWindowPosition(window.get(), &p.first, &p.second);
+        return p;
+    }
 
-//         // drawArrow();
+    auto Window::getSize() -> std::pair<int, int>
+    {
+        std::pair<int, int> p;
+        SDL_GetWindowSize(window.get(), &p.first, &p.second);
+        return p;
+    }
 
-//         SDL_GL_SwapWindow(window.get());
-//     }
+    auto Window::getID() -> Uint32
+    {
+        return SDL_GetWindowID(window.get());
+    }
 
-//     // template<concepts::DrawableType... Drawables>
-//     // void Window<Drawables...>::drawArrow()
-//     // {
-//     //     if (minimised)
-//     //     {
-//     //         return;
-//     //     }
+    void Window::eraseDrawable(std::size_t i)
+    {
+        drawables.erase(std::next(drawables.begin(), i));
+    }
 
-//     //     if (Rectangle::mouseArrow.has_value())
-//     //     {
-//     //         arrow.transformations = *mouseArrow;
-//     //         events::draw(Rectangle::arrow);
-//     //     }
-//     // }
+    void Window::process(const SDL_Event &e)
+    {
+        eventManager->process(e);
+        for (auto &&drawable : std::ranges::reverse_view(drawables)) // Reverse to interact with top drawn elements first.
+        {
 
-//     template <concepts::DrawableType... Drawables>
-//     void Window<Drawables...>::redraw()
-//     {
-//         if (minimised)
-//         {
-//             return;
-//         }
+            if (drawable->hidden)
+                continue;
 
-//         auto pair = getSize();
+            if (events::containsMouse(std::as_const(*drawable), e))
+            {
+                if (drawable->eventManager->process(e))
+                {
+                    return;
+                }
+            }
+        }
+        for (auto &&renderer : renderers) // Reverse to interact with top drawn elements first.
+        {
+            if (events::containsMouse(std::as_const(*renderer), e))
+            {
+                if (renderer->eventManager->process(e))
+                {
+                    break;
+                }
+            }
+        }
+    }
 
-//         glViewport(0, 0, pair.first, pair.second);
+    void Window::addDrawable(std::shared_ptr<gui::Rectangle> &&d)
+    {
+        drawables.push_back(std::forward<std::shared_ptr<gui::Rectangle>>(d));
+    }
 
-//         if (pair.first > pair.second)
-//         {
-//             float aspect = static_cast<float>(pair.first) / static_cast<float>(pair.second);
-//             x = -1.0f;
-//             y = -1.0f / aspect;
-//             w = 2.0f;
-//             h = 2.0f * std::abs(y);
-//         }
-//         else
-//         {
-//             float aspect = static_cast<float>(pair.second) / static_cast<float>(pair.first);
-//             x = -1.0f / aspect;
-//             y = -1.0f;
-//             w = 2.0f * std::abs(x);
-//             h = 2.0f;
-//         }
-
-//         projection = glm::ortho(x, x + w, y, y + h, 0.0f, 1.0f);
-
-//         glUniformMatrix4fv(projectionUni, 1, GL_FALSE, reinterpret_cast<const GLfloat *>(&projection[0]));
-
-//         for (auto &rec : subRectangles)
-//         {
-//             rec->transformations = glm::scale(glm::mat4(1.0f), {std::abs(x), std::abs(y), 1.0f});
-//         }
-//     }
-
-//     // template<concepts::DrawableType... Drawables>
-//     // void Window<Drawables...>::setActive()
-//     // {
-//     //     SDL_GL_MakeCurrent(window.get(), glContext);
-//     // }
-
-//     template <concepts::DrawableType... Drawables>
-//     void Window<Drawables...>::windowEvent(const SDL_Event &e)
-//     {
-//         switch (e.window.event)
-//         {
-//         case SDL_WINDOWEVENT_MINIMIZED:
-//             minimised = true;
-//             break;
-//         case SDL_WINDOWEVENT_MAXIMIZED:
-//             break;
-//         case SDL_WINDOWEVENT_RESTORED:
-//             minimised = false;
-//             break;
-//         case SDL_WINDOWEVENT_SIZE_CHANGED:
-//             redraw();
-//             break;
-//         case SDL_WINDOWEVENT_MOVED:
-//             break;
-//         default:
-//             break;
-//         }
-//     }
-
-//     // void Window::dragStartEvent(const SDL_Event &e)
-//     // {
-//     //     std::pair<int, int> size;
-//     //     SDL_GetWindowSize(SDL_GetWindowFromID(e.button.windowID), &size.first, &size.second);
-
-//     //     int mx = e.button.x, my = e.button.y;
-//     //     glm::vec4 mp = {0.0f, 0.0f, 0.0f, 1.0f};
-
-//     //     mp.x = std::lerp(x, x + w, static_cast<float>(mx) / static_cast<float>(size.first));
-//     //     mp.y = std::lerp(y, y + h, 1.0f - static_cast<float>(my) / static_cast<float>(size.second));
-
-//     //     mp = modelview * mp;
-
-//     //     for (auto &r : subRectangles)
-//     //     {
-//     //         if (r->contains(mp.x, mp.y) && r->hidden)
-//     //         {
-//     //             r->process(e);
-//     //             break;
-//     //         }
-//     //     }
-//     // }
-
-//     // void Window::dragStopEvent(const SDL_Event &e)
-//     // {
-//     //     // auto size = getSize();
-
-//     //     // int mx = e.button.x, my = e.button.y;
-
-//     //     // float rx = std::lerp(x, x+w, static_cast<float>(mx)/static_cast<float>(size.first));
-//     //     // float ry = std::lerp(y, y+h, 1.0f - static_cast<float>(my)/static_cast<float>(size.second));
-//     //     // gui::Rectangle *rec = static_cast<Rectangle *>(dragObject->user.data1);
-
-//     //     if (dragObject.has_value())
-//     //     {
-//     //         // if (dragObject->user.type == gui::Rectangle::dropEventData)
-//     //         // {
-//     //         //     for (auto &r : subRectangles)
-//     //         //     {
-//     //         //         if (r->containsTF(*rec))
-//     //         //         {
-//     //         //             r->process(dragObject.value());
-//     //         //             break;
-//     //         //         }
-//     //         //     }
-//     //         // }
-//     //         // else if (dragObject->user.type == gui::Rectangle::moveEventData)
-//     //         // {
-//     //         //     for (auto &r : subRectangles)
-//     //         //     {
-//     //         //         // gui::Rectangle *rec = static_cast<Rectangle *>(dragObject->user.data1);
-//     //         //         if (r->contains(*rec))
-//     //         //         {
-//     //         //             r->process(dragObject.value());
-//     //         //             break;
-//     //         //         }
-//     //         //     }
-//     //         // }
-
-//     //         static_cast<Rectangle *>(dragObject->user.data1)->process(e);
-//     //         dragObject.reset();
-//     //     }
-//     // }
-
-//     // void Window::dragEvent(const SDL_Event &e)
-//     // {
-//     //     if (dragObject.has_value())
-//     //     {
-//     //         static_cast<gui::Rectangle *>(dragObject->user.data1)->process(e);
-//     //     }
-//     // }
-
-//     // void Window::userDrop(const SDL_Event &e)
-//     // {
-//     //     dragObject.emplace(e);
-//     // }
-
-//     // void Window::userShow(const SDL_Event &e)
-//     // {
-//     //     for (auto &r : subRectangles)
-//     //     {
-//     //         r->process(e);
-//     //     }
-//     // }
-
-// } // namespace gui
+} // namespace gui

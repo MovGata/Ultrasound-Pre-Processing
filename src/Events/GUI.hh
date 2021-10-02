@@ -67,43 +67,6 @@ namespace events
     template <concepts::DrawableType Drawable>
     bool containsMouse(const Drawable &d, const SDL_Event &e, bool hz = true, bool vt = true)
     {
-        // Uint32 ID = 0;
-        // switch (e.type)
-        // {
-        // case SDL_WINDOWEVENT:
-        //     ID = e.window.windowID;
-        //     break;
-        // case SDL_KEYDOWN:
-        // case SDL_KEYUP:
-        //     ID = e.key.windowID;
-        //     break;
-        // case SDL_TEXTEDITING:
-        //     ID = e.edit.windowID;
-        //     break;
-        // case SDL_TEXTINPUT:
-        //     ID = e.text.windowID;
-        //     break;
-        // case SDL_MOUSEMOTION:
-        //     ID = e.motion.windowID;
-        //     break;
-        // case SDL_MOUSEBUTTONDOWN:
-        // case SDL_MOUSEBUTTONUP:
-        //     ID = e.button.windowID;
-        //     break;
-        // case SDL_MOUSEWHEEL:
-        //     ID = e.wheel.windowID;
-        //     break;
-        // case SDL_USEREVENT:
-        //     ID = e.user.windowID;
-        //     break;
-        
-        // default:
-        //     return false;
-        // }
-
-        // int width, height;
-        // SDL_GetWindowSize(SDL_GetWindowFromID(ID), &width, &height);
-
         int mx, my;
         if (e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP)
         {
@@ -158,12 +121,6 @@ namespace events
         }
         return decltype(f(h, e, args...))();
     }
-
-    // template <concepts::HidableType Hidable>
-    // void draw(const Hidable &h, [[maybe_unsed]] const SDL_Event &e)
-    // {
-    //     visible(draw<concepts::DrawableType<Hidable>>, h, e);
-    // }
 
     template <concepts::ExternalType External>
     void transfer(const External &ext, const SDL_Event &e)

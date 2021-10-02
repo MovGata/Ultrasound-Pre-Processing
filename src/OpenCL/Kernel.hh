@@ -75,26 +75,7 @@ namespace opencl
             }
         }
 
-        void execute(cl::CommandQueue &cQueue)
-        {
-            try
-            {
-                cl_int err = 0;
-
-                err |= cQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global);
-
-                if (err != CL_SUCCESS)
-                {
-                    std::cerr << err << '\n';
-                    std::terminate();
-                }
-            }
-            catch (const cl::Error &e)
-            {
-                std::cerr << "Finish, " << e.what() << " : " << e.err() << '\n';
-                std::terminate();
-            }
-        }
+        void execute(cl::CommandQueue &cQueue);
     };
 
 } // namespace opencl
