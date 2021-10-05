@@ -29,6 +29,7 @@
 
 #include "IO/InfoStore.hh"
 #include "IO/Types/Binary.hh"
+#include "IO/Types/Nifti1.hh"
 #include "Ultrasound/Mindray.hh"
 
 #include "Data/Volume.hh"
@@ -188,6 +189,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     auto clamp = std::make_shared<opencl::Clamp>(device.context, device.cQueue, device.programs.at("utility")->at("clamping"));
 
     auto binary = std::make_shared<io::Binary>(device.cQueue);
+    auto nifti1 = std::make_shared<io::Nifti1>(device.cQueue);
 
     auto mindray = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("MINDRAY", mainWindow.kernel, mainWindow.renderers, dropzone, std::move(reader));
 
@@ -204,6 +206,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     auto sqrtK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Sqrt", mainWindow.kernel, mainWindow.renderers, dropzone, sqrt);
 
     auto outputButton = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Binary", mainWindow.kernel, mainWindow.renderers, dropzone, binary);
+    auto nifti1Button = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Nifti1", mainWindow.kernel, mainWindow.renderers, dropzone, nifti1);
 
     inputTree->addLeaf(std::move(mindray), 4.0f);
     dataTree->addLeaf(std::move(toPolar), 4.0f);
@@ -217,7 +220,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     dataTree->addLeaf(std::move(shrinkK), 4.0f);
     dataTree->addLeaf(std::move(fadeK), 4.0f);
     dataTree->addLeaf(std::move(sqrtK), 4.0f);
+
     outputTree->addLeaf(std::move(outputButton), 4.0f);
+    outputTree->addLeaf(std::move(nifti1Button), 4.0f);
 
     mainWindow.addDrawable(std::shared_ptr(tree));
 
