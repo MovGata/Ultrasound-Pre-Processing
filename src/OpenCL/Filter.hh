@@ -16,6 +16,7 @@ namespace opencl
         ~Filter() = default;
         
     public:
+        bool toggle = true; 
         std::shared_ptr<data::Volume> volume;
         std::function<void(const std::weak_ptr<data::Volume> &)> input;
         std::function<void(void)> execute;

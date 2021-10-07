@@ -13,7 +13,7 @@ namespace gui
         {
             auto sptr = wptr.lock();
             sptr->filter->volume->rFrame = i;
-            sptr->execute(sptr->filter->volume);
+            sptr->execute(sptr->filter->volume, sptr->modified);
         }
     }
 
@@ -101,6 +101,9 @@ namespace gui
                 }
 
                 xKernels.push_back(wptr);
+
+                ptr->modified = true;
+
                 executeKernels(0);
             });
 
@@ -173,11 +176,14 @@ namespace gui
             ptr->outLink = k;
             k->inLink = ptr;
 
-            ptr->fire = std::bind(Kernel::execute, k.get(), std::placeholders::_1);
+            ptr->fire = std::bind(Kernel::execute, k.get(), std::placeholders::_1, std::placeholders::_2);
 
             ptr->outLine.hidden = false;
 
-            k->active = ptr->active;
+            // k->active = ptr->active;
+
+            // When executing will allow a save to occur
+            k->modified = true;
 
             return true;
         }
@@ -233,17 +239,22 @@ namespace gui
         arm = std::bind(filter->input, std::placeholders::_1);
     }
 
-    void Kernel::execute(std::shared_ptr<data::Volume> &sp)
+    void Kernel::execute(std::shared_ptr<data::Volume> &sp, bool m)
     {
         active = true;
+        if (m == true)
+            modified = m;
 
         if (sp)
             arm(sp);
 
+        filter->toggle = modified;
         filter->execute();
 
         if (outLink)
-            fire(filter->volume);
+            fire(filter->volume, modified);
+
+        modified = false;
     }
 
     void Kernel::update(float dx, float dy, float dw, float dh)

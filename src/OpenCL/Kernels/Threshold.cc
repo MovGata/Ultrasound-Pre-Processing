@@ -28,6 +28,8 @@ namespace opencl
         volume->delta = v->delta;
         volume->frames = v->frames;
         volume->fRate = v->fRate;
+        volume->rFrame = v->rFrame;
+        volume->cFrame = v->cFrame;
 
         volume->length = inlength;
         volume->width = inwidth;

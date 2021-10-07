@@ -54,10 +54,11 @@ namespace gui
         bool move = true;
         std::weak_ptr<events::EventManager> optionEvent;
         bool active = false;
+        bool modified = true;
 
     public:
         std::shared_ptr<opencl::Filter> filter;
-        std::function<void(std::shared_ptr<data::Volume> &)> fire;
+        std::function<void(std::shared_ptr<data::Volume> &, bool)> fire;
         std::function<void(std::shared_ptr<data::Volume> &)> arm;
         static std::vector<std::weak_ptr<Kernel>> xKernels;
 
@@ -83,7 +84,7 @@ namespace gui
 
         ~Kernel() = default;
 
-        void execute(std::shared_ptr<data::Volume> &sp);
+        void execute(std::shared_ptr<data::Volume> &sp, bool m);
         void update(float, float, float, float);
 
         static bool endLink(const SDL_Event &e, std::weak_ptr<Kernel> wptr, std::shared_ptr<Kernel> &k);
@@ -107,11 +108,15 @@ namespace gui
 
                             if (skptr->link)
                             {
+                                skptr->outLink.reset();
+                                skptr->outLine.hidden = true;
+                                skptr->fire = []([[maybe_unused]] auto &a, [[maybe_unused]] bool b){};
                                 for (auto &kernel : dropzone->kernels)
                                 {
                                     if (endLink(e, skptr->weak_from_this(), kernel))
                                         break;
                                 }
+                                
                             }
                             else if (events::containsMouse(*dropzone, e))
                             {

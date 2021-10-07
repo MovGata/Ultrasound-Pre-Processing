@@ -26,6 +26,8 @@ namespace opencl
         volume->ratio = v->ratio;
         volume->delta = v->delta;
         volume->fRate = v->fRate;
+        volume->rFrame = v->rFrame;
+        volume->cFrame = v->cFrame;
 
         volume->frames = v->frames;
 
@@ -33,10 +35,6 @@ namespace opencl
         volume->length = static_cast<cl_uint>(2.0f * std::tan(v->delta / 2.0f) * static_cast<float>(volume->depth) + 1.0f);
         volume->width = inwidth > 1 ? static_cast<cl_uint>(2.0f * std::tan(v->delta / 2.0f) * static_cast<float>(volume->depth) + 1.0f) : inwidth;
         volume->depth -= static_cast<cl_uint>(static_cast<float>(v->depth) * v->ratio * std::cos(std::asin(std::sqrt(std::pow(std::sin(v->delta / 2.0f) * (static_cast<float>(v->depth) * v->ratio), 2) + std::pow(std::sin(v->delta / 2.0f) * (static_cast<float>(v->depth) * v->ratio), 2)) / (static_cast<float>(v->depth) * v->ratio))));
-
-        std::cout << indepth << '=' << volume->depth << '\n'
-                  << inlength << '=' << volume->length << '\n'
-                  << inwidth << '=' << volume->width << std::endl;
 
         volume->buffer = cl::Buffer(context, CL_MEM_READ_WRITE, volume->length * volume->depth * volume->width * sizeof(cl_uint));
     }
