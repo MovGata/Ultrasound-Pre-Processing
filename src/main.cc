@@ -145,19 +145,16 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 
     // Kernel Tree
     int w = 1, h = 1;
-    TTF_SizeText(font, "> KERNELS", &w, &h);
+    TTF_SizeText(font, "KERNELS", &w, &h);
     t = std::make_shared<gui::Texture>(w + 2, h + 2);
-    t->addText(font, "> KERNELS");
+    t->addText(font, "KERNELS");
 
-    auto alt = std::make_shared<gui::Texture>(*t);
     auto rec = std::make_shared<gui::Rectangle>(wWidth - 2.0f * (static_cast<float>(w) + 2.0f), 0.0f, static_cast<float>(w) + 2.0f, static_cast<float>(h) + 2.0f, std::move(t));
 
-    int oneWidth;
-    TTF_SizeText(font, ">", &oneWidth, nullptr);
+    int oneWidth, oneHeight;
+    TTF_SizeText(font, ">", &oneWidth, &oneHeight);
 
-    alt->rotate(1, 1, oneWidth, oneWidth);
-
-    auto tree = gui::Tree::build(std::move(rec), std::move(alt));
+    auto tree = gui::Tree::build(std::move(rec));
     tree->Rectangle::update(wWidth - 2.0f * (static_cast<float>(w) + 2.0f), 0.0f, tree->w, 0.0f);
     tree->texture->fill({0x2C, 0x2C, 0x2C, 0xFF});
 

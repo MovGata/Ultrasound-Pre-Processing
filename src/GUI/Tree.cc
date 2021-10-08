@@ -4,17 +4,11 @@
 
 namespace gui
 {
-    Tree::Tree(leaf_t &&t) : Tree(std::forward<leaf_t>(t), std::shared_ptr<Texture>(t->texture))
-    {
-    }
 
-    Tree::Tree(leaf_t &&t, std::shared_ptr<Texture> &&alt) : trunk(*t)
+    Tree::Tree(leaf_t &&t) : trunk(t)
     {
-        trunk.setTexture(0, std::shared_ptr<Texture>(t->texture));
-        trunk.setTexture(1, std::forward<std::shared_ptr<Texture>>(alt));
-
-        w = trunk.w;
-        h = trunk.h;
+        w = trunk->w;
+        h = trunk->h;
         Rectangle::update();
     }
 
@@ -33,12 +27,7 @@ namespace gui
 
     std::shared_ptr<Tree> Tree::build(leaf_t &&t)
     {
-        return build(std::forward<leaf_t>(t), std::shared_ptr<Texture>(t->texture));
-    }
-
-    std::shared_ptr<Tree> Tree::build(leaf_t &&t, std::shared_ptr<Texture> &&alt)
-    {
-        auto rptr = std::shared_ptr<Tree>(new Tree(std::forward<leaf_t>(t), std::forward<std::shared_ptr<Texture>>(alt)));
+        auto rptr = std::shared_ptr<Tree>(new Tree(std::forward<leaf_t>(t)));
         rptr->Rectangle::draw = std::bind(Tree::draw, rptr.get());
         rptr->Rectangle::resize = std::bind(Tree::update, rptr.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
 
@@ -64,7 +53,7 @@ namespace gui
                 //     leaf->resize(offsetX, offsetY, 0.0f, 0.0f);
 
                 // ptr->Rectangle::update(xd, yd);
-                // ptr->trunk.update(xd, yd);
+                // ptr->trunk->update(xd, yd);
             });
         rptr->eventManager->addCallback(
             SDL_MOUSEBUTTONDOWN, [wptr = rptr->weak_from_this()](const SDL_Event &e)
@@ -72,7 +61,7 @@ namespace gui
                 auto ptr = wptr.lock();
 
                 float offset = 0;
-                if (events::containsMouse(ptr->trunk, e, false, true))
+                if (events::containsMouse(*ptr->trunk, e, false, true))
                 {
                     ptr->toggle();
                 }
@@ -84,7 +73,7 @@ namespace gui
                     {
                         if (!branchHit && !leafHit)
                         {
-                            if (events::containsMouse(branch->trunk, e, false, true))    // Hit branch header
+                            if (events::containsMouse(*branch->trunk, e, false, true))    // Hit branch header
                             {
                                 offset = -branch->h;                        // Subtract size before closing/opening
                                 branch->eventManager->process(e);
@@ -139,7 +128,7 @@ namespace gui
     void Tree::update(float dx, float dy, float dw, float dh)
     {
         Rectangle::update(dx, dy, dw, dh);
-        trunk.update(dx, dy, 0.0f, 0.0f);//dw, dh);
+        trunk->update(dx, dy, 0.0f, 0.0f);//dw, dh);
 
         for (auto &&branch : branches)
         {
@@ -157,7 +146,7 @@ namespace gui
             return;
 
         Rectangle::upload();
-        trunk.upload();
+        trunk->upload();
 
         if (!open)
             return;
@@ -172,10 +161,9 @@ namespace gui
     float Tree::toggle()
     {
         open = !open;
-        trunk.nextTexture();
 
         float dy = -h;
-        h = trunk.h;
+        h = trunk->h;
 
         if (!open)
         {
@@ -202,17 +190,17 @@ namespace gui
         // u->x = x + offset;
         if (branches.empty())
         {
-            yOff = trunk.y + trunk.h;
-            // u->y = trunk.y + trunk.h;
+            yOff = trunk->y + trunk->h;
+            // u->y = trunk->y + trunk->h;
         }
         else
         {
             branch_t back = branches.back();
-            yOff = back->trunk.y + back->trunk.h;
-            // u->y = back->trunk.y + back->trunk.h;
+            yOff = back->trunk->y + back->trunk->h;
+            // u->y = back->trunk->y + back->trunk->h;
         }
 
-        // u->trunk.update(u->x, u->y);
+        // u->trunk->update(u->x, u->y);
         u->resize(xOff - u->x, yOff - u->y, 0.0f, 0.0f);
 
         if (open)
@@ -237,12 +225,12 @@ namespace gui
         float yOff = 0.0f;
         if (branches.empty() && leaves.empty())
         {
-            yOff = trunk.y + trunk.h;
+            yOff = trunk->y + trunk->h;
         }
         else if (leaves.empty())
         {
             auto back = branches.back();
-            yOff = back->trunk.y + back->trunk.h;
+            yOff = back->trunk->y + back->trunk->h;
         }
         else
         {

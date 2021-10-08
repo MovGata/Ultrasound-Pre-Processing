@@ -7,7 +7,6 @@
 
 #include <SDL2/SDL_events.h>
 
-#include "MultiTexture.hh"
 #include "Rectangle.hh"
 
 namespace gui
@@ -21,20 +20,18 @@ namespace gui
         std::vector<branch_t> branches;
         std::vector<leaf_t> leaves;
 
-        MultiTexture<Rectangle, 2> trunk;
+        leaf_t trunk;
 
         bool open = false;
 
     protected:
         Tree(leaf_t &&t);
-        Tree(leaf_t &&t, std::shared_ptr<Texture> &&alt);
 
     public:
         std::weak_ptr<events::EventManager> subManager;
 
         static std::shared_ptr<Tree> build(const std::string &str);
         static std::shared_ptr<Tree> build(leaf_t &&t);
-        static std::shared_ptr<Tree> build(leaf_t &&t, std::shared_ptr<Texture> &&alt);
 
         Tree() = default;
         ~Tree() = default;

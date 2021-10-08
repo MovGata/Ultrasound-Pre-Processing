@@ -60,11 +60,11 @@ namespace gui
         SDL_FreeSurface(s);
 
         glBindTexture(GL_TEXTURE_2D, texture);
-        if ((textT->w+1) * (textT->h+1) < textureW * textureH)
+        if ((textT->w + 1) * (textT->h + 1) < textureW * textureH)
         {
 
             std::vector<uint32_t> clr(textureW * textureH);
-            
+
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, textureW, textureH, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, clr.data());
             glTexSubImage2D(GL_TEXTURE_2D, 0, 1, 1, textT->w, textT->h, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, textT->pixels);
         }
@@ -78,7 +78,7 @@ namespace gui
 
         SDL_FreeSurface(textT);
     }
-    
+
     void Texture::addText(const std::string &str)
     {
         addText(lastFont, str);
@@ -114,7 +114,6 @@ namespace gui
         glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, data.data());
         glBindTexture(GL_TEXTURE_2D, 0);
 
-
         glGenTextures(1, &texture);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -135,7 +134,7 @@ namespace gui
 
     void Texture::rotate(unsigned int x, unsigned int y, unsigned int w, unsigned int h)
     {
-        if (x+w > static_cast<unsigned int>(textureW) || x+w > static_cast<unsigned int>(textureH) || y+h > static_cast<unsigned int>(textureW) || y+h > static_cast<unsigned int>(textureH))
+        if (x + w > static_cast<unsigned int>(textureW) || x + w > static_cast<unsigned int>(textureH) || y + h > static_cast<unsigned int>(textureW) || y + h > static_cast<unsigned int>(textureH))
         {
             return;
         }
@@ -148,7 +147,7 @@ namespace gui
         {
             for (unsigned int j = 0; j < w; ++j)
             {
-                rotated[(y+j)*textureW+x+w-1-(i)] = data[(y+i)*textureW+x+j];
+                rotated[(y+i)*textureW+x+j] = data[(y + h-1-j)*textureW+x+i];
             }
         }
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, textureW, textureH, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, rotated.data());
