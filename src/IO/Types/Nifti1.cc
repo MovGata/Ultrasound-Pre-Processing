@@ -82,15 +82,15 @@ namespace io
                 .sform_code = NIFTI_XFORM_SCANNER_ANAT,
 
                 .quatern_b = 0.0f,
-                .quatern_c = 0.0f,
+                .quatern_c = 1.0f/std::sqrt(2.0f),
                 .quatern_d = 0.0f,
                 .qoffset_x = 0.0f,
                 .qoffset_y = 0.0f,
                 .qoffset_z = 0.0f,
 
-                .srow_x = {1.0f, 0.0f, 0.0f, 0.0f},
+                .srow_x = {0.0f, 0.0f, 1.0f, 0.0f},
                 .srow_y = {0.0f, 1.0f, 0.0f, 0.0f},
-                .srow_z = {0.0f, 0.0f, 1.0f, 0.0f},
+                .srow_z = {-1.0f, 0.0f, 0.0f, 0.0f},
 
                 .intent_name = {0},
                 .magic = {'n', '+', '1', '\0'}};
