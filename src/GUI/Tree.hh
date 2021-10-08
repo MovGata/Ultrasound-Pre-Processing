@@ -38,6 +38,8 @@ namespace gui
 
         void draw();
 
+        bool empty();
+
         float toggle();
         void update(float dx = 0.0f, float dy = 0.0f, float dw = 0.0f, float dh = 0.0f);
 

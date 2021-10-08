@@ -158,6 +158,11 @@ namespace gui
             leaf->draw();
     }
 
+    bool Tree::empty()
+    {
+        return (branches.empty() && leaves.empty());
+    }
+
     float Tree::toggle()
     {
         open = !open;

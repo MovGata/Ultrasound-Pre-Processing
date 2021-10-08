@@ -213,33 +213,53 @@ namespace gui
         w = std::max(w, title.w + renderButton->w + 2.0f);
         h = title.h * 3.0f;
 
+        options = filter->getOptions();
+
+        if (options->empty())
+        {
+            options->hidden = true;
+        }
+        else
+        {
+            w = std::max(w, options->w);
+        }
+
         int mx, my;
         SDL_GetMouseState(&mx, &my);
 
         x = static_cast<float>(mx) - w / 2.0f;
         y = static_cast<float>(my) - h / 2.0f;
+        
+        if (!options->empty())
+        {
+            options->resize(x - options->x, y + h - options->y, 0.0f, 0.0f);
+            h = h + options->h;
+            
+            inNode->resize(
+                x + 2.0f - inNode->x,
+                y + (h - options->h) / 2.0f - inNode->y, 0.0f, 0.0f);
+            outNode->resize(
+                x + w - 2.0f - outNode->w - outNode->x,
+                y + (h - options->h) / 2.0f - outNode->y, 0.0f, 0.0f);
+        }
+        else
+        {
+            inNode->resize(
+                x + 2.0f - inNode->x,
+                y + h / 2.0f - inNode->y, 0.0f, 0.0f);
+            outNode->resize(
+                x + w - 2.0f - outNode->w - outNode->x,
+                y + h / 2.0f - outNode->y, 0.0f, 0.0f);
+        }
 
         title.update(x + w / 2.0f - title.w / 2.0f - renderButton->w / 2.0f - 1.0f - title.x,
                      y - title.y);
         renderButton->resize(
             title.x + title.w + 2.0f - renderButton->x,
             title.y - renderButton->y, 0.0f, 0.0f);
-        inNode->resize(
-            x + 2.0f - inNode->x,
-            y + h / 2.0f - inNode->y, 0.0f, 0.0f);
-        outNode->resize(
-            x + w - 2.0f - outNode->w - outNode->x,
-            y + h / 2.0f - outNode->y, 0.0f, 0.0f);
 
         outLine.hidden = true;
         outLine.texture->fill({0xD3, 0xD3, 0xD3, 0xFF});
-
-        options = filter->getOptions();
-
-        options->resize(x - options->x,
-                        y + h - options->y, 0.0f, 0.0f);
-
-        h = h + options->h;
 
         Rectangle::update();
 
