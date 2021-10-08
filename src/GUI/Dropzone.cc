@@ -94,4 +94,62 @@ namespace gui
         return rptr;
     }
 
+    std::shared_ptr<Button> Dropzone::buildKernel(const std::string &str, std::shared_ptr<Kernel> &wk, std::vector<std::shared_ptr<Renderer>> &wr, std::shared_ptr<opencl::Filter> &&f)
+    {
+        auto button = Button::build(str);
+
+        button->onPress(
+            [this, &wk, &wr, filter = std::move(f), wptr = std::weak_ptr<Texture>(button->texture)]() mutable
+            {
+                std::shared_ptr<Kernel> ptr = Kernel::build(std::shared_ptr(filter), wptr.lock());
+                kernels.emplace_back(ptr);
+
+                ptr->eventManager->addCallback(
+                    SDL_MOUSEBUTTONUP,
+                    [this, kwptr = ptr->weak_from_this()](const SDL_Event &e)
+                    {
+                        auto skptr = kwptr.lock();
+
+                        if (skptr->link)
+                        {   
+                            for (auto &kernel : kernels)
+                            {
+                                if (skptr->endLink(e, kernel))
+                                    break;
+                            }
+                        }
+                        else if (events::containsMouse(*this, e))
+                        {
+                            skptr->y = std::max(y, skptr->y);
+                            skptr->y = std::min(y + h - skptr->h, skptr->y);
+                        }
+                        else
+                        {
+                            erase(skptr);
+                        }
+                    });
+
+                ptr->eventManager->addCallback(
+                    SDL_MOUSEBUTTONDOWN,
+                    [&wk, kwptr = ptr->weak_from_this()]([[maybe_unused]] const SDL_Event &e)
+                    {
+                        wk = kwptr.lock();
+                    });
+
+                ptr->renderButton->onRelease(
+                    [kwptr = ptr->weak_from_this(), &wr](const SDL_Event &ev)
+                    {
+                        auto cptr = kwptr.lock();
+                        if (!events::containsMouse(*cptr->inNode, ev) && !events::containsMouse(*cptr->outNode, ev))
+                        {
+                                auto rPtr = cptr->buildRenderer(wr);
+                                if (rPtr)
+                                    wr.emplace_back(std::move(rPtr));
+                        }
+                    });
+                wk = std::move(ptr);
+            });
+        return button;
+    }
+
 } // namespace gui

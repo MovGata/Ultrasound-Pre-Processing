@@ -87,70 +87,7 @@ namespace gui
         void execute(std::shared_ptr<data::Volume> &sp, bool m);
         void update(float, float, float, float);
 
-        static bool endLink(const SDL_Event &e, std::weak_ptr<Kernel> wptr, std::shared_ptr<Kernel> &k);
-
-        template <typename D>
-        static std::shared_ptr<Button> buildButton(const std::string &str, std::shared_ptr<Kernel> &wk, std::vector<std::shared_ptr<Renderer>> &wr, D &d, std::shared_ptr<opencl::Filter> &&f)
-        {
-            auto button = Button::build(str);
-
-            button->onPress(
-                [&wk, &wr, &dropzone = d, filter = std::move(f), wptr = std::weak_ptr<Texture>(button->texture)]() mutable
-                {
-                    std::shared_ptr<Kernel> ptr = Kernel::build(std::shared_ptr(filter), wptr.lock());
-                    dropzone->kernels.emplace_back(ptr);
-
-                    ptr->eventManager->addCallback(
-                        SDL_MOUSEBUTTONUP,
-                        [&dropzone, kwptr = ptr->weak_from_this()](const SDL_Event &e)
-                        {
-                            auto skptr = kwptr.lock();
-
-                            if (skptr->link)
-                            {
-                                skptr->outLink.reset();
-                                skptr->outLine.hidden = true;
-                                skptr->fire = []([[maybe_unused]] auto &a, [[maybe_unused]] bool b){};
-                                for (auto &kernel : dropzone->kernels)
-                                {
-                                    if (endLink(e, skptr->weak_from_this(), kernel))
-                                        break;
-                                }
-                                
-                            }
-                            else if (events::containsMouse(*dropzone, e))
-                            {
-                                skptr->y = std::max(dropzone->y, skptr->y);
-                                skptr->y = std::min(dropzone->y + dropzone->h - skptr->h, skptr->y);
-                            }
-                            else
-                            {
-                                dropzone->erase(skptr);
-                            }
-                        });
-
-                    ptr->eventManager->addCallback(
-                        SDL_MOUSEBUTTONDOWN,
-                        [&wk, kwptr = ptr->weak_from_this()]([[maybe_unused]] const SDL_Event &e)
-                        {
-                            wk = kwptr.lock();
-                        });
-
-                    ptr->renderButton->onRelease(
-                        [kwptr = ptr->weak_from_this(), &wr](const SDL_Event &ev)
-                        {
-                            auto cptr = kwptr.lock();
-                            if (!events::containsMouse(*cptr->inNode, ev) && !events::containsMouse(*cptr->outNode, ev))
-                            {
-                                if (cptr->active)
-                                    wr.emplace_back(cptr->buildRenderer(wr));
-                            }
-                        });
-                    wk = std::move(ptr);
-                });
-            return button;
-        }
-
+        bool endLink(const SDL_Event &e, std::shared_ptr<Kernel> &k);
         std::shared_ptr<Renderer> buildRenderer(std::vector<std::shared_ptr<Renderer>> &wr);
 
         static void executeKernels(cl_uint i);

@@ -56,10 +56,6 @@ namespace gui
         glClear(GL_COLOR_BUFFER_BIT);
     }
 
-    void Window::update()
-    {
-    }
-
     void Window::draw()
     {
         if (minimised)

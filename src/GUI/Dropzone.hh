@@ -31,6 +31,8 @@ namespace gui
 
         void draw() const;
         void erase(std::weak_ptr<Kernel> wptr);
+        
+        std::shared_ptr<Button> buildKernel(const std::string &str, std::shared_ptr<Kernel> &wk, std::vector<std::shared_ptr<Renderer>> &wr, std::shared_ptr<opencl::Filter> &&f);
     };
 
 }

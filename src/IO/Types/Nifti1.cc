@@ -2,6 +2,7 @@
 
 #include <SDL2/SDL_rwops.h>
 #include <iostream>
+#include <filesystem>
 
 #include "nifti1.h"
 
@@ -34,8 +35,6 @@ namespace io
     {
         if (!Filter::toggle)
             return;
-
-        std::cout << "Printing" << std::endl;
 
         std::shared_ptr<data::Volume> sptr = inVolume.lock();
         if (sptr->rFrame == 0)
@@ -110,6 +109,13 @@ namespace io
             SDL_RWops *outFile = SDL_RWFromFile("./out.nii", "ab");
             SDL_RWwrite(outFile, volume->raw[0].data(), volume->raw[0].size(), 1);
             SDL_RWclose(outFile);
+        }
+
+        if (sptr->rFrame == sptr->frames - 1)
+        {
+            std::string astr = "File saved to: \n\n";
+            astr += std::filesystem::absolute(std::filesystem::current_path()).string() + "\\out.nii";
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "NIFTI-1 Save Complete", astr.c_str(), nullptr);
         }
     }
 

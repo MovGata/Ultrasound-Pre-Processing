@@ -73,10 +73,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     auto timeA = SDL_GetTicks();
     bool quit = false;
 
-    /* * * * * * * * * * * * *
-     * Device Selection Loop *
-     * * * * * * * * * * * * */
-
+    // Device Selection Loop
     std::size_t eventCount = 1;
     while (!quit && !device.selected)
     {
@@ -115,7 +112,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
             // Share GL buffers.
             glFlush();
             // Run OpenGL stuff
-            mainWindow.update();
             mainWindow.clean();
             mainWindow.draw();
         }
@@ -141,16 +137,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 
     mainWindow.drawables.clear();
 
-    std::shared_ptr<ultrasound::Mindray> reader = std::make_shared<ultrasound::Mindray>(device.context);
-
     std::shared_ptr<gui::Texture> t;
 
-    // DROP ZONE
+    // Drop Zone
     auto dropzone = gui::Dropzone::build(wWidth, wHeight);
     mainWindow.addDrawable(std::shared_ptr(dropzone));
 
-    // KERNELS
-
+    // Kernel Tree
     int w = 1, h = 1;
     TTF_SizeText(font, "> KERNELS", &w, &h);
     t = std::make_shared<gui::Texture>(w + 2, h + 2);
@@ -176,58 +169,43 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     tree->addBranch(std::shared_ptr(outputTree), 4.0f);
     tree->addBranch(std::shared_ptr(dataTree), 4.0f);
 
-    auto polar = std::make_shared<opencl::ToPolar>(device.context, device.cQueue, device.programs.at("cartesian")->at("toSpherical"));
-    auto cartesian = std::make_shared<opencl::ToCartesian>(device.context, device.cQueue, device.programs.at("cartesian")->at("toCartesian"));
-    auto slice = std::make_shared<opencl::Slice>(device.context, device.cQueue, device.programs.at("utility")->at("slice"));
-    auto threshold = std::make_shared<opencl::Threshold>(device.context, device.cQueue, device.programs.at("utility")->at("threshold"));
-    auto invert = std::make_shared<opencl::Invert>(device.context, device.cQueue, device.programs.at("utility")->at("invert"));
-    auto contrast = std::make_shared<opencl::Contrast>(device.context, device.cQueue, device.programs.at("utility")->at("contrast"));
-    auto log = std::make_shared<opencl::Log2>(device.context, device.cQueue, device.programs.at("utility")->at("logTwo"));
-    auto shrink = std::make_shared<opencl::Shrink>(device.context, device.cQueue, device.programs.at("utility")->at("shrink"));
-    auto fade = std::make_shared<opencl::Fade>(device.context, device.cQueue, device.programs.at("utility")->at("fade"));
-    auto sqrt = std::make_shared<opencl::Sqrt>(device.context, device.cQueue, device.programs.at("utility")->at("square"));
-    auto clamp = std::make_shared<opencl::Clamp>(device.context, device.cQueue, device.programs.at("utility")->at("clamping"));
+
+    auto reader = std::make_shared<ultrasound::Mindray>(device.context);
+    inputTree->addLeaf(dropzone->buildKernel("MINDRAY", mainWindow.kernel, mainWindow.renderers, std::move(reader)), 4.0f);
+
+    auto polar      = std::make_shared<opencl::ToPolar>(device.context, device.cQueue, device.programs.at("cartesian")->at("toSpherical"));
+    auto cartesian  = std::make_shared<opencl::ToCartesian>(device.context, device.cQueue, device.programs.at("cartesian")->at("toCartesian"));
+    auto slice      = std::make_shared<opencl::Slice>(device.context, device.cQueue, device.programs.at("utility")->at("slice"));
+    auto threshold  = std::make_shared<opencl::Threshold>(device.context, device.cQueue, device.programs.at("utility")->at("threshold"));
+    auto invert     = std::make_shared<opencl::Invert>(device.context, device.cQueue, device.programs.at("utility")->at("invert"));
+    auto contrast   = std::make_shared<opencl::Contrast>(device.context, device.cQueue, device.programs.at("utility")->at("contrast"));
+    auto log        = std::make_shared<opencl::Log2>(device.context, device.cQueue, device.programs.at("utility")->at("logTwo"));
+    auto shrink     = std::make_shared<opencl::Shrink>(device.context, device.cQueue, device.programs.at("utility")->at("shrink"));
+    auto fade       = std::make_shared<opencl::Fade>(device.context, device.cQueue, device.programs.at("utility")->at("fade"));
+    auto sqrt       = std::make_shared<opencl::Sqrt>(device.context, device.cQueue, device.programs.at("utility")->at("square"));
+    auto clamp      = std::make_shared<opencl::Clamp>(device.context, device.cQueue, device.programs.at("utility")->at("clamping"));
+
+    dataTree->addLeaf(dropzone->buildKernel("To Polar", mainWindow.kernel, mainWindow.renderers, polar), 4.0f);
+    dataTree->addLeaf(dropzone->buildKernel("To Cartesian", mainWindow.kernel, mainWindow.renderers, cartesian), 4.0f);
+    dataTree->addLeaf(dropzone->buildKernel("Slice", mainWindow.kernel, mainWindow.renderers, slice), 4.0f);
+    dataTree->addLeaf(dropzone->buildKernel("Threshold", mainWindow.kernel, mainWindow.renderers, threshold), 4.0f);
+    dataTree->addLeaf(dropzone->buildKernel("Invert", mainWindow.kernel, mainWindow.renderers, invert), 4.0f);
+    dataTree->addLeaf(dropzone->buildKernel("Clamp", mainWindow.kernel, mainWindow.renderers, clamp), 4.0f);
+    dataTree->addLeaf(dropzone->buildKernel("Contrast", mainWindow.kernel, mainWindow.renderers, contrast), 4.0f);
+    dataTree->addLeaf(dropzone->buildKernel("Log2", mainWindow.kernel, mainWindow.renderers, log), 4.0f);
+    dataTree->addLeaf(dropzone->buildKernel("Shrink", mainWindow.kernel, mainWindow.renderers, shrink), 4.0f);
+    dataTree->addLeaf(dropzone->buildKernel("Fade", mainWindow.kernel, mainWindow.renderers, fade), 4.0f);
+    dataTree->addLeaf(dropzone->buildKernel("Sqrt", mainWindow.kernel, mainWindow.renderers, sqrt), 4.0f);
 
     auto binary = std::make_shared<io::Binary>(device.cQueue);
     auto nifti1 = std::make_shared<io::Nifti1>(device.cQueue);
 
-    auto mindray = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("MINDRAY", mainWindow.kernel, mainWindow.renderers, dropzone, std::move(reader));
-
-    auto toPolar = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("To Polar", mainWindow.kernel, mainWindow.renderers, dropzone, polar);
-    auto toCartesian = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("To Cartesian", mainWindow.kernel, mainWindow.renderers, dropzone, cartesian);
-    auto sliceK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Slice", mainWindow.kernel, mainWindow.renderers, dropzone, slice);
-    auto threshK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Threshold", mainWindow.kernel, mainWindow.renderers, dropzone, threshold);
-    auto invK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Invert", mainWindow.kernel, mainWindow.renderers, dropzone, invert);
-    auto clampK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Clamp", mainWindow.kernel, mainWindow.renderers, dropzone, clamp);
-    auto conK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Contrast", mainWindow.kernel, mainWindow.renderers, dropzone, contrast);
-    auto logK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Log2", mainWindow.kernel, mainWindow.renderers, dropzone, log);
-    auto shrinkK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Shrink", mainWindow.kernel, mainWindow.renderers, dropzone, shrink);
-    auto fadeK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Fade", mainWindow.kernel, mainWindow.renderers, dropzone, fade);
-    auto sqrtK = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Sqrt", mainWindow.kernel, mainWindow.renderers, dropzone, sqrt);
-
-    auto outputButton = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Binary", mainWindow.kernel, mainWindow.renderers, dropzone, binary);
-    auto nifti1Button = gui::Kernel::buildButton<std::shared_ptr<gui::Dropzone>>("Nifti1", mainWindow.kernel, mainWindow.renderers, dropzone, nifti1);
-
-    inputTree->addLeaf(std::move(mindray), 4.0f);
-    dataTree->addLeaf(std::move(toPolar), 4.0f);
-    dataTree->addLeaf(std::move(toCartesian), 4.0f);
-    dataTree->addLeaf(std::move(sliceK), 4.0f);
-    dataTree->addLeaf(std::move(threshK), 4.0f);
-    dataTree->addLeaf(std::move(invK), 4.0f);
-    dataTree->addLeaf(std::move(clampK), 4.0f);
-    dataTree->addLeaf(std::move(conK), 4.0f);
-    dataTree->addLeaf(std::move(logK), 4.0f);
-    dataTree->addLeaf(std::move(shrinkK), 4.0f);
-    dataTree->addLeaf(std::move(fadeK), 4.0f);
-    dataTree->addLeaf(std::move(sqrtK), 4.0f);
-
-    outputTree->addLeaf(std::move(outputButton), 4.0f);
-    outputTree->addLeaf(std::move(nifti1Button), 4.0f);
+    outputTree->addLeaf(dropzone->buildKernel("Binary", mainWindow.kernel, mainWindow.renderers, binary), 4.0f);
+    outputTree->addLeaf(dropzone->buildKernel("Nifti1", mainWindow.kernel, mainWindow.renderers, nifti1), 4.0f);
 
     mainWindow.addDrawable(std::shared_ptr(tree));
 
-    // HIDE BUTTON
-
+    // Hide Button
     t = std::make_shared<gui::Texture>(40, 40);
     t->fill({0x4E, 0x4E, 0x4E, 0xFF});
     std::shared_ptr<gui::Button> hideButton = gui::Button::build({wWidth - 40.0f, wHeight - 20.0f, 40.0f, 20.0f, std::move(t)});
@@ -244,12 +222,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 
     timeA = SDL_GetTicks();
 
-    /* * * * * * *
-     * Main Loop *
-     * * * * * * */
-
+    //Main Loop
     while (!quit)
     {
+
+        // Process events first
 
         SDL_Event e;
         while (SDL_PollEvent(&e))
@@ -259,7 +236,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
                 quit = true;
                 break;
             }
-            else if (e.type == SDL_WINDOWEVENT)
+            else if (e.type == SDL_WINDOWEVENT) // Fullscreen, minimise, resize, etc...
             {
                 if (e.window.event == SDL_WINDOWEVENT_CLOSE)
                 {
@@ -291,10 +268,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
             }
         }
 
-        // Share GL buffers.
+        // Prepare GL buffers for interop.
         glFlush();
 
-        // If renderers are at the same frame, we can save loading costs.
+        // If renderers are at the same frame, we can save disk loading costs.
         auto sortedRenderers = mainWindow.renderers;
         std::sort(sortedRenderers.begin(), sortedRenderers.end(), [](const std::shared_ptr<gui::Renderer> &sa, const std::shared_ptr<gui::Renderer> &sb)
                   { return sa->cFrame < sb->cFrame; });
@@ -304,35 +281,35 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
         {
             if (renderer->modified)
             {
-                // Helps to minimise cost if sequential renderers want the same volume frames.
                 if (lastR == -1 || static_cast<cl_uint>(lastR) != renderer->rFrame)
                 {
-                    gui::Kernel::executeKernels(renderer->rFrame);
+                    gui::Kernel::executeKernels(renderer->rFrame); // Run kernels at specified frame
                     lastR = renderer->rFrame;
                 }
 
-                renderer->updateView();
+                renderer->updateView(); // Update rotation, translation, scale
 
                 auto start = std::chrono::steady_clock::now();
                 device.render(*renderer); // 3D -> 2D render
                 auto stop = std::chrono::steady_clock::now();
                 std::cout << "Kernel Execution Time: " << std::chrono::duration_cast<std::chrono::duration<float, std::milli>>(stop - start).count() << "ms" << std::endl;
-                renderer->addFrame(device.pixelBuffer); // Save 2D Render
+
+                renderer->addFrame(device.pixelBuffer); // Save 2D frame into rendered footage
             }
         }
 
         // Run OpenGL stuff
-        mainWindow.update();
         mainWindow.clean();
         mainWindow.draw();
 
+        // Sleep to minimise CPU cycles
         auto duration = long(timeA) + long(1000.0 / 30.0) - long(SDL_GetTicks());
         if (duration - 2 > 0)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(duration - 2)); // Sleep with 2ms left over.
         }
         while (SDL_GetTicks() < timeA + 1000 / 30)
-            ; // Busy wait last 2 ms.
+            ; // Busy wait last 2 ms to not oversleep.
         timeA = SDL_GetTicks();
     }
 

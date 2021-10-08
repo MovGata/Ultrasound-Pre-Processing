@@ -52,7 +52,6 @@ namespace gui
         Window(Window &&) = default;
 
         void clean();
-        void update();
         void draw();
         void redraw();
         void redraw(const SDL_Event &e);

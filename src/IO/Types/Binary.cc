@@ -1,7 +1,9 @@
 #include "Binary.hh"
 
-#include <SDL2/SDL_rwops.h>
+#include <filesystem>
 #include <iostream>
+
+#include <SDL2/SDL_rwops.h>
 
 #include "../SDL2/RWOpsStream.hh"
 
@@ -10,6 +12,7 @@ namespace io
 
     Binary::Binary(const cl::CommandQueue &cq) : cQueue(cq)
     {
+        Filter::volume = std::make_shared<data::Volume>();
         Filter::input = std::bind(input, this, std::placeholders::_1);
         Filter::execute = std::bind(execute, this);
         Filter::getOptions = std::bind(getOptions, this);
@@ -19,21 +22,40 @@ namespace io
     {
         inVolume = wv;
         std::shared_ptr<data::Volume> sptr = wv.lock();
+        volume->raw.resize(1);
         if (sptr)
         {
-            sptr->loadFromCl(cQueue);
+            volume->raw[0] = sptr->loadFromCl(cQueue);
         }
     }
 
     void Binary::execute()
     {
-        SDL_RWops *outFile = SDL_RWFromFile("./out.bin", "wb");
+        if (!Filter::toggle)
+            return;
+
+        SDL_RWops *outFile;
+
         std::shared_ptr<data::Volume> sptr = inVolume.lock();
-        for (std::vector<cl_uchar4> &v : sptr->raw)
-        {
-            SDL_RWwrite(outFile, v.data(), v.size(), 1);
+        if (sptr->rFrame == 0)
+        {            
+            outFile = SDL_RWFromFile("./out.bin", "wb");
         }
+        else
+        {
+            outFile = SDL_RWFromFile("./out.bin", "ab");
+        }
+
+        SDL_RWwrite(outFile, volume->raw[0].data(), volume->raw[0].size(), 1);
         SDL_RWclose(outFile);
+
+        if (sptr->rFrame == sptr->frames - 1)
+        {
+            std::string astr = "File saved to: \n\n";
+            astr += std::filesystem::absolute(std::filesystem::current_path()).string() + "\\out.bin";
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Binary Save Complete", astr.c_str(), nullptr);
+        }
+
     }
 
     std::shared_ptr<gui::Tree> Binary::getOptions()

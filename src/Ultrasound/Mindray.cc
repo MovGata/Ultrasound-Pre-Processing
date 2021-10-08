@@ -54,7 +54,8 @@ namespace ultrasound
 
         if (vmTxt.empty() || vmBin.empty() || cp.empty())
         {
-            std::cout << "Could not find Mindray files" << std::endl;
+        
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Mindray Loading Error", "Could not find any Mindray Ultrasound files.\n\nPlease load either a Mindray Ultrasound file or the directory they reside in.\n\nMandatory Files: BC_CinePartition0.bin, VirtualMachine.bin, VirtualMachine.txt", nullptr);
             return false;
         }
 
@@ -65,7 +66,7 @@ namespace ultrasound
             vmTxtOps.reset(SDL_RWFromFile(vmTxt.c_str(), "r"));
             if (vmTxtOps == nullptr)
             {
-                std::cout << "SDL2 failed to open Mindray virtual machine file '" << vmTxt << "', error: " << SDL_GetError();
+                SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "SDL2 Error: Mindray VirtualMachine.txt", SDL_GetError(), nullptr);
                 return false;
             }
 
@@ -163,7 +164,7 @@ namespace ultrasound
             vmBinOps.reset(SDL_RWFromFile(vmBin.c_str(), "r"));
             if (vmBinOps == nullptr)
             {
-                std::cout << "SDL2 failed to open Mindray virtual machine file '" << vmBin << "', error: " << SDL_GetError();
+                SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "SDL2 Error: Mindray VirtualMachine.bin", SDL_GetError(), nullptr);
                 return false;
             }
 
@@ -351,7 +352,7 @@ namespace ultrasound
             cpOps.reset(SDL_RWFromFile(cp.c_str(), "rb"));
             if (cpOps == nullptr)
             {
-                std::cout << "SDL2 failed to open Mindray cine partition file '" << cp << "', error: " << SDL_GetError();
+                SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "SDL2 Error: Mindray BC_CinePartition0.bin", SDL_GetError(), nullptr);
                 return false;
             }
             cpRWStream = io::RWOpsStream(cpOps.get());

@@ -88,7 +88,12 @@ namespace gui
             [wptr = sptr->weak_from_this()](const SDL_Event &e)
             {
                 auto ptr = wptr.lock();
-                ptr->filter->load(e.drop.file);
+                if (!ptr->filter->load(e.drop.file))
+                {
+                    SDL_free(e.drop.file);
+                    return;
+                }
+                
                 SDL_free(e.drop.file);
 
                 for (auto itr = xKernels.begin(); itr != xKernels.end(); ++itr)
@@ -152,14 +157,14 @@ namespace gui
         return sptr;
     }
 
-    bool Kernel::endLink(const SDL_Event &e, std::weak_ptr<Kernel> wptr, std::shared_ptr<Kernel> &k)
+    bool Kernel::endLink(const SDL_Event &e, std::shared_ptr<Kernel> &k)
     {
-        auto ptr = wptr.lock();
-
-        if (k.get() == ptr.get())
+        if (k.get() == this)
         {
-            ptr->link = false;
-            ptr->outLine.hidden = true;
+            link = false;
+            outLine.hidden = true;
+            outLink.reset();
+            fire = []([[maybe_unused]] auto &a, [[maybe_unused]] bool b) {};
             return false;
         }
 
@@ -171,14 +176,14 @@ namespace gui
                 k->inLink->outLine.hidden = true;
             }
 
-            ptr->updateLine(k->inNode->x, k->inNode->y + k->inNode->h / 2.0f);
+            updateLine(k->inNode->x, k->inNode->y + k->inNode->h / 2.0f);
 
-            ptr->outLink = k;
-            k->inLink = ptr;
+            outLink = k;
+            k->inLink = shared_from_this();
 
-            ptr->fire = std::bind(Kernel::execute, k.get(), std::placeholders::_1, std::placeholders::_2);
+            fire = std::bind(Kernel::execute, k.get(), std::placeholders::_1, std::placeholders::_2);
 
-            ptr->outLine.hidden = false;
+            outLine.hidden = false;
 
             // k->active = ptr->active;
 
@@ -189,8 +194,10 @@ namespace gui
         }
         else
         {
-            ptr->link = false;
-            ptr->outLine.hidden = true;
+            link = false;
+            outLine.hidden = true;
+            outLink.reset();
+            fire = []([[maybe_unused]] auto &a, [[maybe_unused]] bool b) {};
         }
         return false;
     }
@@ -276,7 +283,25 @@ namespace gui
 
     std::shared_ptr<Renderer> Kernel::buildRenderer(std::vector<std::shared_ptr<Renderer>> &wr)
     {
-        return Renderer::build(wr, {0.0f, 0.0f, 1.0f, 1.0f, std::make_shared<gui::Texture>(512, 512)}, std::shared_ptr(filter->volume), shared_from_this());
+
+        if (active)
+        {
+            try
+            {
+                filter->volume->buffer.template getInfo<CL_MEM_SIZE>();
+                return Renderer::build(wr, {0.0f, 0.0f, 1.0f, 1.0f, std::make_shared<gui::Texture>(512, 512)}, std::shared_ptr(filter->volume), shared_from_this());
+            }
+            catch (const cl::Error &e)
+            {
+                SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Render Error", "This kernel does not store a valid volume.", nullptr);
+            }
+        }
+        else
+        {
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Render Information", "This kernel is currently inactive. Ultrasound data must be processed by this kernel before it can be displayed.", nullptr);
+        }
+
+        return std::shared_ptr<Renderer>(nullptr);
     }
 
 } // namespace gui
