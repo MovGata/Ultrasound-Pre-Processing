@@ -15,6 +15,7 @@
 #include "Tree.hh"
 #include "Slider.hh"
 
+#include "../Data/Volume.hh"
 #include "../OpenCL/Kernel.hh"
 #include "../OpenCL/Filter.hh"
 #include "../events/EventManager.hh"
@@ -55,6 +56,7 @@ namespace gui
         std::weak_ptr<events::EventManager> optionEvent;
         bool active = false;
         bool modified = true;
+        std::shared_ptr<data::Volume> volume = std::make_shared<data::Volume>();
 
     public:
         std::shared_ptr<opencl::Filter> filter;

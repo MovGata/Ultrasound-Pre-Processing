@@ -5,7 +5,6 @@ namespace opencl
 
     Invert::Invert(const cl::Context &c, const cl::CommandQueue &q, const std::shared_ptr<opencl::Kernel> &ptr) : kernel(ptr), context(c), queue(q)
     {
-        Filter::volume = std::make_shared<data::Volume>();
         Filter::input = std::bind(input, this, std::placeholders::_1);
         Filter::execute = std::bind(execute, this);
         Filter::getOptions = std::bind(getOptions, this);

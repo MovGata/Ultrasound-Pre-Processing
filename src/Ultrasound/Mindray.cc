@@ -17,7 +17,6 @@ namespace ultrasound
 
     Mindray::Mindray(cl::Context c) : context(c)
     {
-        Filter::volume = std::make_shared<data::Volume>();
         Filter::input = std::bind(input, this, std::placeholders::_1);
         Filter::execute = std::bind(execute, this);
         Filter::getOptions = std::bind(getOptions, this);

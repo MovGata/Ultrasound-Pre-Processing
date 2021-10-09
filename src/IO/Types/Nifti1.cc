@@ -13,7 +13,6 @@ namespace io
 
     Nifti1::Nifti1(const cl::CommandQueue &cq) : cQueue(cq)
     {
-        Filter::volume = std::make_shared<data::Volume>();
         Filter::input = std::bind(input, this, std::placeholders::_1);
         Filter::execute = std::bind(execute, this);
         Filter::getOptions = std::bind(getOptions, this);

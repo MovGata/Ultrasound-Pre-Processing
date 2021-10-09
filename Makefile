@@ -15,7 +15,7 @@ $(@shell mkdir $(OBJDIR))
 DEFS = -DWIN32_LEAN_AND_MEAN -DWINVER=0x0A00 -DCPP_SDL2_VK_WINDOW -DCPP_SDL2_USE_SDL_IMAGE -D_USE_MATH_DEFINES -DCL_TARGET_OPENCL_VERSION=120 -DCL_HPP_TARGET_OPENCL_VERSION=120 -DCL_HPP_MINIMUM_OPENCL_VERSION=120 -DGL_GLEXT_PROTOTYPES -DCL_HPP_ENABLE_EXCEPTIONS -DGLM_FORCE_CXX2A
 
 # Windows FLAGS
-WIN = -mconsole -mwindows
+WIN = -mconsole -mwindows -Wl,-subsystem,windows
 # G++ Flags
 GPP = -std=c++2a -s -O2 -fconcepts -Werror -Wextra -Wall -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align -Wwrite-strings -Wcast-qual -Wswitch-enum -Wconversion -Wno-unknown-pragmas -fconcepts-diagnostics-depth=2 -Wa,-mbig-obj#-Wfatal-errors #-DDEBUG_Matrix #-DDEBUG_VECTOR3
 # Linker flags

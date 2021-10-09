@@ -12,8 +12,8 @@ namespace gui
         for (auto &wptr : xKernels)
         {
             auto sptr = wptr.lock();
-            sptr->filter->volume->rFrame = i;
-            sptr->execute(sptr->filter->volume, sptr->modified);
+            sptr->volume->rFrame = i;
+            sptr->execute(sptr->volume, sptr->modified);
         }
     }
 
@@ -88,6 +88,7 @@ namespace gui
             [wptr = sptr->weak_from_this()](const SDL_Event &e)
             {
                 auto ptr = wptr.lock();
+                ptr->filter->volume = ptr->volume;
                 if (!ptr->filter->load(e.drop.file))
                 {
                     SDL_free(e.drop.file);
@@ -272,6 +273,8 @@ namespace gui
         if (m == true)
             modified = m;
 
+        filter->volume = volume;
+
         if (sp)
             arm(sp);
 
@@ -279,7 +282,7 @@ namespace gui
         filter->execute();
 
         if (outLink)
-            fire(filter->volume, modified);
+            fire(volume, modified);
 
         modified = false;
     }
@@ -308,7 +311,7 @@ namespace gui
         {
             try
             {
-                filter->volume->buffer.template getInfo<CL_MEM_SIZE>();
+                volume->buffer.template getInfo<CL_MEM_SIZE>();
                 return Renderer::build(wr, {0.0f, 0.0f, 1.0f, 1.0f, std::make_shared<gui::Texture>(512, 512)}, std::shared_ptr(filter->volume), shared_from_this());
             }
             catch (const cl::Error &e)
