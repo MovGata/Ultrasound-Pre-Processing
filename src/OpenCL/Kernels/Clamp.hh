@@ -12,6 +12,7 @@
 #include "../Concepts.hh"
 #include "../../Data/Volume.hh"
 #include "../../GUI/Tree.hh"
+#include "../../GUI/Slider.hh"
 
 namespace opencl
 {
@@ -23,6 +24,8 @@ namespace opencl
         cl_uint inwidth;
         cl_uint indepth;
         cl::Buffer inBuffer;
+
+        std::array<std::shared_ptr<gui::Slider>, 6> sliders;
 
         float dl = 0.25f, du = 0.75f, ll = 0.25f, lu = 0.75f, wl = 0.5f, wu = 1.0f;
 

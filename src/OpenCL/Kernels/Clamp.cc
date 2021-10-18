@@ -44,12 +44,11 @@ namespace opencl
         kernel->setArg(2, inwidth);
         kernel->setArg(3, inBuffer);
         kernel->setArg(4, volume->buffer);
-        kernel->setArg(5, dl);
-        kernel->setArg(6, du);
-        kernel->setArg(7, ll);
-        kernel->setArg(8, lu);
-        kernel->setArg(9, wl);
-        kernel->setArg(10, wu);
+
+        for (unsigned int i = 0; i < sliders.size(); ++i)
+        {
+            kernel->setArg(i+5, sliders[i]->value);
+        }
 
         kernel->global = cl::NDRange(volume->depth, volume->length, volume->width);
         kernel->execute(queue);
@@ -58,7 +57,11 @@ namespace opencl
     std::shared_ptr<gui::Tree> Clamp::getOptions()
     {
         std::shared_ptr<gui::Tree> options = gui::Tree::build("OPTIONS");
-        options->addLeaf(gui::Slider::build(0.0f, 0.0f, options->w, 10.0f));
+        for (unsigned int i = 0; i < sliders.size(); ++i)
+        {
+            sliders[i] = gui::Slider::build(0.0f, 0.0f, options->w, 10.0f);
+            options->addLeaf(sliders[i]);
+        }
         return options;
     }
 
