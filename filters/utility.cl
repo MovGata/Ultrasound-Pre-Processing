@@ -162,16 +162,15 @@ kernel void shrink(
         if (
             input[clamp(offset - i, (uint)(0), dlim)].w == 0x00 ||
             input[clamp(offset + i, (uint)(0), dlim)].w == 0x00 ||
-            input[clamp(offset - depth*i, (uint)(0), llim)].w == 0x00 ||
-            input[clamp(offset + depth*i, (uint)(0), llim)].w == 0x00 ||
-            input[clamp(offset - depth*length*i, (uint)(0), wlim)].w == 0x00 ||
-            input[clamp(offset + depth*length*i, (uint)(0), wlim)].w == 0x00)
+            input[clamp(offset - depth * i, (uint)(0), llim)].w == 0x00 ||
+            input[clamp(offset + depth * i, (uint)(0), llim)].w == 0x00 ||
+            input[clamp(offset - depth * length * i, (uint)(0), wlim)].w == 0x00 ||
+            input[clamp(offset + depth * length * i, (uint)(0), wlim)].w == 0x00)
         {
             output[offset].w = 0x00;
             break;
         }
     }
-
 }
 
 kernel void fade(
@@ -189,5 +188,69 @@ kernel void fade(
     {
         output[offset].w = input[offset].w / 2;
     }
+}
 
+kernel void colourise(
+    uint depth, uint length, uint width, global uchar4 *input, global uchar4 *output,
+    float red, float green, float blue)
+{
+    uint x = get_global_id(0);
+    uint y = get_global_id(1);
+    uint z = get_global_id(2);
+
+    uint offset = x + y * depth + z * depth * length;
+
+    output[offset] = input[offset];
+
+    output[offset].x = convert_uchar(mix(red, convert_float(input[offset].x) / 255.0f, convert_float(input[offset].w) / 255.0f) * 255.0f);
+    output[offset].y = convert_uchar(mix(green, convert_float(input[offset].y) / 255.0f, convert_float(input[offset].w) / 255.0f) * 255.0f);
+    output[offset].z = convert_uchar(mix(blue, convert_float(input[offset].z) / 255.0f, convert_float(input[offset].w) / 255.0f) * 255.0f);
+    // output[offset].y = (1.0f - convert_float(input[offset].w)/255.0f)*green;
+    // output[offset].z = (1.0f - convert_float(input[offset].w)/255.0f)*blue;
+}
+
+kernel void medianNoise(
+    uint depth, uint length, uint width, global uchar4 *input, global uchar4 *output)
+{
+    uint x = get_global_id(0);
+    uint y = get_global_id(1);
+    uint z = get_global_id(2);
+
+    uint lOff = y * depth;
+    uint wOff = z * depth * length;
+    uint offset = x + lOff + wOff;
+
+    uint dlim = depth - 1;
+    uint llim = (length - 1) * depth;
+    uint wlim = (width - 1) * (length * depth);
+
+    output[offset] = input[offset];
+
+    uint size = depth * length * width;
+    uint start = clamp(x - 1, (uint)0, depth) + clamp(y - 1, (uint)0, length) * depth + clamp(z - 1, (uint)0, width) * depth * length;
+
+    uchar pixels[27];
+
+    for (uint i = 0; i < 3; ++i)
+    {
+        for (uint j = 0; j < 3; ++j)
+        {
+            for (uint k = 0; k < 3; ++k)
+            {
+                pixels[k + j * 3 + i * 9] = input[min(start + k + j * depth + i * depth * length, size - 1)].w;
+            }
+        }
+    }
+
+    for (uint i = 0; i < 26; ++i)
+    {
+        for (uint j = 0; j < 26 - i; ++j)
+        {
+            uchar t = max(pixels[j], pixels[j+1]);
+            pixels[j] = min(pixels[j], pixels[j+1]);
+            pixels[j+1] = t;
+        }
+    }
+
+    output[offset] = pixels[13];
 }

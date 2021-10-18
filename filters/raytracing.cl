@@ -65,7 +65,7 @@ kernel void render(
 
     // Raymarch back to front
     float n = 1.0f;
-    uint stepLim = convert_uint(native_sqrt(convert_float(depth * depth + length * length + width * width + 1)))/4;
+    uint stepLim = convert_uint(native_sqrt(convert_float(depth * depth + length * length + width * width + 1))) / 4;
     float td = (fPlane - nPlane) / stepLim;
     for (uint i = 0; i < stepLim; ++i)
     {
@@ -84,33 +84,30 @@ kernel void render(
 
         float4 sampleF = native_divide(convert_float4(sample), 255.0f);
 
-
         // if (sample.w != 0)
         // {
         //     acc = mix(acc, sampleF, 1.0f / n);
         //     n += 1.0f;
         // }
-        
 
-        if (sample.x == sample.y && sample.x == sample.z)
-        {
-            acc.w = mix(acc.w, sampleF.w, 1.0f / n);
-            n += 1.0f;
-        }
-        else
-        {
-            sampleF.w = 1-native_sqrt(1-sampleF.w);
-            sampleF.xyz *= sampleF.w;
-            acc.xyz = acc.xyz*(1.0f - sampleF.w) + sampleF.xyz;
-            acc.w = acc.w*(1.0f - sampleF.w) + sampleF.w;
-        }
+        // if (sample.x == sample.y && sample.x == sample.z)
+        // {
+        // acc.w = mix(acc.w, sampleF.w, 1.0f / n);
+        // n += 1.0f;
+        // }
+        // else
+        // {
+        //     sampleF.w = 1-native_sqrt(1-sampleF.w);
+        //     sampleF.xyz *= sampleF.w;
+        //     acc.xyz = acc.xyz*(1.0f - sampleF.w) + sampleF.xyz;
+        //     acc.w = acc.w*(1.0f - sampleF.w) + sampleF.w;
+        // }
 
-        
         // n += 1.0f;
 
         // acc = mix(acc, sampleF, sampleF.w);
 
-        // acc = mix(acc, sampleF, sampleF.w); // Interesting solid approach
+        acc = mix(acc, sampleF, sampleF.w); // Interesting solid approach
 
         if (t < nPlane)
         {

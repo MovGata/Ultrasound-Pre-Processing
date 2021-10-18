@@ -25,7 +25,9 @@
 #include "OpenCL/Kernels/Fade.hh"
 #include "OpenCL/Kernels/Sqrt.hh"
 #include "OpenCL/Kernels/Clamp.hh"
+#include "OpenCL/Kernels/Colourise.hh"
 #include "OpenCL/Kernels/Threshold.hh"
+#include "OpenCL/Kernels/MedianNoise.hh"
 
 #include "IO/InfoStore.hh"
 #include "IO/Types/Binary.hh"
@@ -181,6 +183,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     auto fade       = std::make_shared<opencl::Fade>(device.context, device.cQueue, device.programs.at("utility")->at("fade"));
     auto sqrt       = std::make_shared<opencl::Sqrt>(device.context, device.cQueue, device.programs.at("utility")->at("square"));
     auto clamp      = std::make_shared<opencl::Clamp>(device.context, device.cQueue, device.programs.at("utility")->at("clamping"));
+    auto colourise  = std::make_shared<opencl::Colourise>(device.context, device.cQueue, device.programs.at("utility")->at("colourise"));
+    auto median     = std::make_shared<opencl::Median>(device.context, device.cQueue, device.programs.at("utility")->at("medianNoise"));
 
     dataTree->addLeaf(dropzone->buildKernel("To Polar", mainWindow.kernel, mainWindow.renderers, polar), 4.0f);
     dataTree->addLeaf(dropzone->buildKernel("To Cartesian", mainWindow.kernel, mainWindow.renderers, cartesian), 4.0f);
@@ -193,6 +197,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     dataTree->addLeaf(dropzone->buildKernel("Shrink", mainWindow.kernel, mainWindow.renderers, shrink), 4.0f);
     dataTree->addLeaf(dropzone->buildKernel("Fade", mainWindow.kernel, mainWindow.renderers, fade), 4.0f);
     dataTree->addLeaf(dropzone->buildKernel("Sqrt", mainWindow.kernel, mainWindow.renderers, sqrt), 4.0f);
+    dataTree->addLeaf(dropzone->buildKernel("Colourise", mainWindow.kernel, mainWindow.renderers, colourise), 4.0f);
+    dataTree->addLeaf(dropzone->buildKernel("Median", mainWindow.kernel, mainWindow.renderers, median), 4.0f);
 
     auto binary = std::make_shared<io::Binary>(device.cQueue);
     auto nifti1 = std::make_shared<io::Nifti1>(device.cQueue);
