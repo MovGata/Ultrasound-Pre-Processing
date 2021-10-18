@@ -220,12 +220,6 @@ kernel void medianNoise(
     uint wOff = z * depth * length;
     uint offset = x + lOff + wOff;
 
-    uint dlim = depth - 1;
-    uint llim = (length - 1) * depth;
-    uint wlim = (width - 1) * (length * depth);
-
-    output[offset] = input[offset];
-
     uint size = depth * length * width;
     uint start = clamp(x - 1, (uint)0, depth) + clamp(y - 1, (uint)0, length) * depth + clamp(z - 1, (uint)0, width) * depth * length;
 
@@ -246,11 +240,53 @@ kernel void medianNoise(
     {
         for (uint j = 0; j < 26 - i; ++j)
         {
-            uchar t = max(pixels[j], pixels[j+1]);
-            pixels[j] = min(pixels[j], pixels[j+1]);
-            pixels[j+1] = t;
+            uchar t = max(pixels[j], pixels[j + 1]);
+            pixels[j] = min(pixels[j], pixels[j + 1]);
+            pixels[j + 1] = t;
         }
     }
 
     output[offset] = pixels[13];
+}
+
+kernel void gaussian(
+    uint depth, uint length, uint width, global uchar4 *input, global uchar4 *output)
+{
+    uint x = get_global_id(0);
+    uint y = get_global_id(1);
+    uint z = get_global_id(2);
+
+    uint lOff = y * depth;
+    uint wOff = z * depth * length;
+    uint offset = x + lOff + wOff;
+
+    const float weights[9] = {0.0162162162, 0.0540540541, 0.1216216216, 0.1945945946, 0.2270270270, 0.1945945946, 0.1216216216, 0.0540540541, 0.0162162162};
+
+    float out = 3.0f * convert_float(input[offset].w) / 255.0f * weights[0];
+
+    uint size = depth * length * width;
+
+    uint start = clamp(x - 5, (uint)0, depth - 1) + y * depth + z * depth * length;
+    float outX = out;
+    for (uint i = 1; i < 9; ++i)
+    {
+        outX += convert_float(input[min(start + i, size - 1)].w) / 255.0f * weights[i];
+    }
+
+    start = x + clamp(y - 5, (uint)0, length - 1) * depth + z * depth * length;
+    float outY = out;
+    for (uint i = 1; i < 9; ++i)
+    {
+        outY += convert_float(input[min(start + i * depth, size - 1)].w) / 255.0f * weights[i];
+    }
+
+    start = x + y * depth + clamp(z - 5, (uint)0, width - 1) * depth * length;
+    float outZ = out;
+    for (uint i = 1; i < 9; ++i)
+    {
+        outZ += convert_float(input[min(start + i * depth * length, size - 1)].w) / 255.0f * weights[i];
+    }
+
+    output[offset] = input[offset];
+    output[offset].w = convert_uchar(clamp((outZ * outY * outX), 0.0f, 1.0f) * 255.0f);
 }
