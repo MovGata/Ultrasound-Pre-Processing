@@ -185,8 +185,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     auto sqrt       = std::make_shared<opencl::Sqrt>(device.context, device.cQueue, device.programs.at("utility")->at("square"));
     auto clamp      = std::make_shared<opencl::Clamp>(device.context, device.cQueue, device.programs.at("utility")->at("clamping"));
     auto colourise  = std::make_shared<opencl::Colourise>(device.context, device.cQueue, device.programs.at("utility")->at("colourise"));
-    auto median     = std::make_shared<opencl::Median>(device.context, device.cQueue, device.programs.at("utility")->at("medianNoise"));
-    auto gaussian   = std::make_shared<opencl::Gaussian>(device.context, device.cQueue, device.programs.at("utility")->at("gaussian"));
+    auto median     = std::make_shared<opencl::Median>(device);
+    auto gaussian   = std::make_shared<opencl::Gaussian>(device);
 
     dataTree->addLeaf(dropzone->buildKernel("To Polar", mainWindow.kernel, mainWindow.renderers, polar), 4.0f);
     dataTree->addLeaf(dropzone->buildKernel("To Cartesian", mainWindow.kernel, mainWindow.renderers, cartesian), 4.0f);

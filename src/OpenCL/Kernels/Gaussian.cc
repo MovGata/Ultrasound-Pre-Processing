@@ -3,7 +3,7 @@
 namespace opencl
 {
 
-    Gaussian::Gaussian(const cl::Context &c, const cl::CommandQueue &q, const std::shared_ptr<opencl::Kernel> &ptr) : kernel(ptr), context(c), queue(q)
+    Gaussian::Gaussian(const Device &d) : kernel2D(d.programs.at("utility")->at("gaussian2D")), kernel3D(d.programs.at("utility")->at("gaussian3D")), context(d.context), queue(d.cQueue)
     {
         Filter::input = std::bind(input, this, std::placeholders::_1);
         Filter::execute = std::bind(execute, this);
@@ -37,14 +37,27 @@ namespace opencl
 
     void Gaussian::execute()
     {
-        kernel->setArg(0, indepth);
-        kernel->setArg(1, inlength);
-        kernel->setArg(2, inwidth);
-        kernel->setArg(3, inBuffer);
-        kernel->setArg(4, volume->buffer);
+        if (inwidth == 1)
+        {
+            kernel2D->setArg(0, indepth);
+            kernel2D->setArg(1, inlength);
+            kernel2D->setArg(2, inBuffer);
+            kernel2D->setArg(3, volume->buffer);
 
-        kernel->global = cl::NDRange(volume->depth, volume->length, volume->width);
-        kernel->execute(queue);
+            kernel2D->global = cl::NDRange(volume->depth, volume->length);
+            kernel2D->execute(queue);
+        }
+        else
+        {
+            kernel3D->setArg(0, indepth);
+            kernel3D->setArg(1, inlength);
+            kernel3D->setArg(2, inwidth);
+            kernel3D->setArg(3, inBuffer);
+            kernel3D->setArg(4, volume->buffer);
+
+            kernel3D->global = cl::NDRange(volume->depth, volume->length, volume->width);
+            kernel3D->execute(queue);
+        }
     }
 
     std::shared_ptr<gui::Tree> Gaussian::getOptions()

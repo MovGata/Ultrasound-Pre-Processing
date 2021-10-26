@@ -6,6 +6,7 @@
 
 #include <CL/cl2.hpp>
 
+#include "../Device.hh"
 #include "../Filter.hh"
 #include "../Kernel.hh"
 #include "../Concepts.hh"
@@ -17,7 +18,8 @@ namespace opencl
     class Median : public Filter
     {
     private:
-        std::shared_ptr<opencl::Kernel> kernel;
+        std::shared_ptr<opencl::Kernel> kernel2D;
+        std::shared_ptr<opencl::Kernel> kernel3D;
         cl_uint inlength;
         cl_uint inwidth;
         cl_uint indepth;
@@ -30,7 +32,7 @@ namespace opencl
         const std::string in = "3D";
         const std::string out = "3D";
 
-        Median(const cl::Context &c, const cl::CommandQueue &q, const std::shared_ptr<opencl::Kernel> &ptr);
+        Median(const Device &d);
         ~Median() = default;
 
         void input(const std::weak_ptr<data::Volume> &wv);

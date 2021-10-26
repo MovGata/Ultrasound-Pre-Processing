@@ -209,7 +209,41 @@ kernel void colourise(
     // output[offset].z = (1.0f - convert_float(input[offset].w)/255.0f)*blue;
 }
 
-kernel void medianNoise(
+kernel void medianNoise2D(
+    uint depth, uint length, global uchar4 *input, global uchar4 *output)
+{
+    uint x = get_global_id(0);
+    uint y = get_global_id(1);
+
+    uint offset = x + y * depth;
+
+    uint size = depth * length;
+    uint start = clamp(x - 1, (uint)0, depth) + clamp(y - 1, (uint)0, length) * depth;
+
+    uchar pixels[9];
+
+    for (uint i = 0; i < 3; ++i)
+    {
+        for (uint j = 0; j < 3; ++j)
+        {
+            pixels[j + i * 3] = input[min(start + j + i * depth, size - 1)].w;
+        }
+    }
+
+    for (uint i = 0; i < 8; ++i)
+    {
+        for (uint j = 0; j < 8 - i; ++j)
+        {
+            uchar t = max(pixels[j], pixels[j + 1]);
+            pixels[j] = min(pixels[j], pixels[j + 1]);
+            pixels[j + 1] = t;
+        }
+    }
+
+    output[offset] = pixels[4];
+}
+
+kernel void medianNoise3D(
     uint depth, uint length, uint width, global uchar4 *input, global uchar4 *output)
 {
     uint x = get_global_id(0);
@@ -249,7 +283,39 @@ kernel void medianNoise(
     output[offset] = pixels[13];
 }
 
-kernel void gaussian(
+kernel void gaussian2D(
+    uint depth, uint length, global uchar4 *input, global uchar4 *output)
+{
+    uint x = get_global_id(0);
+    uint y = get_global_id(1);
+
+    uint offset = x + y * depth;
+
+    const float weights[9] = {0.0162162162, 0.0540540541, 0.1216216216, 0.1945945946, 0.2270270270, 0.1945945946, 0.1216216216, 0.0540540541, 0.0162162162};
+
+    float out = 3.0f * convert_float(input[offset].w) / 255.0f * weights[0];
+
+    uint size = depth * length;
+
+    uint start = clamp(x - 5, (uint)0, depth - 1) + y * depth;
+    float outX = out;
+    for (uint i = 1; i < 9; ++i)
+    {
+        outX += convert_float(input[min(start + i, size - 1)].w) / 255.0f * weights[i];
+    }
+
+    start = x + clamp(y - 5, (uint)0, length - 1) * depth;
+    float outY = out;
+    for (uint i = 1; i < 9; ++i)
+    {
+        outY += convert_float(input[min(start + i * depth, size - 1)].w) / 255.0f * weights[i];
+    }
+
+    output[offset] = input[offset];
+    output[offset].w = convert_uchar(clamp((outY * outX), 0.0f, 1.0f) * 255.0f);
+}
+
+kernel void gaussian3D(
     uint depth, uint length, uint width, global uchar4 *input, global uchar4 *output)
 {
     uint x = get_global_id(0);
